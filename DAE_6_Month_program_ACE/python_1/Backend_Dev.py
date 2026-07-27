@@ -15,7 +15,7 @@ while gender != "Male" or gender != "Female" or gender != "Other":
     elif gender == "Other":
         gender = "The"
 #==================================
-# Gender Wall
+# Gender Wall (fix line 7)
 #==================================
 
 
