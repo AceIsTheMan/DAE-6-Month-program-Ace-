@@ -270,7 +270,7 @@ while user_interaction:
 
             elif treat_choice == "Chocolate":
                 print("==========================================================")
-                print(f"🍫 {username}'s attempt to poison a digital dog has failed.")
+                print(f"💀 {username}'s attempt to poison a digital dog has failed.")
                 print("==========================================================")
 
             elif treat_choice == "Biscuits":
