@@ -18,27 +18,35 @@ title: Home
 </nav>
 
 
-# [YOUR FULL NAME]
+# Ace Rodriguez
 
-**Graduation:** [YOUR GRADUATION DATE]
+**Graduation:** December 2026
 
 ![Professional headshot placeholder]({{ '/assets/images/profile-placeholder.svg' | relative_url }})
 
 ## About Me
 
-[Write a short personal introduction here. Include your interests, values, and aspirations. Do not leave this placeholder in the final portfolio.]
+A Backend Developer/Web designer that spends his time improving his skill with code and scripting, learning new things, and bettering himself with knowledge and education to the best he can. I also work with Google's features such as Docs, Slides, Word, Excel, and Outlook, with certification on Northstar.
 
 ## Career Aspirations
 
-**Preferred role(s):** [YOUR PREFERRED ROLE(S)]
+**Preferred role(s):** Backend Developer, Web Designer
 
-**Ideal work environment:** [DESCRIBE THE WORK ENVIRONMENT YOU ARE LOOKING FOR]
+**Ideal work environment:** Collaborative and knowledge-driven environment where I can continuously improve my scripting and development skills.
 
-**Ideal job:** [DESCRIBE YOUR IDEAL JOB]
+**Ideal job:** A role focused on Backend Web Development and design, utilizing my skills in Web Development and Google productivity tools.
 
-**Ideal team:** [DESCRIBE THE KIND OF TEAM YOU WANT TO WORK WITH]
+**Ideal team:** A team that values continuous learning, education, and professional growth.
 
-**Future goals:** [DESCRIBE YOUR FUTURE CAREER GOALS]
+**Future goals:** To become an expert in Backend Web Development and contribute to high-quality web projects while staying up-to-date with the latest technologies.
+
+## Top Skills
+
+- **Web Development**
+- **Back-End Web Development**
+- **Google Docs & Slides**
+- **Microsoft Word, Excel, Outlook**
+- **Northstar Certified**
 
 ## Featured Projects
 
@@ -68,6 +76,6 @@ title: Home
 
 ## Contact
 
-- **Email:** [YOUR EMAIL]
-- **LinkedIn:** [YOUR LINKEDIN URL]
-- **GitHub:** [YOUR GITHUB URL]
+- **Email:** [acetheman0106@gmail.com](mailto:acetheman0106@gmail.com)
+- **LinkedIn:** [linkedin.com/in/ace-rodriguez-528027429](https://www.linkedin.com/in/ace-rodriguez-528027429)
+- **GitHub:** [github.com/AceIsTheMan](https://github.com/AceIsTheMan)

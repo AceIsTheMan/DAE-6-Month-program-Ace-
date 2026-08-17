@@ -20,9 +20,9 @@ title: Contact
 
 # Contact
 
-- **Name:** [YOUR FULL NAME]
-- **Email:** [YOUR EMAIL]
-- **LinkedIn:** [YOUR LINKEDIN URL]
-- **GitHub:** [YOUR GITHUB URL]
+- **Name:** Ace Rodriguez
+- **Email:** [acetheman0106@gmail.com](mailto:acetheman0106@gmail.com)
+- **LinkedIn:** [linkedin.com/in/ace-rodriguez-528027429](https://www.linkedin.com/in/ace-rodriguez-528027429)
+- **GitHub:** [github.com/AceIsTheMan](https://github.com/AceIsTheMan)
 
-[OPTIONAL SHORT CONTACT MESSAGE]
+Feel free to reach out to me for collaboration or any inquiries regarding web development and design!
