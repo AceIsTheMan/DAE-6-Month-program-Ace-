@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>UNKNOWN // HOME</title>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --black: #0a0a0a;
+      --deep-black: #000000;
+      --red: #cc0000;
+      --red-bright: #ff1a1a;
+      --red-dim: #660000;
+      --silver: #c0c0c0;
+      --white: #e8e8e8;
+      --dim-white: #aaaaaa;
+      --scan-line: rgba(255,255,255,0.02);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--deep-black);
+      color: var(--silver);
+      font-family: 'Share Tech Mono', monospace;
+      overflow-x: hidden;
+      cursor: crosshair;
+    }
+
+    /* Scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        var(--scan-line) 2px,
+        var(--scan-line) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 1000;
+      background: rgba(0,0,0,0.92);
+      border-bottom: 2px solid var(--red);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      height: 56px;
+      box-shadow: 0 0 20px rgba(204,0,0,0.4);
+    }
+
+    .nav-logo {
+      font-family: 'VT323', monospace;
+      font-size: 2rem;
+      color: var(--red-bright);
+      text-shadow: 0 0 8px var(--red), 0 0 20px var(--red-dim);
+      letter-spacing: 4px;
+      animation: flicker 6s infinite;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 0.2rem;
+      list-style: none;
+    }
+
+    .nav-links li a {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--silver);
+      text-decoration: none;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 0.4rem 1rem;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+      position: relative;
+    }
+
+    .nav-links li a:hover,
+    .nav-links li a.active {
+      color: var(--red-bright);
+      border-color: var(--red);
+      background: rgba(204,0,0,0.1);
+      text-shadow: 0 0 6px var(--red);
+    }
+
+    .nav-links li a.active::after {
+      content: '◆';
+      position: absolute;
+      bottom: -14px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.5rem;
+      color: var(--red-bright);
+    }
+
+    /* ─── SECTION WRAPPER ─── */
+    section {
+      position: relative;
+    }
+
+    /* ─── TOP BANNER FADE ─── */
+    .banner-top {
+      position: relative;
+      width: 100%;
+      margin-top: 56px;
+    }
+
+    .banner-top .fade-in {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 80px;
+      background: linear-gradient(to bottom, #000 0%, transparent 100%);
+      z-index: 2;
+    }
+
+    .banner-top .fade-out {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 80px;
+      background: linear-gradient(to top, #000 0%, transparent 100%);
+      z-index: 2;
+    }
+
+    .banner-top img,
+    .banner-top .banner-placeholder {
+      display: block;
+      width: 100%;
+      max-width: 1600px;
+      height: 900px;
+      margin: 0 auto;
+      object-fit: cover;
+    }
+
+    .banner-placeholder {
+      background: linear-gradient(135deg, #1a0000 0%, #0a0000 40%, #1a0000 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .banner-placeholder::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        repeating-linear-gradient(90deg, rgba(204,0,0,0.07) 0px, rgba(204,0,0,0.07) 1px, transparent 1px, transparent 60px),
+        repeating-linear-gradient(0deg, rgba(204,0,0,0.07) 0px, rgba(204,0,0,0.07) 1px, transparent 1px, transparent 60px);
+    }
+
+    .banner-placeholder-text {
+      text-align: center;
+      z-index: 1;
+    }
+
+    .banner-placeholder-text h1 {
+      font-family: 'VT323', monospace;
+      font-size: clamp(4rem, 10vw, 8rem);
+      color: var(--red-bright);
+      text-shadow: 0 0 30px var(--red), 0 0 60px var(--red-dim);
+      letter-spacing: 10px;
+      animation: flicker 4s infinite;
+      line-height: 1;
+    }
+
+    .banner-placeholder-text p {
+      font-size: 0.85rem;
+      color: var(--dim-white);
+      letter-spacing: 4px;
+      margin-top: 1rem;
+      text-transform: uppercase;
+    }
+
+    /* corner brackets */
+    .bracket-tl, .bracket-tr, .bracket-bl, .bracket-br {
+      position: absolute;
+      width: 40px; height: 40px;
+      z-index: 3;
+    }
+    .bracket-tl { top: 16px; left: 16px; border-top: 2px solid var(--red); border-left: 2px solid var(--red); }
+    .bracket-tr { top: 16px; right: 16px; border-top: 2px solid var(--red); border-right: 2px solid var(--red); }
+    .bracket-bl { bottom: 16px; left: 16px; border-bottom: 2px solid var(--red); border-left: 2px solid var(--red); }
+    .bracket-br { bottom: 16px; right: 16px; border-bottom: 2px solid var(--red); border-right: 2px solid var(--red); }
+
+    /* ─── MAIN CONTENT ─── */
+    main {
+      background: var(--deep-black);
+      padding: 4rem 2rem;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-family: 'VT323', monospace;
+      font-size: 2rem;
+      color: var(--red-bright);
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 0 8px var(--red);
+    }
+
+    .section-divider {
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(to right, var(--red), transparent);
+      margin-bottom: 2.5rem;
+    }
+
+    /* ─── GIF GRID ─── */
+    .gif-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-bottom: 5rem;
+    }
+
+    .gif-card {
+      position: relative;
+      background: #0d0000;
+      border: 1px solid var(--red-dim);
+      transition: border-color 0.25s, box-shadow 0.25s;
+    }
+
+    .gif-card:hover {
+      border-color: var(--red-bright);
+      box-shadow: 0 0 16px rgba(204,0,0,0.4), inset 0 0 8px rgba(204,0,0,0.05);
+    }
+
+    .gif-box {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #111;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .gif-box img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* Placeholder for empty gif slots */
+    .gif-placeholder {
+      width: 100%; height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: #0a0000;
+    }
+
+    .gif-placeholder .plus-icon {
+      font-size: 2.5rem;
+      color: var(--red-dim);
+      line-height: 1;
+    }
+
+    .gif-placeholder .placeholder-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      color: #440000;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    /* Expand button */
+    .expand-btn {
+      position: absolute;
+      top: 8px; right: 8px;
+      background: rgba(0,0,0,0.75);
+      border: 1px solid var(--red);
+      color: var(--red-bright);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 2px;
+      padding: 4px 8px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      z-index: 5;
+      opacity: 0;
+    }
+
+    .gif-card:hover .expand-btn { opacity: 1; }
+
+    .expand-btn:hover {
+      background: var(--red);
+      color: #fff;
+      box-shadow: 0 0 8px var(--red);
+    }
+
+    .gif-info {
+      padding: 0.9rem 1rem 1.1rem;
+      border-top: 1px solid rgba(204,0,0,0.2);
+    }
+
+    .gif-info .gif-title {
+      font-family: 'VT323', monospace;
+      font-size: 1.3rem;
+      color: var(--white);
+      letter-spacing: 2px;
+      margin-bottom: 0.3rem;
+    }
+
+    .gif-info .gif-desc {
+      font-size: 0.72rem;
+      color: var(--dim-white);
+      line-height: 1.6;
+      letter-spacing: 1px;
+    }
+
+    /* ─── LIGHTBOX ─── */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.97);
+      z-index: 5000;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    .lightbox.active { display: flex; }
+
+    .lightbox-inner {
+      position: relative;
+      max-width: 1200px;
+      width: 95vw;
+    }
+
+    .lightbox-inner img,
+    .lightbox-inner video {
+      width: 100%;
+      max-height: 80vh;
+      object-fit: contain;
+      border: 2px solid var(--red);
+      box-shadow: 0 0 40px rgba(204,0,0,0.5);
+    }
+
+    .lightbox-placeholder {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #0a0000;
+      border: 2px solid var(--red);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'VT323', monospace;
+      font-size: 2rem;
+      color: var(--red-dim);
+      letter-spacing: 4px;
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: -40px; right: 0;
+      background: none;
+      border: none;
+      color: var(--red-bright);
+      font-family: 'VT323', monospace;
+      font-size: 1.5rem;
+      cursor: pointer;
+      letter-spacing: 2px;
+      text-shadow: 0 0 6px var(--red);
+    }
+
+    .lightbox-caption {
+      margin-top: 1rem;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+      color: var(--dim-white);
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+
+    /* ─── BOTTOM BANNER FADE ─── */
+    .banner-bottom {
+      position: relative;
+      width: 100%;
+      margin-top: 2rem;
+    }
+
+    .banner-bottom .fade-in {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 100px;
+      background: linear-gradient(to bottom, #000 0%, transparent 100%);
+      z-index: 2;
+    }
+
+    .banner-bottom .fade-out {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 100px;
+      background: linear-gradient(to top, #000 0%, transparent 100%);
+      z-index: 2;
+    }
+
+    .banner-bottom img,
+    .banner-bottom .banner-placeholder {
+      display: block;
+      width: 100%;
+      max-width: 1600px;
+      height: 900px;
+      margin: 0 auto;
+      object-fit: cover;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      background: #000;
+      border-top: 2px solid var(--red-dim);
+      padding: 3rem 2rem 2rem;
+      text-align: center;
+    }
+
+    .footer-logo {
+      font-family: 'VT323', monospace;
+      font-size: 2.5rem;
+      color: var(--red-bright);
+      letter-spacing: 6px;
+      text-shadow: 0 0 10px var(--red);
+      animation: flicker 7s infinite;
+      margin-bottom: 0.5rem;
+    }
+
+    .footer-sub {
+      font-size: 0.65rem;
+      color: #440000;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      margin-bottom: 2rem;
+    }
+
+    .footer-copy {
+      font-size: 0.6rem;
+      color: #333;
+      letter-spacing: 2px;
+      margin-top: 2rem;
+      text-transform: uppercase;
+    }
+
+    /* ─── PAGE SECTIONS (hidden by default) ─── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ─── UPDATES PAGE ─── */
+    .updates-wrap {
+      min-height: 60vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      padding: 6rem 2rem;
+    }
+
+    .updates-icon {
+      font-family: 'VT323', monospace;
+      font-size: 5rem;
+      color: var(--red-dim);
+      animation: blink 1.2s step-end infinite;
+    }
+
+    .updates-title {
+      font-family: 'VT323', monospace;
+      font-size: 4rem;
+      color: var(--red-bright);
+      letter-spacing: 8px;
+      text-shadow: 0 0 20px var(--red);
+      text-transform: uppercase;
+    }
+
+    .updates-note {
+      font-size: 0.85rem;
+      color: var(--dim-white);
+      letter-spacing: 4px;
+      border: 1px solid var(--red-dim);
+      padding: 1rem 2rem;
+      text-transform: uppercase;
+    }
+
+    .updates-note span {
+      color: var(--red-bright);
+      text-shadow: 0 0 4px var(--red);
+    }
+
+    /* ─── SOCIALS PAGE ─── */
+    .socials-wrap {
+      padding: 4rem 2rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .social-card {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      border: 1px solid var(--red-dim);
+      padding: 1.2rem 1.5rem;
+      margin-bottom: 1rem;
+      background: #0a0000;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .social-card:hover {
+      border-color: var(--red-bright);
+      background: rgba(204,0,0,0.07);
+      box-shadow: 0 0 12px rgba(204,0,0,0.2);
+      transform: translateX(4px);
+    }
+
+    .social-icon {
+      font-family: 'VT323', monospace;
+      font-size: 2rem;
+      color: var(--red-bright);
+      text-shadow: 0 0 6px var(--red);
+      width: 40px;
+      text-align: center;
+    }
+
+    .social-info {
+      flex: 1;
+    }
+
+    .social-platform {
+      font-family: 'VT323', monospace;
+      font-size: 1.5rem;
+      color: var(--silver);
+      letter-spacing: 3px;
+    }
+
+    .social-handle {
+      font-size: 0.7rem;
+      color: var(--dim-white);
+      letter-spacing: 2px;
+      margin-top: 0.2rem;
+    }
+
+    .social-arrow {
+      color: var(--red-dim);
+      font-size: 1.2rem;
+      font-family: 'VT323', monospace;
+    }
+
+    /* Donation section */
+    .donation-box {
+      margin-top: 3rem;
+      border: 1px solid var(--red);
+      padding: 2rem;
+      text-align: center;
+      background: #0a0000;
+      position: relative;
+    }
+
+    .donation-box::before {
+      content: '[ SUPPORT ]';
+      position: absolute;
+      top: -0.7rem;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #000;
+      padding: 0 1rem;
+      font-family: 'VT323', monospace;
+      font-size: 1.2rem;
+      color: var(--red-bright);
+      letter-spacing: 4px;
+    }
+
+    .donation-title {
+      font-family: 'VT323', monospace;
+      font-size: 2.2rem;
+      color: var(--white);
+      letter-spacing: 4px;
+      margin-bottom: 0.5rem;
+    }
+
+    .donation-sub {
+      font-size: 0.7rem;
+      color: var(--dim-white);
+      letter-spacing: 2px;
+      margin-bottom: 1.5rem;
+      text-transform: uppercase;
+    }
+
+    .donate-btn {
+      display: inline-block;
+      font-family: 'VT323', monospace;
+      font-size: 1.5rem;
+      letter-spacing: 4px;
+      color: #fff;
+      background: var(--red);
+      border: none;
+      padding: 0.6rem 2.5rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      box-shadow: 0 0 12px rgba(204,0,0,0.4);
+    }
+
+    .donate-btn:hover {
+      background: var(--red-bright);
+      box-shadow: 0 0 24px rgba(255,26,26,0.6);
+      transform: scale(1.04);
+    }
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes flicker {
+      0%, 95%, 100% { opacity: 1; }
+      96% { opacity: 0.4; }
+      97% { opacity: 1; }
+      98% { opacity: 0.2; }
+      99% { opacity: 1; }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    @keyframes redglow {
+      0%, 100% { box-shadow: 0 0 10px rgba(204,0,0,0.3); }
+      50% { box-shadow: 0 0 24px rgba(255,26,26,0.6); }
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 900px) {
+      .gif-grid { grid-template-columns: 1fr; }
+      .nav-logo { font-size: 1.4rem; }
+    }
+
+    @media (max-width: 600px) {
+      .nav-links li a { font-size: 0.62rem; padding: 0.4rem 0.5rem; letter-spacing: 1px; }
+      .banner-placeholder { height: 300px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── NAV ─── -->
+<nav>
+  <div class="nav-logo">// UnknownUser</div>
+  <ul class="nav-links">
+    <li><a href="#" class="active" onclick="showPage('home', this)">HOME</a></li>
+    <li><a href="#" onclick="showPage('updates', this)">UPDATES</a></li>
+    <li><a href="#" onclick="showPage('socials', this)">SOCIALS &amp; SUPPORT</a></li>
+  </ul>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════
+     HOME PAGE
+════════════════════════════════════════════════════ -->
+<div id="page-home" class="page active">
+
+  <!-- Top Banner -->
+  <div class="banner-top">
+    <div class="fade-in"></div>
+    <div class="banner-placeholder">
+      <!-- Replace with: <img src="YOUR_BANNER.jpg" alt="Banner"> -->
+      <div class="bracket-tl"></div>
+      <div class="bracket-tr"></div>
+      <div class="bracket-bl"></div>
+      <div class="bracket-br"></div>
+      <div class="banner-placeholder-text">
+        <h1>The Far Lands Project</h1>
+        
+        <img src="Banner 2.jpg" alt="Top Banner">
+      </div>
+    </div>
+    <div class="fade-out"></div>
+  </div>
+
+  <!-- GIF Section -->
+  <main>
+    <div class="section-label">// FEATURED</div>
+    <div class="section-divider"></div>
+
+    <div class="gif-grid">
+
+      <!-- Card 1 -->
+      <div class="gif-card">
+        <div class="gif-box">
+          <!-- Replace with: <img src="YOUR_GIF_1.gif" alt="GIF 1"> -->
+          <div class="gif-placeholder">
+            <span class="plus-icon">▣</span>
+            <span class="placeholder-label">Drop GIF / Video Here</span>
+          </div>
+          <button class="expand-btn" onclick="openLightbox(0)">⛶ EXPAND</button>
+        </div>
+        <div class="gif-info">
+          <div class="gif-title">TITLE_01.gif</div>
+          <div class="gif-desc">Add your info text here. Describe what this GIF or clip is about. Keep it brief and punchy.</div>
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="gif-card">
+        <div class="gif-box">
+          <!-- Replace with: <img src="YOUR_GIF_2.gif" alt="GIF 2"> -->
+          <div class="gif-placeholder">
+            <span class="plus-icon">▣</span>
+            <span class="placeholder-label">Drop GIF / Video Here</span>
+          </div>
+          <button class="expand-btn" onclick="openLightbox(1)">⛶ EXPAND</button>
+        </div>
+        <div class="gif-info">
+          <div class="gif-title">TITLE_02.gif</div>
+          <div class="gif-desc">Add your info text here. Describe what this GIF or clip is about. Keep it brief and punchy.</div>
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="gif-card">
+        <div class="gif-box">
+          <!-- Replace with: <img src="YOUR_GIF_3.gif" alt="GIF 3"> -->
+          <div class="gif-placeholder">
+            <span class="plus-icon">▣</span>
+            <span class="placeholder-label">Drop GIF / Video Here</span>
+          </div>
+          <button class="expand-btn" onclick="openLightbox(2)">⛶ EXPAND</button>
+        </div>
+        <div class="gif-info">
+          <div class="gif-title">TITLE_03.gif</div>
+          <div class="gif-desc">Add your info text here. Describe what this GIF or clip is about. Keep it brief and punchy.</div>
+        </div>
+      </div>
+
+    </div><!-- /gif-grid -->
+  </main>
+
+  <!-- Bottom Banner -->
+  <div class="banner-bottom">
+    <div class="fade-in"></div>
+    <div class="banner-placeholder">
+      <!-- Replace with: <img src="YOUR_BOTTOM_BANNER.jpg" alt="Bottom Banner"> -->
+      <div class="bracket-tl"></div>
+      <div class="bracket-tr"></div>
+      <div class="bracket-bl"></div>
+      <div class="bracket-br"></div>
+      <div class="banner-placeholder-text">
+        <h1 style="font-size: clamp(2rem,6vw,5rem); color: var(--red-dim);">// END //</h1>
+        
+        <img src="Banners.jpg" alt="Bottom Banner">
+      </div>
+    </div>
+    <div class="fade-out"></div>
+  </div>
+
+</div><!-- /page-home -->
+
+
+<!-- ═══════════════════════════════════════════════════
+     UPDATES PAGE
+════════════════════════════════════════════════════ -->
+<div id="page-updates" class="page">
+  <div style="margin-top:56px;">
+    <div class="updates-wrap">
+      <div class="updates-icon">⚠</div>
+      <div class="updates-title">// UPDATES //</div>
+      <div class="updates-note">
+        Come back <span>2027</span> — something is coming.
+      </div>
+      <div style="font-size:0.65rem; color:#330000; letter-spacing:3px; text-transform:uppercase; margin-top:1rem;">
+        [ NO FURTHER INFORMATION AT THIS TIME ]
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     SOCIALS & DONATIONS PAGE
+════════════════════════════════════════════════════ -->
+<div id="page-socials" class="page">
+  <div style="margin-top:56px; background:#000; padding-top:3rem;">
+    <div class="socials-wrap">
+
+      <div class="section-label">// SOCIALS</div>
+      <div class="section-divider"></div>
+
+      <!-- YouTube -->
+      <div class="social-card" onclick="window.open('https://youtube.com/@redkingwrath?si=y7HxsWINlRFHmbwG','_blank')">
+        <div class="social-icon">▶</div>
+        <div class="social-info">
+          <div class="social-platform">YOUTUBE</div>
+          <div class="social-handle">@Red</div>
+        </div>
+        <div class="social-arrow">→</div>
+      </div>
+
+      <!-- Twitter / X -->
+      <div class="social-card" onclick="window.open('#','_blank')">
+        <div class="social-icon">✕</div>
+        <div class="social-info">
+          <div class="social-platform">TWITTER / X</div>
+          <div class="social-handle">@RedKingMax</div>
+        </div>
+        <div class="social-arrow">→</div>
+      </div>
+
+      <!-- Instagram -->
+      <div class="social-card" onclick="window.open('http://instagram.com/red_king_max','_blank')">
+        <div class="social-icon">◉</div>
+        <div class="social-info">
+          <div class="social-platform">INSTAGRAM</div>
+          <div class="social-handle">@red_king_max</div>
+        </div>
+        <div class="social-arrow">→</div>
+      </div>
+
+      <!-- Donations -->
+      <div class="donation-box">
+        <div class="donation-title">Support the Work</div>
+        <div class="donation-sub">Every contribution keeps this running.</div>
+        <button class="donate-btn" onclick="window.open('https://cash.app/$AceUnzaku','_blank')">[ DONATE ]</button>
+        <div style="font-size:0.6rem; color:#330000; letter-spacing:2px; margin-top:1rem; text-transform:uppercase;">
+          // Link your donation platform above //
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ─── LIGHTBOX ─── -->
+<div class="lightbox" id="lightbox" onclick="closeLightboxOutside(event)">
+  <div class="lightbox-inner">
+    <button class="lightbox-close" onclick="closeLightbox()">[ CLOSE × ]</button>
+    <!-- Swap content dynamically via JS -->
+    <div class="lightbox-placeholder" id="lightbox-content">
+      NO MEDIA LOADED
+    </div>
+    <div class="lightbox-caption" id="lightbox-caption"></div>
+  </div>
+</div>
+
+
+<!-- ─── FOOTER ─── -->
+<footer>
+  <div class="footer-logo">// Classified Information //</div>
+  <div class="footer-sub">[ EST. 202X — ALL RIGHTS RESERVED ]</div>
+  <div class="footer-copy">© The Red King — He will Return.</div>
+</footer>
+
+
+<script>
+  // ─── Page Switcher ───
+  function showPage(name, link) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
+    document.getElementById('page-' + name).classList.add('active');
+    if (link) link.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    return false;
+  }
+
+  // ─── Lightbox ───
+  /*
+    To wire up real media, replace the gif-placeholder elements with actual
+    <img src="your.gif"> or <video src="your.mp4"> tags, and update the
+    `mediaItems` array below with the correct src values and captions.
+  */
+  const mediaItems = [
+    { src: null, type: 'placeholder', caption: 'SLOT 01 — GIF / VIDEO' },
+    { src: null, type: 'placeholder', caption: 'SLOT 02 — GIF / VIDEO' },
+    { src: null, type: 'placeholder', caption: 'SLOT 03 — GIF / VIDEO' },
+  ];
+
+  function openLightbox(index) {
+    const item = mediaItems[index];
+    const content = document.getElementById('lightbox-content');
+    const caption = document.getElementById('lightbox-caption');
+    caption.textContent = item.caption;
+
+    if (!item.src) {
+      content.outerHTML = `<div class="lightbox-placeholder" id="lightbox-content">${item.caption}</div>`;
+    } else if (item.type === 'video') {
+      content.outerHTML = `<video id="lightbox-content" src="${item.src}" controls autoplay loop></video>`;
+    } else {
+      content.outerHTML = `<img id="lightbox-content" src="${item.src}" alt="${item.caption}">`;
+    }
+
+    document.getElementById('lightbox').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  function closeLightboxOutside(e) {
+    if (e.target === document.getElementById('lightbox')) closeLightbox();
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+</script>
+</body>
+</html>
