@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="profile-wrap" style="padding: 100px 2rem; max-width: 800px; margin: 0 auto;">
+    <div class="section-label">// USER PROFILE</div>
+    <div class="section-divider"></div>
+    
+    <div class="profile-card" style="background: #0d0000; border: 1px solid var(--red); padding: 2rem; box-shadow: 0 0 20px rgba(204,0,0,0.2);">
+        <div style="display: flex; gap: 2rem; align-items: flex-start;">
+            <div class="profile-pic-container">
+                {% if profile_user.profile_picture %}
+                    <img src="{{ profile_user.profile_picture.url }}" alt="Profile Picture" style="width: 150px; height: 150px; object-fit: cover; border: 2px solid var(--red-bright);">
+                {% else %}
+                    <div style="width: 150px; height: 150px; background: #1a0000; border: 2px solid var(--red-dim); display: flex; align-items: center; justify-content: center; color: var(--red-dim); font-size: 3rem;">?</div>
+                {% endif %}
+            </div>
+            
+            <div class="profile-info">
+                <h1 style="font-family: 'VT323', monospace; color: var(--red-bright); font-size: 3rem; margin-bottom: 0.5rem;">{{ profile_user.username }}</h1>
+                <p style="color: var(--dim-white); letter-spacing: 2px; margin-bottom: 1rem;">RANK: <span style="color: var(--white);">{{ profile_user.rank }}</span></p>
+                
+                <div class="bio-section">
+                    <h3 style="font-family: 'VT323', monospace; color: var(--red-dim); letter-spacing: 2px; text-transform: uppercase;">// BIO</h3>
+                    <p style="color: var(--silver); line-height: 1.6;">{{ profile_user.bio|default:"No bio provided yet." }}</p>
+                </div>
+            </div>
+        </div>
+        
+        {% if user == profile_user %}
+        <div style="margin-top: 2rem; border-top: 1px solid var(--red-dim); padding-top: 1rem;">
+            <a href="{% url 'profile_edit' %}" class="donate-btn" style="text-decoration: none; font-size: 1rem;">[ EDIT PROFILE ]</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
