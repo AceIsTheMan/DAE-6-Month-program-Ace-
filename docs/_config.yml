@@ -1,4 +1,6 @@
 title: "Ace Rodriguez | Portfolio"
 description: "Backend Developer & Web Designer student at DAE"
+url: "https://aceistheman.github.io"
+baseurl: "/DAE-6-Month-program-Ace-"
 theme: jekyll-theme-midnight
 show_downloads: false
