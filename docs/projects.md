@@ -33,24 +33,24 @@ The Far Lands Project or TFL Project Testing, Is a media page of my own that I c
 - **What I contributed:** Backend coding, front-end coding, original images, custom banners, and demonstration videos.
 - **Tools/technologies:** [Python](https://www.python.org/), [HTML](https://developer.mozilla.org/en-US/docs/Web/HTML), [CSS](https://developer.mozilla.org/en-US/docs/Web/CSS), [Django](https://www.djangoproject.com/), [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 
-## [PROJECT 2 NAME]
+## David the Digital Dog
 
-![Project 2 image placeholder]({{ '/assets/images/project-placeholder.svg' | relative_url }})
+![Digital Dog David]({{ '/assets/images/project-placeholder.svg' | relative_url }})
 
-[PROJECT 2 DESCRIPTION]
+A Python-based interactive virtual pet that lives in your terminal. It features a complex state-management system called "Awareness Mode," an interactive tutorial, and randomized digital facts. This project showcases logic handling, user input validation, and creative storytelling through code.
 
-- **Repository:** [PROJECT 2 GITHUB URL]
-- **Live demo:** [PROJECT 2 LIVE URL, IF APPLICABLE]
-- **What I contributed:** [YOUR CONTRIBUTION]
-- **Tools/technologies:** [TOOLS OR TECHNOLOGIES]
+- **Repository:** [https://github.com/AceIsTheMan/DAE-6-Month-program-Ace-/blob/main/python_1/Digital_Dog_David.py](https://github.com/AceIsTheMan/DAE-6-Month-program-Ace-/blob/main/python_1/Digital_Dog_David.py)
+- **Live demo:** [Run the Python script locally](https://github.com/AceIsTheMan/DAE-6-Month-program-Ace-/blob/main/python_1/Digital_Dog_David.py)
+- **What I contributed:** Entire logic design, interactive state-management, CLI menu system, and creative dialogue writing.
+- **Tools/technologies:** [Python](https://www.python.org/)
 
-## [PROJECT 3 NAME]
+## Python Web Scraper
 
-![Project 3 image placeholder]({{ '/assets/images/project-placeholder.svg' | relative_url }})
+![Web Scraper]({{ '/assets/images/project-placeholder.svg' | relative_url }})
 
-[PROJECT 3 DESCRIPTION]
+A data extraction tool built in Python designed to crawl websites and collect specific information efficiently. This project focuses on handling HTTP requests and parsing structured data from HTML content.
 
-- **Repository:** [PROJECT 3 GITHUB URL]
-- **Live demo:** [PROJECT 3 LIVE URL, IF APPLICABLE]
-- **What I contributed:** [YOUR CONTRIBUTION]
-- **Tools/technologies:** [TOOLS OR TECHNOLOGIES]
+- **Repository:** [https://github.com/AceIsTheMan/DAE-6-Month-program-Ace-/blob/main/python_1/Web_Scraper.py](https://github.com/AceIsTheMan/DAE-6-Month-program-Ace-/blob/main/python_1/Web_Scraper.py)
+- **Live demo:** [View Scraper Code](https://github.com/AceIsTheMan/DAE-6-Month-program-Ace-/blob/main/python_1/Web_Scraper.py)
+- **What I contributed:** Development of data extraction scripts, parsing logic, and request handling.
+- **Tools/technologies:** [Python](https://www.python.org/)
