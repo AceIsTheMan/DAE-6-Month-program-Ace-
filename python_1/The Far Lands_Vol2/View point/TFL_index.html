@@ -663,7 +663,7 @@
 
 <!-- ─── NAV ─── -->
 <nav>
-  <div class="nav-logo">// UnknownUser</div>
+  <div class="nav-logo" id="nav-logo">// UnknownUser</div>
   <ul class="nav-links">
     <li><a href="#" class="active" onclick="showPage('home', this)">HOME</a></li>
     <li><a href="#" onclick="showPage('profile', this)">PROFILE</a></li>
@@ -773,6 +773,377 @@
 
 </div><!-- /page-home -->
 
+
+
+<!-- ═══════════════════════════════════════════════════
+     PROFILE PAGE
+════════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════
+     PROFILE PAGE
+     Drop this <div id="page-profile"...> block wherever
+     your other <div id="page-...">...</div> pages live.
+     Drop the <style> block into your main stylesheet
+     (or a <style> tag in <head>) alongside your other page styles.
+     Drop the <script> block near your other scripts.
+════════════════════════════════════════════════════ -->
+<div id="page-profile" class="page">
+  <div style="margin-top:56px; background:#000; padding-top:3rem;">
+    <div class="profile-wrap">
+
+      <div class="section-label">// PROFILE</div>
+      <div class="section-divider"></div>
+
+      <!-- ─── DOSSIER CARD ─── -->
+      <div class="dossier">
+        <div class="dossier-stamp">CLASSIFIED</div>
+
+        <div class="dossier-top">
+          <div class="dossier-photo" id="dossier-photo">
+            <img src="avatar.jpg" alt="Profile photo" id="dossier-img" onerror="this.style.display='none'">
+            <div class="dossier-scan"></div>
+            <label class="photo-import" for="photo-input">[ IMPORT ]</label>
+            <input type="file" id="photo-input" accept="image/*" hidden>
+          </div>
+
+          <div class="dossier-id">
+            <input type="text" class="dossier-name" id="dossier-name" value="RED KING" spellcheck="false">
+            <div class="dossier-alias">// alias: MAX //</div>
+
+            <div class="dossier-field">
+              <span class="field-key">STATUS</span>
+              <button type="button" class="status-toggle" id="status-toggle" data-state="active">ACTIVE</button>
+            </div>
+            <div class="dossier-field">
+              <span class="field-key">ROLE</span>
+              <span class="field-value">DEVELOPER</span>
+            </div>
+            <div class="dossier-field">
+              <span class="field-key">ORIGIN</span>
+              <span class="field-value redacted">[REDACTED]</span>
+            </div>
+            <div class="dossier-field">
+              <span class="field-key">JOINED</span>
+              <span class="field-value">202X</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dossier-bio">
+          <div class="bio-label">// FILE NOTES <span class="bio-hint">(click to edit)</span></div>
+          <textarea class="bio-text" id="bio-text" spellcheck="false">Placeholder bio text goes here. Swap this out with your real background, mission, or channel description — keep it short, a few lines reads best inside the dossier frame.</textarea>
+        </div>
+      </div>
+
+      <!-- ─── STATS ─── -->
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-number">000K</div>
+          <div class="stat-label">Subscribers</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number">000</div>
+          <div class="stat-label">Videos</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-number">000K</div>
+          <div class="stat-label">Total Views</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<style>
+  /* ═══ PROFILE PAGE STYLES ═══
+     Uses the same tokens implied by the rest of the site:
+     black bg, blood-red accent, brighter red for secondary text,
+     monospace type, uppercase + letter-spacing labels.
+     Adjust --accent / --muted / --font if your actual
+     stylesheet defines these differently. */
+
+  #page-profile {
+    --accent: #ff2b2b;   /* bright red — primary highlights */
+    --muted: #e34343;    /* brightened red — labels/secondary text (was #330000) */
+    --line: #4a1414;     /* dim red for hairlines/borders, keeps structure from glowing everywhere */
+    --ink: #e8e2d8;
+    --font-mono: 'Courier New', 'Share Tech Mono', monospace;
+  }
+
+  .profile-wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+    font-family: var(--font-mono);
+    color: var(--ink);
+  }
+
+  /* reuse your existing .section-label / .section-divider look */
+  .section-label {
+    font-size: 0.75rem;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .section-divider {
+    height: 1px;
+    background: var(--line);
+    margin-bottom: 2rem;
+  }
+
+  /* ─── Dossier card ─── */
+  .dossier {
+    position: relative;
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, #0a0a0a, #000);
+    padding: 1.5rem;
+    margin-bottom: 2.5rem;
+    overflow: hidden;
+  }
+
+  .dossier-stamp {
+    position: absolute;
+    top: 1.2rem;
+    right: -2.6rem;
+    transform: rotate(35deg);
+    background: transparent;
+    border: 2px solid var(--accent);
+    color: var(--accent);
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    padding: 3px 3rem;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  .dossier-top {
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .dossier-photo {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    flex-shrink: 0;
+    border: 1px solid var(--line);
+    background: #111;
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .dossier-photo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    filter: grayscale(40%) contrast(1.1);
+  }
+  .dossier-scan {
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(255,43,43,0.07) 0px,
+      rgba(255,43,43,0.07) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events: none;
+  }
+  .photo-import {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    text-align: center;
+    font-size: 0.55rem;
+    letter-spacing: 1px;
+    color: var(--ink);
+    background: rgba(0,0,0,0.75);
+    border-top: 1px solid var(--line);
+    padding: 3px 0;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    cursor: pointer;
+  }
+  .dossier-photo:hover .photo-import { opacity: 1; }
+
+  .dossier-id {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .dossier-name {
+    display: block;
+    width: 100%;
+    font-family: var(--font-mono);
+    font-size: 1.4rem;
+    letter-spacing: 3px;
+    color: var(--ink);
+    font-weight: bold;
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed transparent;
+    padding: 0 0 2px;
+    outline: none;
+  }
+  .dossier-name:hover,
+  .dossier-name:focus {
+    border-bottom: 1px dashed var(--line);
+  }
+  .dossier-alias {
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: var(--accent);
+    margin: 0.2rem 0 0.9rem;
+  }
+
+  .dossier-field {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    max-width: 320px;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    padding: 0.3rem 0;
+    border-bottom: 1px dashed rgba(74,20,20,0.8);
+  }
+  .field-key {
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .field-value {
+    color: var(--ink);
+  }
+  .field-value.redacted {
+    background: var(--accent);
+    color: var(--accent);
+    padding: 0 4px;
+    user-select: none;
+  }
+
+  .status-toggle {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    padding: 2px 10px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .status-toggle:hover {
+    background: rgba(255,43,43,0.1);
+  }
+  .status-toggle[data-state="deactivated"] {
+    border-color: var(--line);
+    color: #8a8a8a;
+  }
+  .status-toggle[data-state="deactivated"]:hover {
+    background: rgba(255,255,255,0.05);
+  }
+
+  .dossier-bio {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+  }
+  .bio-label {
+    font-size: 0.65rem;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  .bio-hint {
+    color: #6b6b6b;
+    letter-spacing: 1px;
+    text-transform: none;
+    font-size: 0.6rem;
+  }
+  .bio-text {
+    width: 100%;
+    min-height: 5em;
+    resize: vertical;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: #cfc7ba;
+    background: transparent;
+    border: 1px dashed transparent;
+    padding: 4px;
+    margin: -4px;
+    outline: none;
+  }
+  .bio-text:hover,
+  .bio-text:focus {
+    border-color: var(--line);
+  }
+
+  /* ─── Stats ─── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+  }
+  .stat-box {
+    background: #000;
+    text-align: center;
+    padding: 1.2rem 0.5rem;
+  }
+  .stat-number {
+    font-size: 1.3rem;
+    color: var(--accent);
+    letter-spacing: 1px;
+  }
+  .stat-label {
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 0.3rem;
+  }
+
+  @media (max-width: 480px) {
+    .dossier-top { flex-direction: column; align-items: center; text-align: center; }
+    .dossier-field { max-width: 100%; justify-content: center; gap: 0.5rem; }
+    .stats-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<script>
+  // ─── Profile photo import (client-side preview only) ───
+  (function () {
+    const input = document.getElementById('photo-input');
+    const img = document.getElementById('dossier-img');
+    if (!input || !img) return;
+    input.addEventListener('change', function (e) {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        img.src = ev.target.result;
+        img.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    });
+  })();
+
+  // ─── Status: active / deactivated toggle ───
+  (function () {
+    const btn = document.getElementById('status-toggle');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+      const active = btn.dataset.state === 'active';
+      btn.dataset.state = active ? 'deactivated' : 'active';
+      btn.textContent = active ? 'DEACTIVATED' : 'ACTIVE';
+    });
+  })();
+</script>
 
 <!-- ═══════════════════════════════════════════════════
      UPDATES PAGE
