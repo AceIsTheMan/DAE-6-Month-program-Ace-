@@ -30,7 +30,7 @@ The Far Lands Project or TFL Project Testing, Is a media page of my own that I c
 
 - **Repository:** [https://github.com/AceIsTheMan/DAE-6-Month-program-Ace-](https://github.com/AceIsTheMan/DAE-6-Month-program-Ace-)
 - **Live demo:** [Watch Player Effects Demo]({{ '/Player effects.mp4' | relative_url }})
-- **What I contributed:** [YOUR CONTRIBUTION]
+- **What I contributed:** Backend coding, front-end coding, original images, custom banners, and demonstration videos.
 - **Tools/technologies:** [Python](https://www.python.org/), [HTML](https://developer.mozilla.org/en-US/docs/Web/HTML), [CSS](https://developer.mozilla.org/en-US/docs/Web/CSS), [Django](https://www.djangoproject.com/), [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 
 ## [PROJECT 2 NAME]
