@@ -666,14 +666,9 @@
   <div class="nav-logo">// UnknownUser</div>
   <ul class="nav-links">
     <li><a href="#" class="active" onclick="showPage('home', this)">HOME</a></li>
+    <li><a href="#" onclick="showPage('profile', this)">PROFILE</a></li>
     <li><a href="#" onclick="showPage('updates', this)">UPDATES</a></li>
     <li><a href="#" onclick="showPage('socials', this)">SOCIALS &amp; SUPPORT</a></li>
-    {% if user.is_authenticated %}
-    <li><a href="{% url 'profile' %}" onclick="showPage('profile', this)">PROFILE</a></li>
-    <li><a href="{% url 'logout' %}">LOGOUT</a></li>
-    {% else %}
-    <li><a href="{% url 'login' %}">LOGIN</a></li>
-    {% endif %}
   </ul>
 </nav>
 
