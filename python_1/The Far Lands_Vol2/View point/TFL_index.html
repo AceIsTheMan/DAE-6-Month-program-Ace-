@@ -806,7 +806,7 @@
           </div>
 
           <div class="dossier-id">
-            <input type="text" class="dossier-name" id="dossier-name" value="RED KING" spellcheck="false">
+            <input type="text" class="dossier-name" id="dossier-name" value="" placeholder="UnknownUser" spellcheck="false">
             <div class="dossier-alias">// alias: MAX //</div>
 
             <div class="dossier-field">
@@ -988,9 +988,13 @@
     outline: none;
   }
   .dossier-name:hover,
-  .dossier-name:focus {
-    border-bottom: 1px dashed var(--line);
-  }
+.dossier-name:focus {
+  border-bottom: 1px dashed var(--line);
+}
+.dossier-name::placeholder {
+  color: var(--muted);
+  opacity: 0.6;
+}
   .dossier-alias {
     font-size: 0.7rem;
     letter-spacing: 2px;
