@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Login // The Far Lands{% endblock %}
+{% block content %}
+<div class="section-label">// AGENT LOGIN</div>
+<div class="section-divider"></div>
+
+<div class="card" style="max-width: 440px; margin: 0 auto;">
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      {% for error in form.non_field_errors %}
+        <div class="field-error">{{ error }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <label for="{{ form.username.id_for_label }}">Codename (username)</label>
+    {{ form.username }}
+
+    <label for="{{ form.password.id_for_label }}">Password</label>
+    {{ form.password }}
+
+    <div style="margin-top: 1.5rem;">
+      <button type="submit" class="donate-btn">[ LOG IN ]</button>
+    </div>
+  </form>
+
+  <p style="margin-top: 1.5rem; font-size: 0.85rem;">
+    New here? <a href="{% url 'register' %}" class="inline-link">Register an account</a>.
+  </p>
+</div>
+{% endblock %}

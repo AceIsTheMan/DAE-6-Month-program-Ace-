@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Edit Profile // The Far Lands{% endblock %}
+{% block content %}
+<div class="section-label">// EDIT PROFILE</div>
+<div class="section-divider"></div>
+
+<div class="card" style="max-width: 480px; margin: 0 auto;">
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+
+    <label for="{{ form.profile_picture.id_for_label }}">Profile picture</label>
+    {{ form.profile_picture }}
+    {% for error in form.profile_picture.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <label for="{{ form.bio.id_for_label }}">Bio</label>
+    {{ form.bio }}
+    {% for error in form.bio.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <div style="margin-top: 1.5rem;">
+      <button type="submit" class="donate-btn">[ SAVE ]</button>
+    </div>
+  </form>
+</div>
+{% endblock %}
