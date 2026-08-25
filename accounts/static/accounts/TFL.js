@@ -34,10 +34,12 @@
     // block page scroll while the gate is up
     document.body.style.overflow = 'hidden';
 
-    checkbox.addEventListener('change', function () {
+    function syncButtonState() {
       proceedBtn.disabled = !checkbox.checked;
       proceedBtn.classList.toggle('enabled', checkbox.checked);
-    });
+    }
+
+    checkbox.addEventListener('change', syncButtonState);
 
     proceedBtn.addEventListener('click', function () {
       if (!checkbox.checked) return;
@@ -48,6 +50,13 @@
       }
       hideGate();
     });
+
+    // Run once immediately: on a plain reload, browsers often restore a
+    // checkbox's previously-checked state WITHOUT firing a 'change' event,
+    // so the button could otherwise stay stuck disabled even though the
+    // box visibly shows checked. This makes sure the button always starts
+    // in sync with whatever the checkbox actually shows.
+    syncButtonState();
   }
 })();
 
