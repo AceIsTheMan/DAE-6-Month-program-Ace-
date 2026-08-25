@@ -4,8 +4,8 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    # Home: send visitors straight to the profile (if logged in) or login page.
-    path('', views.profile_view, name='home'),
+    # Home: the real, public Far Lands landing page (was TFL_index.html).
+    path('', views.home_view, name='home'),
 
     path('register/', views.register_view, name='register'),
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),

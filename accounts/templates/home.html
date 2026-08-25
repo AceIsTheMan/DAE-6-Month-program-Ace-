@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -107,16 +108,17 @@
       color: var(--red-bright);
     }
 
-    /* Auth links (LOGIN / REGISTER) - point at the real Django backend,
-       not the showPage() tab switcher, so they get their own treatment:
-       a thin divider to set them apart, and REGISTER as the filled CTA. */
+    /* Auth links (LOGIN / REGISTER / PROFILE / LOGOUT) - real Django
+       auth state, not the showPage() tab switcher, so they get their own
+       treatment: a thin divider to set them apart, and REGISTER as the
+       filled CTA. */
     .nav-auth-link {
       margin-left: 0.6rem;
       padding-left: 0.8rem;
       border-left: 1px solid var(--red-dim);
     }
     .nav-auth-link:first-of-type { margin-left: 0.8rem; }
-    .nav-auth-link a { border-color: var(--red-dim) !important; }
+    .nav-auth-link a, .nav-auth-link button.nav-logout-btn { border-color: var(--red-dim) !important; }
     .nav-auth-link a[href*="register"] {
       background: var(--red-dim);
       color: var(--white) !important;
@@ -125,6 +127,24 @@
       background: var(--red);
       border-color: var(--red-bright) !important;
       text-shadow: none;
+    }
+    .nav-logout-btn {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.78rem;
+      color: var(--silver);
+      background: none;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 0.4rem 1rem;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .nav-logout-btn:hover {
+      color: var(--red-bright);
+      border-color: var(--red);
+      background: rgba(204,0,0,0.1);
+      text-shadow: 0 0 6px var(--red);
     }
 
     /* ─── SECTION WRAPPER ─── */
@@ -280,7 +300,7 @@
     }
 
     /* Placeholder for empty gif slots */
-    
+
     .gif-placeholder {
       width: 100%; height: 100%;
       display: flex;
@@ -721,13 +741,6 @@
 </div>
 
 <style>
-  /* ═══ RULES GATE STYLES ═══
-     These variables are scoped to #rules-gate itself so this block
-     works even before you merge it into TFL_index.html (which
-     already defines the same names on :root — no conflict, just
-     redundant once merged). If the text looked invisible before,
-     this is why: var(--red-bright) etc. had nothing to resolve to
-     on their own, so text color fell back to black-on-black. */
   #rules-gate {
     --black: #0a0a0a;
     --deep-black: #000000;
@@ -744,7 +757,7 @@
     position: fixed;
     inset: 0;
     background: rgba(0,0,0,0.97);
-    z-index: 6000;              /* above the lightbox (5000) and nav (1000) */
+    z-index: 6000;
     align-items: center;
     justify-content: center;
     padding: 1.5rem;
@@ -781,8 +794,6 @@
     margin-bottom: 1.5rem;
   }
 
-  /* ─── Locked rules list — not a form field, cannot be typed
-     into. Pulses via rulesPulse below to read as urgent/mandatory. */
   .rules-list-box {
     position: relative;
     text-align: left;
@@ -847,11 +858,6 @@
     font-size: 0.6rem;
   }
 
-  /* ─── Description box — a fixed-height, scrollable panel
-     (not a form field, same reasoning as the rules list: this
-     is where the black-bar "redacted" spans live, and that
-     inline markup can only render in a real element, not inside
-     a <textarea>). Edit the text directly in this file's HTML. */
   .rules-description-box {
     width: 100%;
     max-height: 9em;
@@ -870,8 +876,6 @@
   .rules-description-box p { margin: 0 0 0.8rem; }
   .rules-description-box p:last-child { margin-bottom: 0; }
 
-  /* Themed scrollbar (Chrome/Edge/Safari) so the scroll option
-     doesn't break the look with a default gray bar. */
   .rules-description-box::-webkit-scrollbar { width: 8px; }
   .rules-description-box::-webkit-scrollbar-track { background: #0a0000; }
   .rules-description-box::-webkit-scrollbar-thumb {
@@ -880,10 +884,6 @@
   }
   .rules-description-box::-webkit-scrollbar-thumb:hover { background: var(--red); }
 
-  /* Solid bar over each redacted word — text is still in the
-     HTML (so it's real content), but background and text color
-     match, so nothing reads visually. user-select:none stops a
-     casual copy-paste from lifting it back out. */
   .redacted-word {
     background: var(--red-bright);
     color: var(--red-bright);
@@ -926,7 +926,6 @@
     transition: all 0.2s;
   }
 
-  /* enabled state, toggled by JS when the checkbox is checked */
   .rules-proceed-btn.enabled {
     background: var(--red);
     cursor: pointer;
@@ -942,9 +941,6 @@
     .rules-warning { font-size: 1.5rem; }
   }
 
-  /* Only needed if TFL_index.html doesn't already define this
-     (it does, under its own <style> block) — harmless duplicate
-     if merged, but keeps this snippet working stand-alone. */
   @keyframes flicker {
     0%, 95%, 100% { opacity: 1; }
     96% { opacity: 0.4; }
@@ -953,7 +949,6 @@
     99% { opacity: 1; }
   }
 
-  /* Pulsing red glow on the rules list — the "urgency" cue. */
   @keyframes rulesPulse {
     0%, 100% { box-shadow: 0 0 8px rgba(255,26,26,0.3); border-color: var(--red); }
     50% { box-shadow: 0 0 20px rgba(255,26,26,0.7); border-color: var(--red-bright); }
@@ -963,14 +958,23 @@
 
 <!-- ─── NAV ─── -->
 <nav>
-  <div class="nav-logo" id="nav-logo">// UnknownUser</div>
+  <div class="nav-logo" id="nav-logo">// {% if user.is_authenticated %}{{ user.username }}{% else %}UnknownUser{% endif %}</div>
   <ul class="nav-links">
     <li><a href="#" class="active" onclick="showPage('home', this)">HOME</a></li>
-    <li><a href="#" onclick="showPage('profile', this)">PROFILE</a></li>
     <li><a href="#" onclick="showPage('updates', this)">UPDATES</a></li>
     <li><a href="#" onclick="showPage('socials', this)">SOCIALS &amp; SUPPORT</a></li>
-    <li class="nav-auth-link"><a href="http://127.0.0.1:8000/login/">LOGIN</a></li>
-    <li class="nav-auth-link"><a href="http://127.0.0.1:8000/register/">REGISTER</a></li>
+    {% if user.is_authenticated %}
+    <li class="nav-auth-link"><a href="{% url 'profile' %}">PROFILE</a></li>
+    <li class="nav-auth-link">
+      <form action="{% url 'logout' %}" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you WANT to logout?');">
+        {% csrf_token %}
+        <button type="submit" class="nav-logout-btn">LOGOUT</button>
+      </form>
+    </li>
+    {% else %}
+    <li class="nav-auth-link"><a href="{% url 'login' %}">LOGIN</a></li>
+    <li class="nav-auth-link"><a href="{% url 'register' %}">REGISTER</a></li>
+    {% endif %}
   </ul>
 </nav>
 
@@ -983,15 +987,14 @@
   <div class="banner-top">
     <div class="fade-in"></div>
     <div class="banner-placeholder">
-      <!-- Replace with: <img src="YOUR_BANNER.jpg" alt="Banner"> -->
       <div class="bracket-tl"></div>
       <div class="bracket-tr"></div>
       <div class="bracket-bl"></div>
       <div class="bracket-br"></div>
       <div class="banner-placeholder-text">
         <h1>The Far Lands Project</h1>
-        
-        <img src="Banner 2.jpg" alt="Top Banner">
+
+        <img src="{% static 'accounts/Banner 2.jpg' %}" alt="Top Banner">
       </div>
     </div>
     <div class="fade-out"></div>
@@ -1007,11 +1010,10 @@
       <!-- Card 1 -->
       <div class="gif-card">
         <div class="gif-box"><div class="gif-box">
-  <video src="Animate.mp4" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+  <video src="{% static 'accounts/Animate.mp4' %}" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:cover;"></video>
   <button class="expand-btn" onclick="openLightbox(0)">⛶ EXPAND</button>
 </div>
-          <!-- Replace with: <img src="YOUR_GIF_1.gif" alt="GIF 1"> -->
-          
+
           <button class="expand-btn" onclick="openLightbox(0)">⛶ EXPAND</button>
         </div>
         <div class="gif-info">
@@ -1023,9 +1025,8 @@
       <!-- Card 2 -->
       <div class="gif-card">
         <div class="gif-box">
-          <!-- Replace with: <img src="YOUR_GIF_2.gif" alt="GIF 2"> -->
           <div class="gif-box">
-  <video src="Player effects.mp4" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+  <video src="{% static 'accounts/Player effects.mp4' %}" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:cover;"></video>
   <button class="expand-btn" onclick="openLightbox(0)">⛶ EXPAND</button>
 </div>
           <button class="expand-btn" onclick="openLightbox(1)">⛶ EXPAND</button>
@@ -1038,7 +1039,7 @@
 
 <div class="gif-card">
   <div class="gif-box">
-    <video src="Player pov.mp4" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:cover;"></video>
+    <video src="{% static 'accounts/Player pov.mp4' %}" autoplay loop muted playsinline style="width:100%;height:100%;object-fit:cover;"></video>
     <button class="expand-btn" onclick="openLightbox(2)">⛶ EXPAND</button>
   </div>
   <div class="gif-info">
@@ -1054,15 +1055,14 @@
   <div class="banner-bottom">
     <div class="fade-in"></div>
     <div class="banner-placeholder">
-      <!-- Replace with: <img src="YOUR_BOTTOM_BANNER.jpg" alt="Bottom Banner"> -->
       <div class="bracket-tl"></div>
       <div class="bracket-tr"></div>
       <div class="bracket-bl"></div>
       <div class="bracket-br"></div>
       <div class="banner-placeholder-text">
         <h1 style="font-size: clamp(2rem,6vw,5rem); color: var(--red-dim);">// END //</h1>
-        
-        <img src="Banners.jpg" alt="Bottom Banner">
+
+        <img src="{% static 'accounts/Banners.jpg' %}" alt="Bottom Banner">
       </div>
     </div>
     <div class="fade-out"></div>
@@ -1071,350 +1071,6 @@
 </div><!-- /page-home -->
 
 
-
-<!-- ═══════════════════════════════════════════════════
-     PROFILE PAGE
-════════════════════════════════════════════════════ -->
-<!-- ═══════════════════════════════════════════════════
-     PROFILE PAGE
-     Drop this <div id="page-profile"...> block wherever
-     your other <div id="page-...">...</div> pages live.
-     Drop the <style> block into your main stylesheet
-     (or a <style> tag in <head>) alongside your other page styles.
-     Drop the <script> block near your other scripts.
-════════════════════════════════════════════════════ -->
-<div id="page-profile" class="page">
-  <div style="margin-top:56px; background:#000; padding-top:3rem;">
-    <div class="profile-wrap">
-
-      <div class="section-label">// PROFILE</div>
-      <div class="section-divider"></div>
-
-      <!-- ─── DOSSIER CARD ─── -->
-      <div class="dossier">
-        <div class="dossier-stamp">CLASSIFIED</div>
-
-        <div class="dossier-top">
-          <div class="dossier-photo" id="dossier-photo">
-            <img src="avatar.jpg" alt="Profile photo" id="dossier-img" onerror="this.style.display='none'">
-            <div class="dossier-scan"></div>
-            <label class="photo-import" for="photo-input">[ IMPORT ]</label>
-            <input type="file" id="photo-input" accept="image/*" hidden>
-          </div>
-
-          <div class="dossier-id">
-            <input type="text" class="dossier-name" id="dossier-name" value="" placeholder="UnknownUser" spellcheck="false">
-            <div class="dossier-alias-row">// alias:<input type="text" class="dossier-alias-input" id="dossier-alias" value="" maxlength="12" placeholder="Name" spellcheck="false"> //</div>
-
-            <div class="dossier-field">
-              <span class="field-key">STATUS</span>
-              <button type="button" class="status-toggle" id="status-toggle" data-state="active">ACTIVE</button>
-            </div>
-            <div class="dossier-field">
-              <span class="field-key">ROLE</span>
-              <span class="field-value">DEVELOPER</span>
-            </div>
-            <div class="dossier-field">
-              <span class="field-key">ORIGIN</span>
-              <span class="field-value redacted">[REDACTED]</span>
-            </div>
-            <div class="dossier-field">
-              <span class="field-key">JOINED</span>
-              <span class="field-value">202X</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="dossier-bio">
-          <div class="bio-label">// FILE NOTES <span class="bio-hint">(click to edit)</span></div>
-          <textarea class="bio-text" id="bio-text" spellcheck="false">Placeholder bio text goes here. Swap this out with your real background, mission, or channel description — keep it short, a few lines reads best inside the dossier frame.</textarea>
-        </div>
-      </div>
-
-      <!-- ─── STATS ─── -->
-      <div class="stats-grid">
-        <div class="stat-box">
-          <div class="stat-number">000K</div>
-          <div class="stat-label">Subscribers</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-number">000</div>
-          <div class="stat-label">Videos</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-number">000K</div>
-          <div class="stat-label">Total Views</div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<style>
-  /* ═══ PROFILE PAGE STYLES ═══
-     Uses the same tokens implied by the rest of the site:
-     black bg, blood-red accent, brighter red for secondary text,
-     monospace type, uppercase + letter-spacing labels.
-     Adjust --accent / --muted / --font if your actual
-     stylesheet defines these differently. */
-
-  #page-profile {
-    --accent: #ff2b2b;   /* bright red — primary highlights */
-    --muted: #e34343;    /* brightened red — labels/secondary text (was #330000) */
-    --line: #4a1414;     /* dim red for hairlines/borders, keeps structure from glowing everywhere */
-    --ink: #e8e2d8;
-    --font-mono: 'Courier New', 'Share Tech Mono', monospace;
-  }
-
-  .profile-wrap {
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 0 1.5rem 4rem;
-    font-family: var(--font-mono);
-    color: var(--ink);
-  }
-
-  /* reuse your existing .section-label / .section-divider look */
-  .section-label {
-    font-size: 0.75rem;
-    letter-spacing: 4px;
-    color: var(--accent);
-    text-transform: uppercase;
-    margin-bottom: 0.5rem;
-  }
-  .section-divider {
-    height: 1px;
-    background: var(--line);
-    margin-bottom: 2rem;
-  }
-
-  /* ─── Dossier card ─── */
-  .dossier {
-    position: relative;
-    border: 1px solid var(--line);
-    background: linear-gradient(180deg, #0a0a0a, #000);
-    padding: 1.5rem;
-    margin-bottom: 2.5rem;
-    overflow: hidden;
-  }
-
-  .dossier-stamp {
-    position: absolute;
-    top: 1.2rem;
-    right: -2.6rem;
-    transform: rotate(35deg);
-    background: transparent;
-    border: 2px solid var(--accent);
-    color: var(--accent);
-    font-size: 0.65rem;
-    letter-spacing: 3px;
-    padding: 3px 3rem;
-    opacity: 0.6;
-    pointer-events: none;
-  }
-
-  .dossier-top {
-    display: flex;
-    gap: 1.5rem;
-    align-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  .dossier-photo {
-    position: relative;
-    width: 96px;
-    height: 96px;
-    flex-shrink: 0;
-    border: 1px solid var(--line);
-    background: #111;
-    overflow: hidden;
-    cursor: pointer;
-  }
-  .dossier-photo img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    filter: grayscale(40%) contrast(1.1);
-  }
-  .dossier-scan {
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-      0deg,
-      rgba(255,43,43,0.07) 0px,
-      rgba(255,43,43,0.07) 1px,
-      transparent 1px,
-      transparent 3px
-    );
-    pointer-events: none;
-  }
-  .photo-import {
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    text-align: center;
-    font-size: 0.55rem;
-    letter-spacing: 1px;
-    color: var(--ink);
-    background: rgba(0,0,0,0.75);
-    border-top: 1px solid var(--line);
-    padding: 3px 0;
-    opacity: 0;
-    transition: opacity 0.15s ease;
-    cursor: pointer;
-  }
-  .dossier-photo:hover .photo-import { opacity: 1; }
-
-  .dossier-id {
-    flex: 1;
-    min-width: 200px;
-  }
-
-  .dossier-name {
-    display: block;
-    width: 100%;
-    font-family: var(--font-mono);
-    font-size: 1.4rem;
-    letter-spacing: 3px;
-    color: var(--ink);
-    font-weight: bold;
-    background: transparent;
-    border: none;
-    border-bottom: 1px dashed transparent;
-    padding: 0 0 2px;
-    outline: none;
-  }
-  .dossier-name:hover,
-.dossier-name:focus {
-  border-bottom: 1px dashed var(--line);
-}
-.dossier-name::placeholder {
-  color: var(--muted);
-  opacity: 0.6;
-}
-  .dossier-alias-row {
-    font-size: 0.7rem;
-    letter-spacing: 2px;
-    color: var(--accent);
-    margin: 0.2rem 0 0.9rem;
-  }
-
-  .dossier-field {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    max-width: 320px;
-    font-size: 0.7rem;
-    letter-spacing: 1px;
-    padding: 0.3rem 0;
-    border-bottom: 1px dashed rgba(74,20,20,0.8);
-  }
-  .field-key {
-    color: var(--muted);
-    text-transform: uppercase;
-  }
-  .field-value {
-    color: var(--ink);
-  }
-  .field-value.redacted {
-    background: var(--accent);
-    color: var(--accent);
-    padding: 0 4px;
-    user-select: none;
-  }
-
-  .status-toggle {
-    font-family: var(--font-mono);
-    font-size: 0.65rem;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    background: transparent;
-    border: 1px solid var(--accent);
-    color: var(--accent);
-    padding: 2px 10px;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-  .status-toggle:hover {
-    background: rgba(255,43,43,0.1);
-  }
-  .status-toggle[data-state="deactivated"] {
-    border-color: var(--line);
-    color: #8a8a8a;
-  }
-  .status-toggle[data-state="deactivated"]:hover {
-    background: rgba(255,255,255,0.05);
-  }
-
-  .dossier-bio {
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--line);
-  }
-  .bio-label {
-    font-size: 0.65rem;
-    letter-spacing: 3px;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-bottom: 0.5rem;
-  }
-  .bio-hint {
-    color: #6b6b6b;
-    letter-spacing: 1px;
-    text-transform: none;
-    font-size: 0.6rem;
-  }
-  .bio-text {
-    width: 100%;
-    min-height: 5em;
-    resize: vertical;
-    font-family: var(--font-mono);
-    font-size: 0.8rem;
-    line-height: 1.6;
-    color: #cfc7ba;
-    background: transparent;
-    border: 1px dashed transparent;
-    padding: 4px;
-    margin: -4px;
-    outline: none;
-  }
-  .bio-text:hover,
-  .bio-text:focus {
-    border-color: var(--line);
-  }
-
-  /* ─── Stats ─── */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 1px;
-    background: var(--line);
-    border: 1px solid var(--line);
-  }
-  .stat-box {
-    background: #000;
-    text-align: center;
-    padding: 1.2rem 0.5rem;
-  }
-  .stat-number {
-    font-size: 1.3rem;
-    color: var(--accent);
-    letter-spacing: 1px;
-  }
-  .stat-label {
-    font-size: 0.6rem;
-    letter-spacing: 2px;
-    color: var(--muted);
-    text-transform: uppercase;
-    margin-top: 0.3rem;
-  }
-
-  @media (max-width: 480px) {
-    .dossier-top { flex-direction: column; align-items: center; text-align: center; }
-    .dossier-field { max-width: 100%; justify-content: center; gap: 0.5rem; }
-    .stats-grid { grid-template-columns: 1fr; }
-  }
-</style>
 
 <!-- ═══════════════════════════════════════════════════
      UPDATES PAGE
@@ -1493,7 +1149,6 @@
 <div class="lightbox" id="lightbox" onclick="closeLightboxOutside(event)">
   <div class="lightbox-inner">
     <button class="lightbox-close" onclick="closeLightbox()">[ CLOSE × ]</button>
-    <!-- Swap content dynamically via JS -->
     <div class="lightbox-placeholder" id="lightbox-content">
       NO MEDIA LOADED
     </div>
@@ -1509,6 +1164,15 @@
   <div class="footer-copy">© The Red King — He will Return.</div>
 </footer>
 
-<script src="TFL.js"></script>
+<script>
+  // Base URL for media files referenced by filename in TFL.js's
+  // mediaItems array (used by the lightbox) - injected here since TFL.js
+  // itself is a plain static file and can't use Django template tags.
+  var TFL_MEDIA_BASE = "{% static 'accounts/' %}";
+</script>
+<!-- ?v= is a manual cache-buster: bump it whenever TFL.js changes, so
+     browsers that already cached an older copy fetch the new one instead
+     of silently keeping stale JS. -->
+<script src="{% static 'accounts/TFL.js' %}?v=3"></script>
 </body>
 </html>

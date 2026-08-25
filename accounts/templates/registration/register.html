@@ -25,12 +25,18 @@
     {% for error in form.email.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
 
     <label for="{{ form.password1.id_for_label }}">Password</label>
-    {{ form.password1 }}
+    <div class="pw-field">
+      {{ form.password1 }}
+      <button type="button" class="pw-toggle" onclick="togglePasswordVisibility('{{ form.password1.id_for_label }}', this)">[ SHOW ]</button>
+    </div>
     {% for error in form.password1.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
     <div class="field-help">At least 8 characters. Not too common, not all numbers.</div>
 
     <label for="{{ form.password2.id_for_label }}">Confirm password</label>
-    {{ form.password2 }}
+    <div class="pw-field">
+      {{ form.password2 }}
+      <button type="button" class="pw-toggle" onclick="togglePasswordVisibility('{{ form.password2.id_for_label }}', this)">[ SHOW ]</button>
+    </div>
     {% for error in form.password2.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
 
     <div class="checkbox-row">

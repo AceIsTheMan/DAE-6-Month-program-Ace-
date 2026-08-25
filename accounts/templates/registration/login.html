@@ -18,7 +18,10 @@
     {{ form.username }}
 
     <label for="{{ form.password.id_for_label }}">Password</label>
-    {{ form.password }}
+    <div class="pw-field">
+      {{ form.password }}
+      <button type="button" class="pw-toggle" onclick="togglePasswordVisibility('{{ form.password.id_for_label }}', this)">[ SHOW ]</button>
+    </div>
 
     <div style="margin-top: 1.5rem;">
       <button type="submit" class="donate-btn">[ LOG IN ]</button>

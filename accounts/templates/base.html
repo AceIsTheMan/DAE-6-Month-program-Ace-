@@ -153,6 +153,24 @@
     font-size: 0.85rem;
   }
   a.inline-link { color: var(--red-bright); }
+  .pw-field { position: relative; }
+  .pw-field input { padding-right: 4.5rem; }
+  .pw-toggle {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(calc(-50% + 0.5rem));
+    background: none;
+    border: 1px solid var(--red-dim);
+    color: var(--dim-white);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+  .pw-toggle:hover { color: var(--red-bright); border-color: var(--red-bright); }
 </style>
 {% block extra_head %}{% endblock %}
 </head>
@@ -161,10 +179,10 @@
   <a href="{% url 'home' %}" class="nav-logo">// {% if user.is_authenticated %}{{ user.username }}{% else %}UnknownUser{% endif %}</a>
   <ul class="nav-links">
     {% if user.is_authenticated %}
+      <li><a href="{% url 'home' %}">Home</a></li>
       <li><a href="{% url 'profile' %}">Profile</a></li>
-      <li><a href="{% url 'profile_edit' %}">Edit</a></li>
       <li>
-        <form action="{% url 'logout' %}" method="post" style="display:inline;">
+        <form action="{% url 'logout' %}" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you WANT to logout?');">
           {% csrf_token %}
           <button type="submit" style="background:none;border:none;padding:0;font:inherit;color:inherit;cursor:pointer;letter-spacing:2px;text-transform:uppercase;font-size:0.85rem;">Logout</button>
         </form>
@@ -183,5 +201,20 @@
   {% endif %}
   {% block content %}{% endblock %}
 </main>
+<script>
+  // Shared show/hide toggle for any password field. Call with the input's
+  // id and the button that was clicked.
+  function togglePasswordVisibility(inputId, btn) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === 'password') {
+      input.type = 'text';
+      btn.textContent = '[ HIDE ]';
+    } else {
+      input.type = 'password';
+      btn.textContent = '[ SHOW ]';
+    }
+  }
+</script>
 </body>
 </html>

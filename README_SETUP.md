@@ -1,8 +1,9 @@
 # The Far Lands — backend setup
 
-This is the real Django backend for user registration/login/profile, wired up
-and tested. Everything below is run from a terminal, from this folder
-(`DAE_6_Month_program_ACE`).
+Django backend for The Far Lands, with the site's real landing page
+(`TFL_index.html`, now `home.html`) served through Django too, so login
+state is real instead of guessed. Run everything from a terminal, from this
+folder (`DAE_6_Month_program_ACE`).
 
 ## First-time setup
 
@@ -12,57 +13,76 @@ python3 manage.py migrate
 python3 manage.py runserver
 ```
 
-Then open **http://127.0.0.1:8000/register/** to create an account.
+**If you already had this project set up before today**, just run
+`python3 manage.py migrate` again — this pass added a new `alias` field to
+user profiles and it needs one more migration to reach your database.
 
-- `/register/` — create an account (username, email, password, agree-to-rules)
+Then open **http://127.0.0.1:8000/** — that's the real Far Lands site now
+(rules gate, banners, video cards, the works), with LOGIN / REGISTER in the
+nav when you're logged out.
+
+- `/` — the main site (public)
+- `/register/` — create an account
 - `/login/` — log in
-- `/profile/` — your own profile (bio, rank, profile picture)
-- `/profile/edit/` — edit your bio / picture
-- `/profile/<username>/` — view someone else's profile
-- `/` — redirects to your profile if logged in, otherwise to login
+- `/profile/` — your profile: photo, rank, alias, bio, all in one page, with
+  an inline "// EDIT PROFILE" section (profile picture, alias, bio,
+  `[ SAVE ]` button) right on the page
+- `/profile/<username>/` — view someone else's profile (read-only)
 - `/admin/` — Django admin (run `python3 manage.py createsuperuser` first)
 
-## What changed / what was wrong
+## What's new in this pass
 
-The project previously couldn't run at all:
+- **"PROFILE" and "MY PROFILE" are now one button and one page.** There used
+  to be two: a "PROFILE" tab on the home page (just a JS mockup — nothing
+  you typed there was ever saved) and a separate "MY PROFILE" page that was
+  the real thing. Now there's a single "PROFILE" link in the nav, pointing
+  at the real page, which shows your username, rank, alias, the year you
+  joined, and your bio, with the editable fields (profile picture, alias,
+  bio) tucked under a collapsible "// EDIT PROFILE" section and a `[ SAVE ]`
+  button. Alias is now a real, saved field (it wasn't before).
+- The old mockup's STATUS toggle and Subscribers/Videos/Views stats were
+  dropped rather than carried over — they were placeholder numbers with
+  nothing behind them, and STATUS would have clashed with Django's real
+  active/inactive account state.
 
-- `manage.py` had been moved into `python_1/The Far Lands_Vol2/View point/`,
-  three folders away from `tfl_site/` (the settings module it needs to
-  import) — it now lives here at the project root, next to `tfl_site/`,
-  where it was originally created.
-- There was no real Django **app** — `models.py`, `views.py`, `urls.py`, and
-  `templates/profile.html` were loose files with no `__init__.py`,
-  `apps.py`, or migrations, and were never added to `INSTALLED_APPS`. They're
-  now a proper app at `accounts/`.
-- `AUTH_USER_MODEL` was never set, so Django would have silently used its own
-  default `User` model instead of your `CustomUser` (bio/rank/profile
-  picture) — now set correctly in `tfl_site/settings.py`.
-- There was **no registration, login, or logout code at all** — only a
-  profile page that required already being logged in, with no way to ever
-  get logged in. `accounts/forms.py` and `accounts/views.py` now have a real
-  registration form (with duplicate-username/email checks and password
-  validation), plus login/logout wired to Django's built-in auth views.
-- `profile.html` extended a `base.html` that didn't exist anywhere, so it
-  would have failed with `TemplateDoesNotExist`. `accounts/templates/base.html`
-  now exists, styled to match the site's red/black terminal theme (same CSS
-  variables and fonts as `TFL_index.html`).
-- The `MAILERS` setting in `settings.py` wasn't a real Django setting
-  (should have been `EMAIL_BACKEND`) — fixed, using the console backend for
-  local dev.
+## From the previous pass
 
-Your original loose `urls.py` and `views.py` (the ones that only had the
-profile page, nothing else) were moved to `_pre_fix_backup/` rather than
-deleted, in case you want to compare. `models.py` and `templates/profile.html`
-were moved as-is into `accounts/` since their content didn't need to change.
+- **The real site is the Django home page.** `TFL_index.html`,
+  `TFL_styles.css`, `TFL.js`, and all the videos/images live in
+  `accounts/static/accounts/` and `accounts/templates/home.html`, served at
+  `/`. This was necessary for the nav to actually know whether you're
+  logged in — a standalone local file and a separate Django server can't
+  reliably share login state, but a page served by Django itself can just
+  check `{% if user.is_authenticated %}`. The original file is kept at
+  `_pre_fix_backup/TFL_index_original.html` for reference.
+- **Nav reacts to login state.** Logged out: LOGIN / REGISTER. Logged in:
+  PROFILE / LOGOUT — the HOME / UPDATES / SOCIALS tabs are always there
+  either way so you can keep exploring.
+- **Login and registration both land you back on the home page**, not a
+  bare profile-editing screen — you can go to your profile whenever you
+  want from the nav.
+- **Show/hide password toggle** (`[ SHOW ]` / `[ HIDE ]`) on every password
+  field, on both the login and register forms.
+- **Logout asks "Are you sure you WANT to logout?"** before it actually
+  logs you out, everywhere there's a logout button.
+
+## What was wrong originally (pass 1)
+
+- `manage.py` had been moved away from `tfl_site/` (the settings module it
+  needs to import) — fixed, back at the project root.
+- No real Django app, no `AUTH_USER_MODEL`, and no registration/login/logout
+  code at all — all fixed; see `accounts/`.
+- `profile.html` extended a `base.html` that didn't exist — fixed.
+- Invalid `MAILERS` setting (should've been `EMAIL_BACKEND`) — fixed.
+
+Superseded originals live in `_pre_fix_backup/` rather than being deleted:
+the old loose `urls.py`/`views.py`, the standalone `TFL_index_original.html`
+and `TFL_original.js`, and the now-unused `profile_edit_deprecated.html`.
 
 ## Not touched
 
-`python_1/The Far Lands_Vol2/View point/` (the static `TFL_index.html`
-landing page, its CSS/JS, and all videos/images) is untouched — it's a
-separate static front-end, not wired into this Django backend. A few things
-your earlier chat flagged as still open there and not addressed in this pass:
-Card 1/Card 2's duplicate lightbox-button bug, the banner `<img>` placement,
-`TFL_styles.css` being unlinked (and safe to leave that way — its rules
-don't match anything real in the page and would fight the inline theme if
-linked), and the alias-field/stats-grid edits. Ask any time and I'll take
-those on too.
+The separate Jekyll portfolio project under `docs/` is unrelated to this and
+untouched. A few small things flagged in earlier chats and still open:
+Card 1/Card 2's duplicate lightbox-button bug in the video grid, the banner
+`<img>` placement, and the Twitter/X social link still pointing at `#`.
+Ask any time and I'll take those on.

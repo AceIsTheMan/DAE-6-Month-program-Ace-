@@ -43,7 +43,8 @@ class RegisterForm(UserCreationForm):
 class ProfileEditForm(forms.ModelForm):
     class Meta:
         model = CustomUser
-        fields = ('bio', 'profile_picture')
+        fields = ('alias', 'bio', 'profile_picture')
         widgets = {
+            'alias': forms.TextInput(attrs={'maxlength': 12, 'placeholder': 'Name'}),
             'bio': forms.Textarea(attrs={'rows': 4, 'maxlength': 500}),
         }

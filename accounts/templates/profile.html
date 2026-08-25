@@ -1,35 +1,206 @@
 {% extends "base.html" %}
+{% block title %}{{ profile_user.username }} // Profile{% endblock %}
+{% block extra_head %}
+<style>
+  .dossier {
+    position: relative;
+    border: 1px solid var(--red);
+    background: linear-gradient(180deg, #0d0000, #000);
+    box-shadow: 0 0 20px rgba(204,0,0,0.2);
+    padding: 2rem;
+    overflow: hidden;
+  }
+  .dossier-stamp {
+    position: absolute;
+    top: 1.3rem;
+    right: -2.7rem;
+    transform: rotate(35deg);
+    border: 2px solid var(--red-bright);
+    color: var(--red-bright);
+    font-family: 'VT323', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    padding: 3px 3rem;
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .dossier-top { display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap; }
+  .dossier-photo {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    flex-shrink: 0;
+    border: 2px solid var(--red-dim);
+    background: #1a0000;
+    overflow: hidden;
+  }
+  .dossier-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .dossier-photo .no-pic {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--red-dim); font-size: 2.5rem;
+  }
+  .dossier-id { flex: 1; min-width: 220px; }
+  .dossier-name {
+    font-family: 'VT323', monospace;
+    color: var(--red-bright);
+    font-size: 2.8rem;
+    letter-spacing: 2px;
+    text-shadow: 0 0 8px var(--red);
+    line-height: 1.1;
+  }
+  .dossier-alias {
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    color: var(--dim-white);
+    margin: 0.3rem 0 1rem;
+    text-transform: uppercase;
+  }
+  .dossier-field {
+    display: flex;
+    justify-content: space-between;
+    max-width: 320px;
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    padding: 0.35rem 0;
+    border-bottom: 1px dashed var(--red-dim);
+  }
+  .dossier-field .field-key { color: var(--dim-white); text-transform: uppercase; }
+  .dossier-field .field-value { color: var(--white); }
+  .dossier-field .field-value.redacted {
+    background: var(--red-bright);
+    color: var(--red-bright);
+    padding: 0 4px;
+    user-select: none;
+  }
+  .dossier-bio {
+    margin-top: 1.5rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--red-dim);
+  }
+  .dossier-bio-label {
+    font-family: 'VT323', monospace;
+    color: var(--red-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: 1.1rem;
+    margin-bottom: 0.4rem;
+  }
+  .dossier-bio-text { color: var(--silver); line-height: 1.6; font-size: 0.9rem; }
+  .edit-section {
+    margin-top: 2rem;
+    border-top: 1px solid var(--red-dim);
+    padding-top: 1.5rem;
+  }
+  .edit-section summary {
+    cursor: pointer;
+    font-family: 'VT323', monospace;
+    color: var(--red-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: 1.2rem;
+    list-style: none;
+  }
+  .edit-section summary::-webkit-details-marker { display: none; }
+  .edit-section summary::after { content: ' [+]'; color: var(--dim-white); font-size: 0.9rem; }
+  .edit-section[open] summary::after { content: ' [\2212]'; }
+  .edit-section-body { margin-top: 1rem; }
+  #photo-preview { max-width: 100%; }
+</style>
+{% endblock %}
 {% block content %}
-<div class="profile-wrap" style="padding: 100px 2rem; max-width: 800px; margin: 0 auto;">
-    <div class="section-label">// USER PROFILE</div>
+<div style="padding-top: 40px; max-width: 800px; margin: 0 auto;">
+    <div class="section-label">// AGENT PROFILE</div>
     <div class="section-divider"></div>
-    
-    <div class="profile-card" style="background: #0d0000; border: 1px solid var(--red); padding: 2rem; box-shadow: 0 0 20px rgba(204,0,0,0.2);">
-        <div style="display: flex; gap: 2rem; align-items: flex-start;">
-            <div class="profile-pic-container">
+
+    <div class="dossier">
+        <div class="dossier-stamp">CLASSIFIED</div>
+
+        <div class="dossier-top">
+            <div class="dossier-photo" id="dossier-photo-preview">
                 {% if profile_user.profile_picture %}
-                    <img src="{{ profile_user.profile_picture.url }}" alt="Profile Picture" style="width: 150px; height: 150px; object-fit: cover; border: 2px solid var(--red-bright);">
+                    <img src="{{ profile_user.profile_picture.url }}" alt="Profile Picture">
                 {% else %}
-                    <div style="width: 150px; height: 150px; background: #1a0000; border: 2px solid var(--red-dim); display: flex; align-items: center; justify-content: center; color: var(--red-dim); font-size: 3rem;">?</div>
+                    <div class="no-pic">?</div>
                 {% endif %}
             </div>
-            
-            <div class="profile-info">
-                <h1 style="font-family: 'VT323', monospace; color: var(--red-bright); font-size: 3rem; margin-bottom: 0.5rem;">{{ profile_user.username }}</h1>
-                <p style="color: var(--dim-white); letter-spacing: 2px; margin-bottom: 1rem;">RANK: <span style="color: var(--white);">{{ profile_user.rank }}</span></p>
-                
-                <div class="bio-section">
-                    <h3 style="font-family: 'VT323', monospace; color: var(--red-dim); letter-spacing: 2px; text-transform: uppercase;">// BIO</h3>
-                    <p style="color: var(--silver); line-height: 1.6;">{{ profile_user.bio|default:"No bio provided yet." }}</p>
+
+            <div class="dossier-id">
+                <div class="dossier-name">{{ profile_user.username }}</div>
+                <div class="dossier-alias">// alias: {{ profile_user.alias|default:"—" }} //</div>
+
+                <div class="dossier-field">
+                    <span class="field-key">Rank</span>
+                    <span class="field-value">{{ profile_user.rank }}</span>
+                </div>
+                <div class="dossier-field">
+                    <span class="field-key">Role</span>
+                    <span class="field-value">AGENT</span>
+                </div>
+                <div class="dossier-field">
+                    <span class="field-key">Origin</span>
+                    <span class="field-value redacted">[REDACTED]</span>
+                </div>
+                <div class="dossier-field">
+                    <span class="field-key">Joined</span>
+                    <span class="field-value">{{ profile_user.date_joined|date:"Y" }}</span>
                 </div>
             </div>
         </div>
-        
-        {% if user == profile_user %}
-        <div style="margin-top: 2rem; border-top: 1px solid var(--red-dim); padding-top: 1rem;">
-            <a href="{% url 'profile_edit' %}" class="donate-btn" style="text-decoration: none; font-size: 1rem;">[ EDIT PROFILE ]</a>
+
+        <div class="dossier-bio">
+            <div class="dossier-bio-label">// File Notes</div>
+            <div class="dossier-bio-text">{{ profile_user.bio|default:"No bio provided yet." }}</div>
         </div>
+
+        {% if user == profile_user %}
+        <details class="edit-section">
+            <summary>// EDIT PROFILE</summary>
+            <div class="edit-section-body">
+                <form method="post" enctype="multipart/form-data" novalidate>
+                    {% csrf_token %}
+
+                    <label for="{{ edit_form.profile_picture.id_for_label }}">Profile picture</label>
+                    {{ edit_form.profile_picture }}
+                    {% for error in edit_form.profile_picture.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+                    <img id="photo-preview" style="display:none; margin-top:0.6rem; border: 1px solid var(--red-dim);">
+
+                    <label for="{{ edit_form.alias.id_for_label }}">Alias <span class="field-help" style="text-transform:none;">(shown as "// alias: ... //", 12 characters max)</span></label>
+                    {{ edit_form.alias }}
+                    {% for error in edit_form.alias.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+                    <label for="{{ edit_form.bio.id_for_label }}">Bio</label>
+                    {{ edit_form.bio }}
+                    {% for error in edit_form.bio.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+                    <div style="margin-top: 1.2rem;">
+                        <button type="submit" class="donate-btn" style="font-size: 1rem;">[ SAVE ]</button>
+                    </div>
+                </form>
+            </div>
+        </details>
         {% endif %}
     </div>
 </div>
+
+{% if user == profile_user %}
+<script>
+  // Live preview of a newly-picked profile picture, before it's saved.
+  (function () {
+    var input = document.getElementById('{{ edit_form.profile_picture.id_for_label }}');
+    var preview = document.getElementById('photo-preview');
+    if (!input || !preview) return;
+    input.addEventListener('change', function (e) {
+      var file = e.target.files && e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        preview.src = ev.target.result;
+        preview.style.display = 'block';
+      };
+      reader.readAsDataURL(file);
+    });
+  })();
+</script>
+{% endif %}
 {% endblock %}
