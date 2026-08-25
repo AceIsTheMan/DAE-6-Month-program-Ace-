@@ -40,6 +40,27 @@ class RegisterForm(UserCreationForm):
         return user
 
 
+class GuestRegisterForm(UserCreationForm):
+    """
+    Minimal registration for temporary "Hacker" guest accounts: just a
+    codename and password, no email. Guest accounts get a short trial
+    (see CustomUser.GUEST_TRIAL_DAYS and accounts.middleware
+    .GuestExpiryMiddleware, which deletes them once it's up) and can never
+    set a profile picture (see ProfileEditForm below) - is_guest itself
+    gets set by the view after this form saves, since it isn't a field a
+    user should be able to fill in themselves.
+    """
+    agree_to_rules = forms.BooleanField(
+        required=True,
+        label='I have read and understood the rules above.',
+        error_messages={'required': 'You must agree to the rules to register.'},
+    )
+
+    class Meta(UserCreationForm.Meta):
+        model = CustomUser
+        fields = ('username',)
+
+
 class ProfileEditForm(forms.ModelForm):
     class Meta:
         model = CustomUser
@@ -48,3 +69,12 @@ class ProfileEditForm(forms.ModelForm):
             'alias': forms.TextInput(attrs={'maxlength': 12, 'placeholder': 'Name'}),
             'bio': forms.Textarea(attrs={'rows': 4, 'maxlength': 500}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Guest ("Hacker") accounts can't set a profile picture - drop the
+        # field entirely so this is enforced server-side, not just hidden
+        # in the template (a guest POSTing the field directly would
+        # otherwise still be able to set one).
+        if getattr(self.instance, 'is_guest', False):
+            self.fields.pop('profile_picture', None)

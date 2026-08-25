@@ -135,7 +135,7 @@
                 </div>
                 <div class="dossier-field">
                     <span class="field-key">Role</span>
-                    <span class="field-value">AGENT</span>
+                    <span class="field-value">{% if profile_user.is_guest %}HACKER{% else %}AGENT{% endif %}</span>
                 </div>
                 <div class="dossier-field">
                     <span class="field-key">Origin</span>
@@ -145,6 +145,12 @@
                     <span class="field-key">Joined</span>
                     <span class="field-value">{{ profile_user.date_joined|date:"Y" }}</span>
                 </div>
+                {% if profile_user.is_guest %}
+                <div class="dossier-field">
+                    <span class="field-key">Trial</span>
+                    <span class="field-value">{{ profile_user.guest_days_left }} day{{ profile_user.guest_days_left|pluralize }} left</span>
+                </div>
+                {% endif %}
             </div>
         </div>
 
@@ -160,10 +166,14 @@
                 <form method="post" enctype="multipart/form-data" novalidate>
                     {% csrf_token %}
 
+                    {% if edit_form.profile_picture %}
                     <label for="{{ edit_form.profile_picture.id_for_label }}">Profile picture</label>
                     {{ edit_form.profile_picture }}
                     {% for error in edit_form.profile_picture.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
                     <img id="photo-preview" style="display:none; margin-top:0.6rem; border: 1px solid var(--red-dim);">
+                    {% else %}
+                    <div class="field-help">Guest ("Hacker") accounts can't set a profile picture.</div>
+                    {% endif %}
 
                     <label for="{{ edit_form.alias.id_for_label }}">Alias <span class="field-help" style="text-transform:none;">(shown as "// alias: ... //", 12 characters max)</span></label>
                     {{ edit_form.alias }}

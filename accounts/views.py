@@ -2,7 +2,7 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import ProfileEditForm, RegisterForm
+from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
 from .models import CustomUser
 
 
@@ -37,6 +37,33 @@ def register_view(request):
         form = RegisterForm()
 
     return render(request, 'registration/register.html', {'form': form})
+
+
+def guest_register_view(request):
+    """
+    Handle temporary "Hacker" guest registration - just a codename and
+    password, no email. Same flow as a normal registration otherwise (log
+    in immediately, land on home): the account is simply marked
+    is_guest=True, which is what limits it everywhere else - no profile
+    picture, shown as HACKER instead of AGENT on their profile, and
+    automatically deleted after CustomUser.GUEST_TRIAL_DAYS by
+    GuestExpiryMiddleware.
+    """
+    if request.user.is_authenticated:
+        return redirect('home')
+
+    if request.method == 'POST':
+        form = GuestRegisterForm(request.POST)
+        if form.is_valid():
+            user = form.save(commit=False)
+            user.is_guest = True
+            user.save()
+            login(request, user)
+            return redirect('home')
+    else:
+        form = GuestRegisterForm()
+
+    return render(request, 'registration/guest_register.html', {'form': form})
 
 
 @login_required

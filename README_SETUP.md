@@ -5,6 +5,13 @@ Django backend for The Far Lands, with the site's real landing page
 state is real instead of guessed. Run everything from a terminal, from this
 folder (`DAE_6_Month_program_ACE`).
 
+**Important:** always `cd` into this exact folder before running
+`manage.py` commands. There's an old, unused copy of the frontend under
+`python_1/The Far Lands_Vol2/View point/` — don't run a server from there,
+and don't point tools like VS Code's "Live Server" extension at anything in
+that folder. It doesn't talk to the database or know about logins at all;
+it's kept only as a reference copy.
+
 ## First-time setup
 
 ```
@@ -14,57 +21,61 @@ python3 manage.py runserver
 ```
 
 **If you already had this project set up before today**, just run
-`python3 manage.py migrate` again — this pass added a new `alias` field to
-user profiles and it needs one more migration to reach your database.
+`python3 manage.py migrate` again — recent passes added new fields to user
+profiles and each one needs a migration to reach your database.
 
 Then open **http://127.0.0.1:8000/** — that's the real Far Lands site now
 (rules gate, banners, video cards, the works), with LOGIN / REGISTER in the
 nav when you're logged out.
 
 - `/` — the main site (public)
-- `/register/` — create an account
-- `/login/` — log in
+- `/register/` — create a full account (username, email, password)
+- `/guest/` — create a temporary "Hacker" guest account (username + password
+  only, no email)
+- `/login/` — log in (same form for both account types)
 - `/profile/` — your profile: photo, rank, alias, bio, all in one page, with
   an inline "// EDIT PROFILE" section (profile picture, alias, bio,
   `[ SAVE ]` button) right on the page
 - `/profile/<username>/` — view someone else's profile (read-only)
 - `/admin/` — Django admin (run `python3 manage.py createsuperuser` first)
 
-## What's new in this pass
+## What's new in this pass: guest ("Hacker") accounts
 
-- **"PROFILE" and "MY PROFILE" are now one button and one page.** There used
-  to be two: a "PROFILE" tab on the home page (just a JS mockup — nothing
-  you typed there was ever saved) and a separate "MY PROFILE" page that was
-  the real thing. Now there's a single "PROFILE" link in the nav, pointing
-  at the real page, which shows your username, rank, alias, the year you
-  joined, and your bio, with the editable fields (profile picture, alias,
-  bio) tucked under a collapsible "// EDIT PROFILE" section and a `[ SAVE ]`
-  button. Alias is now a real, saved field (it wasn't before).
-- The old mockup's STATUS toggle and Subscribers/Videos/Views stats were
-  dropped rather than carried over — they were placeholder numbers with
-  nothing behind them, and STATUS would have clashed with Django's real
-  active/inactive account state.
+- The login page now has a **"Continue as a Guest"** link, leading to
+  `/guest/` — a shorter signup that only asks for a codename and a
+  password, no email.
+- Guest accounts show up on their profile as **HACKER** instead of AGENT,
+  and their profile shows a **"Trial: N days left"** field.
+- Guest accounts **can't set a profile picture** — that part of the edit
+  form is hidden for them, and blocked on the server side too, not just
+  in the page.
+- Guest accounts **expire after 7 days.** Once a guest's trial is up, the
+  account (and everything on it) gets deleted automatically the next time
+  anyone loads any page on the site — there's nothing to run manually for
+  this to happen.
 
-## From the previous pass
+## From earlier passes
 
+- **"PROFILE" and "MY PROFILE" are one button and one page.** `/profile/`
+  shows your username, rank, alias, the year you joined, and your bio, with
+  the editable fields tucked under a collapsible "// EDIT PROFILE" section
+  and a `[ SAVE ]` button.
 - **The real site is the Django home page.** `TFL_index.html`,
   `TFL_styles.css`, `TFL.js`, and all the videos/images live in
   `accounts/static/accounts/` and `accounts/templates/home.html`, served at
   `/`. This was necessary for the nav to actually know whether you're
   logged in — a standalone local file and a separate Django server can't
   reliably share login state, but a page served by Django itself can just
-  check `{% if user.is_authenticated %}`. The original file is kept at
-  `_pre_fix_backup/TFL_index_original.html` for reference.
+  check `{% if user.is_authenticated %}`.
 - **Nav reacts to login state.** Logged out: LOGIN / REGISTER. Logged in:
   PROFILE / LOGOUT — the HOME / UPDATES / SOCIALS tabs are always there
   either way so you can keep exploring.
 - **Login and registration both land you back on the home page**, not a
-  bare profile-editing screen — you can go to your profile whenever you
-  want from the nav.
+  bare profile-editing screen.
 - **Show/hide password toggle** (`[ SHOW ]` / `[ HIDE ]`) on every password
-  field, on both the login and register forms.
+  field.
 - **Logout asks "Are you sure you WANT to logout?"** before it actually
-  logs you out, everywhere there's a logout button.
+  logs you out.
 
 ## What was wrong originally (pass 1)
 
