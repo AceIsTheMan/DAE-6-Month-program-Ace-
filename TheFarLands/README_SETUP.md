@@ -3,14 +3,20 @@
 Django backend for The Far Lands, with the site's real landing page
 (`TFL_index.html`, now `home.html`) served through Django too, so login
 state is real instead of guessed. Run everything from a terminal, from this
-folder (`DAE_6_Month_program_ACE`).
+folder (`TheFarLands`).
+
+**This folder was moved out of `DAE_6_Month_program_ACE` and into its own
+`TheFarLands` subfolder** so the live website project is separate from your
+course exercise folders (`unix_1`, `javascript_1`, `figma_1`, etc.), which
+still live one level up, in `DAE_6_Month_program_ACE` itself, untouched.
 
 **Important:** always `cd` into this exact folder before running
 `manage.py` commands. There's an old, unused copy of the frontend under
-`python_1/The Far Lands_Vol2/View point/` — don't run a server from there,
-and don't point tools like VS Code's "Live Server" extension at anything in
-that folder. It doesn't talk to the database or know about logins at all;
-it's kept only as a reference copy.
+`../python_1/The Far Lands_Vol2/View point/` (one level up, since that
+folder wasn't part of the move) — don't run a server from there, and don't
+point tools like VS Code's "Live Server" extension at anything in that
+folder. It doesn't talk to the database or know about logins at all; it's
+kept only as a reference copy.
 
 ## First-time setup
 
@@ -114,14 +120,20 @@ nav when you're logged out.
 - `profile.html` extended a `base.html` that didn't exist — fixed.
 - Invalid `MAILERS` setting (should've been `EMAIL_BACKEND`) — fixed.
 
-Superseded originals live in `_pre_fix_backup/` rather than being deleted:
-the old loose `urls.py`/`views.py`, the standalone `TFL_index_original.html`
-and `TFL_original.js`, and the now-unused `profile_edit_deprecated.html`.
+Superseded originals live in `../_pre_fix_backup/` (one level up) rather
+than being deleted: the old loose `urls.py`/`views.py`, the standalone
+`TFL_index_original.html` and `TFL_original.js`, and the now-unused
+`profile_edit_deprecated.html`.
 
 ## Not touched
 
-The separate Jekyll portfolio project under `docs/` is unrelated to this and
-untouched. A few small things flagged in earlier chats and still open:
+Everything else in `DAE_6_Month_program_ACE` — your course exercise folders
+(`design_1`, `django_1`, `figma_1`, `javascript_1`, `logic_1`,
+`prompt_engineering_1`, `semester_2`, `unix_1`, `unix_2`,
+`version_control_1`), `old_project/`, and the separate Jekyll portfolio
+project under `docs/` — is unrelated to the website and untouched, still
+sitting one level up from this `TheFarLands` folder. A few small things
+flagged in earlier chats about the website itself are still open:
 Card 1/Card 2's duplicate lightbox-button bug in the video grid, the banner
 `<img>` placement, and the Twitter/X social link still pointing at `#`.
 Ask any time and I'll take those on.
