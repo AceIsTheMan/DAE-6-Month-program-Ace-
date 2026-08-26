@@ -1,5 +1,5 @@
 from django import forms
-from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
 
 from .models import CustomUser
 
@@ -11,6 +11,11 @@ class RegisterForm(UserCreationForm):
     Extends Django's battle-tested UserCreationForm (which already handles
     password confirmation matching + password strength validation) and adds
     an email field plus the site's "agree to the rules" checkbox.
+
+    Accounts created here start with email_verified=False until the
+    person clicks the verification link emailed to them - see
+    accounts.views.register_view / verify_email_view. Guest ("Hacker")
+    accounts skip all of this entirely; see GuestRegisterForm below.
     """
     email = forms.EmailField(
         required=True,
@@ -35,9 +40,33 @@ class RegisterForm(UserCreationForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
+        user.email_verified = False
         if commit:
             user.save()
         return user
+
+
+class EmailVerifiedLoginForm(AuthenticationForm):
+    """
+    The site's normal login form, but blocks accounts that haven't
+    verified their email yet, with a message that actually explains why.
+
+    Deliberately checks email_verified rather than is_active: Django's own
+    authenticate() already refuses is_active=False users before a login
+    form ever gets a chance to run custom checks or show a custom message,
+    which is why this needed its own separate field instead. Guest
+    ("Hacker") accounts always have email_verified=True, so they're never
+    affected.
+    """
+
+    def confirm_login_allowed(self, user):
+        if not user.email_verified:
+            raise forms.ValidationError(
+                "You need to verify your email before logging in - check "
+                "the inbox (or your terminal, in dev/test mode) for the "
+                "link we sent when you registered.",
+                code='email_not_verified',
+            )
 
 
 class GuestRegisterForm(UserCreationForm):

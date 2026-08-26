@@ -22,16 +22,19 @@ python3 manage.py runserver
 
 **If you already had this project set up before today**, just run
 `python3 manage.py migrate` again — recent passes added new fields to user
-profiles and each one needs a migration to reach your database.
+profiles and each one needs a migration to reach your database. As of this
+pass that includes a new `email_verified` field, so run `migrate` again
+even if you already ran it for the guest-account pass.
 
 Then open **http://127.0.0.1:8000/** — that's the real Far Lands site now
 (rules gate, banners, video cards, the works), with LOGIN / REGISTER in the
 nav when you're logged out.
 
 - `/` — the main site (public)
-- `/register/` — create a full account (username, email, password)
+- `/register/` — create a full account (username, email, password) — you'll
+  need to click a verification link before you can log in, see below
 - `/guest/` — create a temporary "Hacker" guest account (username + password
-  only, no email)
+  only, no email, no verification step)
 - `/login/` — log in (same form for both account types)
 - `/profile/` — your profile: photo, rank, alias, bio, all in one page, with
   an inline "// EDIT PROFILE" section (profile picture, alias, bio,
@@ -39,9 +42,34 @@ nav when you're logged out.
 - `/profile/<username>/` — view someone else's profile (read-only)
 - `/admin/` — Django admin (run `python3 manage.py createsuperuser` first)
 
-## What's new in this pass: guest ("Hacker") accounts
+## What's new in this pass: email verification + the rules gate after login
 
-- The login page now has a **"Continue as a Guest"** link, leading to
+- **Registering (not guest) now requires email verification before you can
+  log in.** After `/register/`, you land on a "check your email" page
+  instead of being logged straight in. A real-looking email gets sent with
+  a one-time verification link.
+- **No real email sending is set up yet** (no Gmail/SMTP configured), so in
+  dev mode that email is printed to the terminal where `manage.py
+  runserver` is running instead of actually being emailed — the
+  "check your email" page tells you this too. Look in that terminal for a
+  line starting with `Subject: Verify your Far Lands account` and copy the
+  link underneath it into your browser.
+- Clicking the link marks the account verified and shows a confirmation
+  page; from there, log in normally at `/login/`.
+- Trying to log in before clicking the link shows a clear
+  "you need to verify your email first" message instead of a confusing
+  wrong-password error.
+- **Guest ("Hacker") accounts are unaffected** — they still skip all of
+  this and log in immediately, per the original request.
+- **The "BE ADVISED" rules popup now shows again right after you log in**,
+  even in a browser tab that already dismissed it earlier as an anonymous
+  visitor. It still won't nag you on every ordinary refresh/re-visit
+  outside of a fresh login — just that one page load right after signing
+  in (regular or guest).
+
+## From the guest ("Hacker") accounts pass
+
+- The login page has a **"Continue as a Guest"** link, leading to
   `/guest/` — a shorter signup that only asks for a codename and a
   password, no email.
 - Guest accounts show up on their profile as **HACKER** instead of AGENT,

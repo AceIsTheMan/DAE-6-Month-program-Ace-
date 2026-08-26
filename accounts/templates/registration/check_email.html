@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Check Your Email // The Far Lands{% endblock %}
+{% block content %}
+<div class="section-label">// VERIFY YOUR EMAIL</div>
+<div class="section-divider"></div>
+
+<div class="card" style="max-width: 480px; margin: 0 auto; text-align: center;">
+  <p style="font-size: 0.95rem; line-height: 1.7; margin-bottom: 1rem;">
+    Almost there — we sent a verification link to<br>
+    <strong style="color: var(--red-bright);">{{ email }}</strong>.
+  </p>
+  <p style="font-size: 0.85rem; color: var(--dim-white); line-height: 1.6;">
+    Click that link to activate your account, then come back and
+    <a href="{% url 'login' %}" class="inline-link">log in</a>.
+  </p>
+
+  {% if is_console_backend %}
+  <div style="margin-top: 1.5rem; border: 1px dashed var(--red-dim); padding: 1rem; text-align: left; font-size: 0.8rem; color: var(--dim-white); line-height: 1.6;">
+    <strong style="color: var(--red-bright);">Dev mode note:</strong> real
+    email sending isn't set up yet, so this link was printed to the
+    terminal where <code>manage.py runserver</code> is running, not
+    actually emailed. Look there for it.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

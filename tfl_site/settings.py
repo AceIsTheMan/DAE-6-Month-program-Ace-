@@ -131,6 +131,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email
 # https://docs.djangoproject.com/en/stable/topics/email/#topic-email-configuration
-# (Console backend for local development - prints emails to the terminal
-# instead of actually sending them. Swap this out before deploying.)
+# (Console backend for local development - prints emails (including
+# account verification links) to the terminal running `manage.py
+# runserver` instead of actually sending them. Swap EMAIL_BACKEND, plus
+# EMAIL_HOST/EMAIL_HOST_USER/EMAIL_HOST_PASSWORD/etc., for a real provider
+# when you're ready to send real emails - nothing else in the code needs
+# to change, send_mail() works the same either way.)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = 'The Far Lands <noreply@thefarlands.local>'

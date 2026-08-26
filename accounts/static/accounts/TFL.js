@@ -20,12 +20,20 @@
     document.body.style.overflow = '';
   }
 
+  // Set by home_view (via a template var) on the one page load right
+  // after a login - overrides the "already seen it" suppression below so
+  // the gate shows again for a freshly-logged-in agent even if this same
+  // tab dismissed it earlier as an anonymous visitor.
+  var justLoggedIn = (typeof TFL_FORCE_RULES_GATE !== 'undefined') && TFL_FORCE_RULES_GATE;
+
   var alreadySeen = false;
-  try {
-    alreadySeen = sessionStorage.getItem(SEEN_KEY) === '1';
-  } catch (e) {
-    // sessionStorage can be unavailable (some private-browsing modes) -
-    // fail open and just show the gate rather than break the page.
+  if (!justLoggedIn) {
+    try {
+      alreadySeen = sessionStorage.getItem(SEEN_KEY) === '1';
+    } catch (e) {
+      // sessionStorage can be unavailable (some private-browsing modes) -
+      // fail open and just show the gate rather than break the page.
+    }
   }
 
   if (alreadySeen) {

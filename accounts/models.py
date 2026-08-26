@@ -19,6 +19,17 @@ class CustomUser(AbstractUser):
     # blocked from setting a profile picture (see ProfileEditForm).
     is_guest = models.BooleanField(default=False)
 
+    # Email verification for regular (non-guest) accounts. Defaults to True
+    # so guests and superusers (created via createsuperuser) are never
+    # affected - RegisterForm.save() is the one place that sets this False,
+    # for a normal registration, until the emailed link is clicked (see
+    # accounts.views.verify_email_view). Deliberately a separate flag from
+    # is_active: Django's own authenticate() already refuses inactive
+    # users before a login form ever gets a chance to show a custom
+    # message, so this needed its own field to give a clear "verify your
+    # email" error instead of a generic "wrong password" one.
+    email_verified = models.BooleanField(default=True)
+
     GUEST_TRIAL_DAYS = 7
 
     @property

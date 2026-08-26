@@ -1169,10 +1169,33 @@
   // mediaItems array (used by the lightbox) - injected here since TFL.js
   // itself is a plain static file and can't use Django template tags.
   var TFL_MEDIA_BASE = "{% static 'accounts/' %}";
+
+  // Set by home_view right after a login (regular or guest) - tells the
+  // rules-gate logic in TFL.js to show the "BE ADVISED" popup again on
+  // this load even if the tab already dismissed it earlier as an
+  // anonymous visitor. False on every other visit to this page.
+  var TFL_FORCE_RULES_GATE = {{ force_rules_gate|yesno:"true,false" }};
 </script>
 <!-- ?v= is a manual cache-buster: bump it whenever TFL.js changes, so
      browsers that already cached an older copy fetch the new one instead
      of silently keeping stale JS. -->
-<script src="{% static 'accounts/TFL.js' %}?v=4"></script>
+<script src="{% static 'accounts/TFL.js' %}?v=5"></script>
+<script>
+  // The UPDATES / SOCIALS & SUPPORT nav links on every OTHER page (see
+  // base.html) can't call showPage() directly - there's no page-switcher
+  // on those pages, just this one. They instead link back here with
+  // ?page=updates / ?page=socials, and this picks that up on load and
+  // switches to the right section, same as clicking the tab would.
+  (function () {
+    var page = new URLSearchParams(window.location.search).get('page');
+    if (page !== 'updates' && page !== 'socials') return;
+    var target = null;
+    document.querySelectorAll('.nav-links a').forEach(function (a) {
+      var onclick = a.getAttribute('onclick') || '';
+      if (onclick.indexOf("'" + page + "'") !== -1) target = a;
+    });
+    showPage(page, target);
+  })();
+</script>
 </body>
 </html>

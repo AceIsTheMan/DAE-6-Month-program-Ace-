@@ -2,6 +2,7 @@ from django.contrib.auth import views as auth_views
 from django.urls import path
 
 from . import views
+from .forms import EmailVerifiedLoginForm
 
 urlpatterns = [
     # Home: the real, public Far Lands landing page (was TFL_index.html).
@@ -9,7 +10,19 @@ urlpatterns = [
 
     path('register/', views.register_view, name='register'),
     path('guest/', views.guest_register_view, name='guest_register'),
-    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+    path(
+        'verify/<uidb64>/<token>/',
+        views.verify_email_view,
+        name='verify_email',
+    ),
+    path(
+        'login/',
+        auth_views.LoginView.as_view(
+            template_name='registration/login.html',
+            authentication_form=EmailVerifiedLoginForm,
+        ),
+        name='login',
+    ),
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
     path('profile/', views.profile_view, name='profile'),

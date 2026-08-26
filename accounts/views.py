@@ -1,6 +1,12 @@
+from django.conf import settings
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
 from .models import CustomUser
@@ -10,18 +16,54 @@ def home_view(request):
     """
     Public landing page - The Far Lands main site (the old TFL_index.html,
     now served through Django so login state is real instead of guessed).
+
+    force_rules_gate is a one-shot flag set by accounts.signals whenever
+    someone just logged in (regular or guest) - it tells the template/JS to
+    show the "BE ADVISED" rules popup again even if this browser tab
+    already dismissed it earlier as an anonymous visitor. It's popped (read
+    AND removed) here so it only fires on the page load right after login,
+    not on every later visit to home in the same session.
     """
-    return render(request, 'home.html')
+    force_rules_gate = request.session.pop('force_rules_gate', False)
+    return render(request, 'home.html', {'force_rules_gate': force_rules_gate})
+
+
+def _send_verification_email(request, user):
+    """
+    Emails a one-time verification link to a newly-registered (non-guest)
+    account. Uses Django's own password-reset token machinery
+    (default_token_generator) purely because it already does exactly what
+    we need here too: a signed, single-use-ish token tied to this specific
+    user that can't be guessed or reused once the account state it was
+    built from (password / last_login) changes.
+    """
+    uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+    token = default_token_generator.make_token(user)
+    verify_url = request.build_absolute_uri(
+        reverse('verify_email', args=[uidb64, token])
+    )
+    send_mail(
+        subject='Verify your Far Lands account',
+        message=(
+            f'Hey {user.username},\n\n'
+            f'Click the link below to verify your email and activate your '
+            f'Far Lands account:\n\n{verify_url}\n\n'
+            f"If you didn't sign up for this, you can just ignore this email."
+        ),
+        from_email=None,  # falls back to settings.DEFAULT_FROM_EMAIL
+        recipient_list=[user.email],
+    )
 
 
 def register_view(request):
     """
     Handle new agent registration.
     GET  -> show the blank form.
-    POST -> validate it; on success, create the account, log the user in
-            immediately, and send them to the home page (not straight into
-            an edit form - they can go edit their profile whenever they
-            want from there). On failure, re-render the form with
+    POST -> validate it; on success, create the account (email_verified=False
+            until they click the link - see RegisterForm.save()), email them
+            a verification link, and show a "check your email" page. They
+            aren't logged in yet - that happens after they click the link
+            and then log in normally. On failure, re-render the form with
             field-by-field error messages.
     """
     if request.user.is_authenticated:
@@ -31,12 +73,41 @@ def register_view(request):
         form = RegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
-            login(request, user)
-            return redirect('home')
+            _send_verification_email(request, user)
+            return render(request, 'registration/check_email.html', {
+                'email': user.email,
+                'is_console_backend': settings.EMAIL_BACKEND.endswith('console.EmailBackend'),
+            })
     else:
         form = RegisterForm()
 
     return render(request, 'registration/register.html', {'form': form})
+
+
+def verify_email_view(request, uidb64, token):
+    """
+    Handles the link from _send_verification_email(). Marks the account
+    email_verified=True (NOT is_active - see CustomUser.email_verified's
+    docstring for why those had to be separate flags) if the uid decodes to
+    a real user and the token checks out; otherwise shows a "link
+    invalid/expired" message instead of erroring. Doesn't log the user in
+    itself - they still go through /login/ normally afterward, same as
+    everyone else.
+    """
+    user = None
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = CustomUser.objects.get(pk=uid)
+    except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
+        user = None
+
+    verified = False
+    if user is not None and default_token_generator.check_token(user, token):
+        user.email_verified = True
+        user.save()
+        verified = True
+
+    return render(request, 'registration/verify_result.html', {'verified': verified})
 
 
 def guest_register_view(request):
