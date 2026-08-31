@@ -140,3 +140,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # to change, send_mail() works the same either way.)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'The Far Lands <noreply@thefarlands.local>'
+
+# Master switch for the email-verification-before-login feature (see
+# accounts.forms.RegisterForm.save / EmailVerifiedLoginForm and
+# accounts.views.register_view / verify_email_view). Flipped off for now
+# (turned off, not ripped out) - new accounts are auto-verified at
+# registration and no verification email is sent, and login no longer
+# checks email_verified for anyone. Flip back to True to re-enable
+# everything exactly as it was, no other code changes needed.
+EMAIL_VERIFICATION_ENABLED = False

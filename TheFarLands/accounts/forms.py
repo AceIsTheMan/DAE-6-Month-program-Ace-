@@ -1,5 +1,10 @@
+import io
+
 from django import forms
+from django.conf import settings
 from django.contrib.auth.forms import AuthenticationForm, UserCreationForm
+from django.core.files.uploadedfile import InMemoryUploadedFile
+from PIL import Image
 
 from .models import CustomUser
 
@@ -40,7 +45,10 @@ class RegisterForm(UserCreationForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.email = self.cleaned_data['email']
-        user.email_verified = False
+        # Feature is toggled off for now (settings.EMAIL_VERIFICATION_ENABLED)
+        # - auto-verify on registration instead of gating on the emailed
+        # link. See that setting's comment for how to turn it back on.
+        user.email_verified = not settings.EMAIL_VERIFICATION_ENABLED
         if commit:
             user.save()
         return user
@@ -60,7 +68,7 @@ class EmailVerifiedLoginForm(AuthenticationForm):
     """
 
     def confirm_login_allowed(self, user):
-        if not user.email_verified:
+        if settings.EMAIL_VERIFICATION_ENABLED and not user.email_verified:
             raise forms.ValidationError(
                 "You need to verify your email before logging in - check "
                 "the inbox (or your terminal, in dev/test mode) for the "
@@ -107,3 +115,44 @@ class ProfileEditForm(forms.ModelForm):
         # otherwise still be able to set one).
         if getattr(self.instance, 'is_guest', False):
             self.fields.pop('profile_picture', None)
+
+    def clean_profile_picture(self):
+        """
+        Safety net for the crop tool in profile.html: that tool already
+        sends an already-square, already-reasonably-sized (400x400) image,
+        so this normally has nothing to do. It only matters for an upload
+        that skipped the crop tool entirely - JS disabled, a direct POST,
+        etc. - where it downscales anything unreasonably large instead of
+        trusting the browser. It deliberately doesn't try to crop (no crop
+        coordinates exist for a request like that), just caps dimensions.
+        """
+        picture = self.cleaned_data.get('profile_picture')
+        # An unchanged existing picture comes through as a FieldFile
+        # that's already on disk (nothing to re-encode here), and
+        # clearing the field comes through as False - only a fresh
+        # upload has an in-memory file worth inspecting.
+        if not picture or not hasattr(picture, 'file'):
+            return picture
+
+        MAX_DIMENSION = 1600
+        try:
+            image = Image.open(picture)
+            image.verify()
+        except Exception:
+            raise forms.ValidationError("That file doesn't look like a valid image.")
+
+        picture.seek(0)
+        image = Image.open(picture)
+        if image.width <= MAX_DIMENSION and image.height <= MAX_DIMENSION:
+            return picture
+
+        image = image.convert('RGB')
+        image.thumbnail((MAX_DIMENSION, MAX_DIMENSION), Image.LANCZOS)
+        buffer = io.BytesIO()
+        image.save(buffer, format='JPEG', quality=90)
+        size = buffer.tell()
+        buffer.seek(0)
+        return InMemoryUploadedFile(
+            buffer, 'profile_picture', 'profile_picture.jpg', 'image/jpeg',
+            size, None,
+        )

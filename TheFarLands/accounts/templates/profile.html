@@ -106,6 +106,37 @@
   .edit-section[open] summary::after { content: ' [\2212]'; }
   .edit-section-body { margin-top: 1rem; }
   #photo-preview { max-width: 100%; }
+
+  /* Profile picture crop tool - only shown when the picked image is
+     bigger than the square we save (see the script below). */
+  .crop-layout { display: flex; gap: 1.2rem; flex-wrap: wrap; align-items: flex-start; margin-top: 0.6rem; }
+  #crop-stage {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    line-height: 0;
+    overflow: hidden;
+    touch-action: none;
+  }
+  #crop-stage img { display: block; max-width: 100%; height: auto; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+  #crop-box {
+    position: absolute;
+    border: 2px solid var(--red-bright);
+    /* Dims everything outside the square so it reads as "this is what stays". */
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.6);
+    cursor: move;
+  }
+  #crop-handle {
+    position: absolute;
+    right: -7px;
+    bottom: -7px;
+    width: 14px;
+    height: 14px;
+    background: var(--red-bright);
+    border: 1px solid #000;
+    cursor: nwse-resize;
+  }
+  .crop-live canvas { border: 1px solid var(--red-dim); background: #1a0000; display: block; }
 </style>
 {% endblock %}
 {% block content %}
@@ -170,7 +201,28 @@
                     <label for="{{ edit_form.profile_picture.id_for_label }}">Profile picture</label>
                     {{ edit_form.profile_picture }}
                     {% for error in edit_form.profile_picture.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
-                    <img id="photo-preview" style="display:none; margin-top:0.6rem; border: 1px solid var(--red-dim);">
+
+                    <!-- Shown only when the picked image is bigger than the saved
+                         square (see script below) - lets you drag/resize a square
+                         over the image to choose what part of it gets kept. -->
+                    <div id="crop-tool" style="display:none;">
+                        <div class="field-help" style="margin-top:0.6rem;">
+                            That image is bigger than the profile square — drag it to
+                            reposition, drag the corner handle to resize, then save.
+                        </div>
+                        <div class="crop-layout">
+                            <div id="crop-stage">
+                                <img id="crop-source-img" alt="">
+                                <div id="crop-box"><div id="crop-handle"></div></div>
+                            </div>
+                            <div class="crop-live">
+                                <div class="field-help" style="margin:0 0 0.4rem;">Preview</div>
+                                <canvas id="crop-live-canvas" width="110" height="110"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <img id="photo-preview" style="display:none; margin-top:0.6rem; border: 1px solid var(--red-dim); max-width: 200px;">
                     {% else %}
                     <div class="field-help">Guest ("Hacker") accounts can't set a profile picture.</div>
                     {% endif %}
@@ -195,20 +247,160 @@
 
 {% if user == profile_user %}
 <script>
-  // Live preview of a newly-picked profile picture, before it's saved.
+  // Profile picture picking, with an optional crop/zoom step.
+  //
+  // If the picked image already fits within TARGET_SIZE in both
+  // dimensions, it's used as-is (small uploads shouldn't be forced
+  // through an extra step). Otherwise the crop tool (markup + CSS above)
+  // is shown: drag the square to reposition it, drag the corner handle to
+  // resize it (this is the "adjust the size" step - a smaller box zooms
+  // in tighter on the image), and the live canvas mirrors exactly what
+  // will be saved. The actual crop happens at submit time: the selected
+  // region is drawn onto an offscreen TARGET_SIZE x TARGET_SIZE canvas
+  // and that becomes the file that gets uploaded, so the server always
+  // receives an already-square, already-reasonably-sized image no matter
+  // how large or oddly-shaped the original was.
   (function () {
+    var TARGET_SIZE = 400;  // saved crop is square, TARGET_SIZE x TARGET_SIZE
+    var MIN_BOX = 40;       // smallest the crop square can be dragged down to
+
     var input = document.getElementById('{{ edit_form.profile_picture.id_for_label }}');
     var preview = document.getElementById('photo-preview');
-    if (!input || !preview) return;
+    var cropTool = document.getElementById('crop-tool');
+    var stage = document.getElementById('crop-stage');
+    var sourceImg = document.getElementById('crop-source-img');
+    var box = document.getElementById('crop-box');
+    var handle = document.getElementById('crop-handle');
+    var liveCanvas = document.getElementById('crop-live-canvas');
+    var form = input ? input.closest('form') : null;
+    if (!input || !preview || !cropTool || !stage || !sourceImg || !box || !handle || !liveCanvas || !form) return;
+
+    var liveCtx = liveCanvas.getContext('2d');
+    var cropActive = false;   // true once the current file needs cropping
+    var displayedW = 0, displayedH = 0;  // rendered <img> size, in CSS px
+    var cropX = 0, cropY = 0, cropSize = 0;  // crop box, in the same CSS px
+
+    function clamp(value, min, max) {
+      return Math.min(Math.max(value, min), max);
+    }
+
+    function positionBox() {
+      box.style.left = cropX + 'px';
+      box.style.top = cropY + 'px';
+      box.style.width = cropSize + 'px';
+      box.style.height = cropSize + 'px';
+    }
+
+    function drawInto(ctx, size) {
+      // sourceImg is drawn at its natural resolution regardless of how
+      // small/large it's displayed on the page, so scale the on-screen
+      // crop box back into natural-pixel coordinates first.
+      var scale = sourceImg.naturalWidth / displayedW;
+      ctx.clearRect(0, 0, size, size);
+      ctx.drawImage(
+        sourceImg,
+        cropX * scale, cropY * scale, cropSize * scale, cropSize * scale,
+        0, 0, size, size
+      );
+    }
+
+    function updatePreview() {
+      drawInto(liveCtx, liveCanvas.width);
+    }
+
+    function startDrag(e, onMove) {
+      e.preventDefault();
+      e.stopPropagation();
+      var pointerId = e.pointerId;
+      var startX = e.clientX, startY = e.clientY;
+      var moveHandler = function (ev) { onMove(ev.clientX - startX, ev.clientY - startY); };
+      var upHandler = function () {
+        document.removeEventListener('pointermove', moveHandler);
+        document.removeEventListener('pointerup', upHandler);
+      };
+      document.addEventListener('pointermove', moveHandler);
+      document.addEventListener('pointerup', upHandler);
+    }
+
+    // Drag the box itself to reposition it.
+    box.addEventListener('pointerdown', function (e) {
+      var startLeft = cropX, startTop = cropY;
+      startDrag(e, function (dx, dy) {
+        cropX = clamp(startLeft + dx, 0, displayedW - cropSize);
+        cropY = clamp(startTop + dy, 0, displayedH - cropSize);
+        positionBox();
+        updatePreview();
+      });
+    });
+
+    // Drag the corner handle to resize (box stays square, top-left anchored).
+    handle.addEventListener('pointerdown', function (e) {
+      var startSize = cropSize;
+      startDrag(e, function (dx, dy) {
+        var delta = Math.max(dx, dy);
+        var maxSize = Math.min(displayedW - cropX, displayedH - cropY);
+        cropSize = clamp(startSize + delta, MIN_BOX, maxSize);
+        positionBox();
+        updatePreview();
+      });
+    });
+
+    function setupCropFor(dataUrl) {
+      cropTool.style.display = 'block';
+      sourceImg.onload = function () {
+        // Read the rendered size now that the (previously hidden) crop
+        // tool is actually visible and laid out.
+        displayedW = sourceImg.clientWidth;
+        displayedH = sourceImg.clientHeight;
+        var square = Math.min(displayedW, displayedH);
+        cropSize = square;
+        cropX = (displayedW - square) / 2;
+        cropY = (displayedH - square) / 2;
+        positionBox();
+        updatePreview();
+      };
+      sourceImg.src = dataUrl;
+    }
+
     input.addEventListener('change', function (e) {
       var file = e.target.files && e.target.files[0];
       if (!file) return;
       var reader = new FileReader();
       reader.onload = function (ev) {
-        preview.src = ev.target.result;
-        preview.style.display = 'block';
+        var dataUrl = ev.target.result;
+        var probe = new Image();
+        probe.onload = function () {
+          if (probe.naturalWidth <= TARGET_SIZE && probe.naturalHeight <= TARGET_SIZE) {
+            // Already small enough - just preview it, no cropping needed.
+            cropActive = false;
+            cropTool.style.display = 'none';
+            preview.src = dataUrl;
+            preview.style.display = 'block';
+          } else {
+            cropActive = true;
+            preview.style.display = 'none';
+            setupCropFor(dataUrl);
+          }
+        };
+        probe.src = dataUrl;
       };
       reader.readAsDataURL(file);
+    });
+
+    form.addEventListener('submit', function (e) {
+      if (!cropActive) return;  // small image, uploaded as picked - nothing to do
+      e.preventDefault();
+      var outCanvas = document.createElement('canvas');
+      outCanvas.width = TARGET_SIZE;
+      outCanvas.height = TARGET_SIZE;
+      drawInto(outCanvas.getContext('2d'), TARGET_SIZE);
+      outCanvas.toBlob(function (blob) {
+        var croppedFile = new File([blob], 'profile_picture.jpg', { type: 'image/jpeg' });
+        var dataTransfer = new DataTransfer();
+        dataTransfer.items.add(croppedFile);
+        input.files = dataTransfer.files;
+        form.submit();  // the real DOM submit() - bypasses this listener, no loop
+      }, 'image/jpeg', 0.9);
     });
   })();
 </script>

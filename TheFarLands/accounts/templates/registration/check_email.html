@@ -1,6 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Check Your Email // The Far Lands{% endblock %}
+{% block title %}{% if verification_enabled %}Check Your Email{% else %}Account Created{% endif %} // The Far Lands{% endblock %}
 {% block content %}
+{% if verification_enabled %}
 <div class="section-label">// VERIFY YOUR EMAIL</div>
 <div class="section-divider"></div>
 
@@ -23,4 +24,19 @@
   </div>
   {% endif %}
 </div>
+{% else %}
+<div class="section-label">// ACCOUNT CREATED</div>
+<div class="section-divider"></div>
+
+<div class="card" style="max-width: 480px; margin: 0 auto; text-align: center;">
+  <p style="font-size: 0.95rem; line-height: 1.7; margin-bottom: 1rem;">
+    Your account (<strong style="color: var(--red-bright);">{{ email }}</strong>)
+    is ready to go.
+  </p>
+  <p style="font-size: 0.85rem; color: var(--dim-white); line-height: 1.6;">
+    Email verification is temporarily switched off, so you can
+    <a href="{% url 'login' %}" class="inline-link">log in</a> right away.
+  </p>
+</div>
+{% endif %}
 {% endblock %}

@@ -73,10 +73,17 @@ def register_view(request):
         form = RegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
-            _send_verification_email(request, user)
+            # Verification feature is toggled off for now (see
+            # settings.EMAIL_VERIFICATION_ENABLED) - RegisterForm.save()
+            # already auto-verified the account, so there's no link to
+            # send; skip straight to "you're set, go log in" instead of
+            # "check your email".
+            if settings.EMAIL_VERIFICATION_ENABLED:
+                _send_verification_email(request, user)
             return render(request, 'registration/check_email.html', {
                 'email': user.email,
                 'is_console_backend': settings.EMAIL_BACKEND.endswith('console.EmailBackend'),
+                'verification_enabled': settings.EMAIL_VERIFICATION_ENABLED,
             })
     else:
         form = RegisterForm()
