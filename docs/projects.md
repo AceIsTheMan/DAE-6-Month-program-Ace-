@@ -24,7 +24,7 @@ Choose **2–3 of your strongest projects** for the finished portfolio.
 
 ## The Far Lands Project (Test Phase)
 
-![The Far Lands Project]('image.png')
+![The Far Lands Project]({{ '/image.png' | relative_url }})
 
 The Far Lands Project or TFL Project Testing, Is a media page of my own that I control with basic and minimuim features that it requires, this webpage is designed for my upcoming game idea on a roblox game for practice of the REAL game that'll be available in the far future, The far lands is a RPG online game where players can socialize and fight, a game that features depth with customization, friendship, and boss fights, the media page main goal is to keep track of what sneak peaks and available content that may or may not be of interest to the crowd.
 
