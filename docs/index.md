@@ -50,7 +50,7 @@ A Backend Developer/Web designer that spends his time improving his skill with c
 
 ## Featured Projects
 
-### [ The Far Lands Project _VOL2 ]
+### [PROJECT 1 NAME]
 
 ![Project 1 image placeholder]({{ '/assets/images/project-placeholder.svg' | relative_url }})
 

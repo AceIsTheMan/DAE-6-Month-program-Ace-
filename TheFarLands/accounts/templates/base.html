@@ -240,6 +240,7 @@
   <a href="{% url 'home' %}" class="nav-logo">// {% if user.is_authenticated %}{{ user.username }}{% else %}UnknownUser{% endif %}</a>
   <ul class="nav-links">
     <li><a href="{% url 'home' %}">HOME</a></li>
+    <li><a href="{% url 'forum' %}">FORUM</a></li>
     <li><a href="{% url 'home' %}?page=updates">UPDATES</a></li>
     <li><a href="{% url 'home' %}?page=socials">SOCIALS &amp; SUPPORT</a></li>
     {% if user.is_authenticated %}
