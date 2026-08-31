@@ -8,10 +8,28 @@ class CustomUser(AbstractUser):
     Custom User Model for The Far Lands Project.
     Inherits from AbstractUser to keep default auth features.
     """
+
+    # Moderation role hierarchy, lowest to highest. "Director" sits above
+    # Hacker (guest accounts), Agent (regular accounts) and Admin - it's
+    # the site owner's role, meant for a single account, and takes first
+    # priority over every other role when permissions are checked.
+    ROLE_HACKER = 'Hacker'
+    ROLE_AGENT = 'Agent'
+    ROLE_ADMIN = 'Admin'
+    ROLE_DIRECTOR = 'Director'
+    ROLE_HIERARCHY = [ROLE_HACKER, ROLE_AGENT, ROLE_ADMIN, ROLE_DIRECTOR]
+    ROLE_CHOICES = [(r, r) for r in ROLE_HIERARCHY]
+
     bio = models.TextField(max_length=500, blank=True)
     profile_picture = models.ImageField(upload_to='profile_pics/', blank=True, null=True)
     rank = models.CharField(max_length=50, default='Newbie')
     alias = models.CharField(max_length=12, blank=True)
+
+    # Moderation role - separate from `rank` (which is just a flavor label
+    # shown on the profile dossier, e.g. "Newbie"). Guest accounts default
+    # to Hacker at signup (see accounts.views), everyone else starts as
+    # Agent; Admin/Director are granted manually.
+    role = models.CharField(max_length=50, choices=ROLE_CHOICES, default=ROLE_AGENT)
 
     # Guest ("Hacker") accounts: registered with just a codename + password
     # (see GuestRegisterForm), limited to a short trial and auto-deleted
@@ -49,6 +67,12 @@ class CustomUser(AbstractUser):
         if expires_at is None:
             return None
         return max(0, (expires_at - timezone.now()).days)
+
+    @property
+    def is_director(self):
+        """True for the site owner's account - the top of ROLE_HIERARCHY,
+        outranking every Hacker/Agent/Admin."""
+        return self.role == self.ROLE_DIRECTOR
 
     def __str__(self):
         return self.username

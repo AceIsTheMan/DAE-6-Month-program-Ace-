@@ -2,15 +2,228 @@
 
 {% block title %}FORUM // The Far Lands{% endblock %}
 
+{% block extra_head %}
+<style>
+  .composer { margin-bottom: 2rem; }
+  .composer-label {
+    font-family: 'VT323', monospace;
+    color: var(--red-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+  }
+  .composer-toolbar { display: flex; gap: 0.4rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
+  .composer-toolbar button {
+    font-family: 'Share Tech Mono', monospace;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--dim-white);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .composer-toolbar button:hover {
+    border-color: var(--red-bright);
+    color: var(--red-bright);
+    background: rgba(204,0,0,0.1);
+  }
+  .composer-toolbar button.tb-bold { font-weight: bold; }
+  .composer-toolbar button.tb-underline { text-decoration: underline; }
+  .composer-toolbar button.tb-strike { text-decoration: line-through; }
+  #post-editor {
+    min-height: 120px;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--white);
+    padding: 0.8rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.95rem;
+    line-height: 1.6;
+  }
+  #post-editor:focus { outline: none; border-color: var(--red-bright); }
+  #post-editor:empty::before { content: attr(data-placeholder); color: var(--dim-white); }
+  .hidden-body-field { display: none; }
+
+  .post-card { margin-bottom: 1.5rem; }
+  .post-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.8rem;
+    border-bottom: 1px dashed var(--red-dim);
+    padding-bottom: 0.5rem;
+  }
+  .post-author {
+    font-family: 'VT323', monospace;
+    color: var(--red-bright);
+    letter-spacing: 2px;
+    font-size: 1.2rem;
+    text-shadow: 0 0 6px var(--red);
+  }
+  .post-date { color: var(--dim-white); font-size: 0.72rem; letter-spacing: 1px; }
+  .post-body { line-height: 1.7; color: var(--silver); overflow-wrap: anywhere; }
+  .post-body .redacted-text {
+    background: var(--red-bright);
+    color: var(--red-bright);
+    padding: 0 4px;
+    cursor: help;
+    transition: color 0.15s;
+  }
+  .post-body .redacted-text:hover, .post-body .redacted-text:focus { color: var(--white); }
+  .post-body .highlight-text { background: rgba(255,26,26,0.35); color: var(--white); padding: 0 3px; }
+  .post-media { margin-top: 1rem; }
+  .post-media img { max-width: 100%; border: 1px solid var(--red-dim); display: block; }
+  .post-video { position: relative; width: 100%; max-width: 640px; aspect-ratio: 16/9; }
+  .post-video iframe, .post-video video {
+    width: 100%; height: 100%; border: 1px solid var(--red-dim); display: block; background: #000;
+  }
+  .post-link {
+    display: inline-block;
+    margin-top: 0.6rem;
+    color: var(--red-bright);
+    border: 1px solid var(--red-dim);
+    padding: 0.4rem 0.9rem;
+    text-decoration: none;
+    letter-spacing: 1px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+  }
+  .post-link:hover { border-color: var(--red-bright); background: rgba(204,0,0,0.1); }
+  .empty-feed { color: var(--dim-white); font-size: 0.85rem; letter-spacing: 1px; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="section-label">// FORUM</div>
 <div class="section-divider"></div>
 
-<div class="card">
-  <span class="stamp">UNDER CONSTRUCTION</span>
-  <p style="margin-top:1rem; line-height:1.6;">
-    Threads, posts, and moderation tools are being built out here this
-    month. Check back soon, Agent.
-  </p>
+{% if can_post %}
+<div class="card composer">
+  <div class="composer-label">// New Transmission (Director Only)</div>
+  <form method="post" enctype="multipart/form-data" novalidate id="post-form">
+    {% csrf_token %}
+
+    <div class="composer-toolbar">
+      <button type="button" class="tb-bold" data-cmd="b">Bold</button>
+      <button type="button" class="tb-underline" data-cmd="u">Underline</button>
+      <button type="button" class="tb-strike" data-cmd="s">Cross Out</button>
+      <button type="button" data-cmd="span" data-class="redacted-text">Redacted</button>
+      <button type="button" data-cmd="span" data-class="highlight-text">Highlight</button>
+    </div>
+
+    <div id="post-editor" contenteditable="true" data-placeholder="Write a transmission..."></div>
+    {{ form.body }}
+    {% for error in form.body.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <label for="{{ form.image.id_for_label }}">Image</label>
+    {{ form.image }}
+    {% for error in form.image.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <label for="{{ form.video_url.id_for_label }}">Video (YouTube or direct .mp4/.webm link)</label>
+    {{ form.video_url }}
+    {% for error in form.video_url.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <label for="{{ form.link_url.id_for_label }}">Link</label>
+    {{ form.link_url }}
+    {% for error in form.link_url.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <label for="{{ form.link_label.id_for_label }}">Link text <span class="field-help" style="text-transform:none;">(optional)</span></label>
+    {{ form.link_label }}
+    {% for error in form.link_label.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    {% for error in form.non_field_errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <div style="margin-top: 1.2rem;">
+      <button type="submit" class="donate-btn" style="font-size: 1rem;">[ TRANSMIT ]</button>
+    </div>
+  </form>
 </div>
+
+<script>
+  (function () {
+    var editor = document.getElementById('post-editor');
+    var hidden = document.getElementById('{{ form.body.id_for_label }}');
+    var form = document.getElementById('post-form');
+    if (!editor || !hidden || !form) return;
+
+    if (hidden.value) editor.innerHTML = hidden.value;
+
+    function wrapSelection(tagName, className) {
+      var sel = window.getSelection();
+      if (!sel.rangeCount || sel.isCollapsed) return;
+      var range = sel.getRangeAt(0);
+      if (!editor.contains(range.commonAncestorContainer)) return;
+      var wrapper = document.createElement(tagName);
+      if (className) wrapper.className = className;
+      wrapper.appendChild(range.extractContents());
+      range.insertNode(wrapper);
+      sel.removeAllRanges();
+      var after = document.createRange();
+      after.selectNodeContents(wrapper);
+      sel.addRange(after);
+    }
+
+    document.querySelectorAll('.composer-toolbar button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        editor.focus();
+        wrapSelection(btn.getAttribute('data-cmd'), btn.getAttribute('data-class'));
+      });
+    });
+
+    // Keep block markup out of the body entirely - Enter inserts a <br>
+    // instead of letting the browser create a <div>/<p>, so the saved
+    // HTML stays within the small inline set the server sanitizer allows
+    // (see forum/sanitize.py).
+    editor.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.execCommand('insertLineBreak');
+      }
+    });
+
+    form.addEventListener('submit', function () {
+      hidden.value = editor.innerHTML;
+    });
+  })();
+</script>
+{% endif %}
+
+{% if posts %}
+  {% for post in posts %}
+  <div class="card post-card">
+    <div class="post-meta">
+      <span class="post-author">// {{ post.author.username }}</span>
+      <span class="post-date">{{ post.created_at|date:"Y-m-d H:i" }}</span>
+    </div>
+
+    {% if post.body %}<div class="post-body">{{ post.body|safe }}</div>{% endif %}
+
+    {% if post.image or post.video_url or post.link_url %}
+    <div class="post-media">
+      {% if post.image %}<img src="{{ post.image.url }}" alt="">{% endif %}
+
+      {% if post.video_url %}
+        <div class="post-video">
+          {% if post.video_embed_url %}
+            <iframe src="{{ post.video_embed_url }}" title="" allowfullscreen></iframe>
+          {% else %}
+            <video src="{{ post.video_url }}" controls></video>
+          {% endif %}
+        </div>
+      {% endif %}
+
+      {% if post.link_url %}
+        <a class="post-link" href="{{ post.link_url }}" target="_blank" rel="noopener noreferrer nofollow">[ {{ post.link_label|default:post.link_url }} ]</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="card"><span class="empty-feed">No transmissions yet, Agent.</span></div>
+{% endif %}
 {% endblock %}

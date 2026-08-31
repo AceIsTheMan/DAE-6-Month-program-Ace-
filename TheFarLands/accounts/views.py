@@ -135,6 +135,7 @@ def guest_register_view(request):
         if form.is_valid():
             user = form.save(commit=False)
             user.is_guest = True
+            user.role = CustomUser.ROLE_HACKER
             user.save()
             login(request, user)
             return redirect('home')

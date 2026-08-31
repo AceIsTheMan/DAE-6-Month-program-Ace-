@@ -48,6 +48,9 @@
     box-shadow: 0 0 20px rgba(204,0,0,0.4);
   }
   .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
     font-family: 'VT323', monospace;
     font-size: 2rem;
     color: var(--red-bright);
@@ -55,6 +58,15 @@
     letter-spacing: 4px;
     text-decoration: none;
     animation: flicker 6s infinite;
+  }
+  .nav-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--red-dim);
+    box-shadow: 0 0 6px var(--red-dim);
+    flex-shrink: 0;
   }
   @keyframes flicker {
     0%, 95%, 100% { opacity: 1; }
@@ -160,7 +172,7 @@
     margin-top: 1rem;
     margin-bottom: 0.3rem;
   }
-  input[type="text"], input[type="email"], input[type="password"], input[type="file"], textarea {
+  input[type="text"], input[type="email"], input[type="password"], input[type="file"], input[type="url"], textarea {
     width: 100%;
     background: var(--black);
     border: 1px solid var(--red-dim);
@@ -237,7 +249,7 @@
 </head>
 <body>
 <nav>
-  <a href="{% url 'home' %}" class="nav-logo">// {% if user.is_authenticated %}{{ user.username }}{% else %}UnknownUser{% endif %}</a>
+  <a href="{% url 'home' %}" class="nav-logo">{% if user.is_authenticated and user.profile_picture %}<img src="{{ user.profile_picture.url }}" alt="" class="nav-avatar">{% endif %}// {% if user.is_authenticated %}{{ user.username }}{% else %}UnknownUser{% endif %}</a>
   <ul class="nav-links">
     <li><a href="{% url 'home' %}">HOME</a></li>
     <li><a href="{% url 'forum' %}">FORUM</a></li>

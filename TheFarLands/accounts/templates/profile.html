@@ -166,7 +166,7 @@
                 </div>
                 <div class="dossier-field">
                     <span class="field-key">Role</span>
-                    <span class="field-value">{% if profile_user.is_guest %}HACKER{% else %}AGENT{% endif %}</span>
+                    <span class="field-value">{{ profile_user.role|upper }}</span>
                 </div>
                 <div class="dossier-field">
                     <span class="field-key">Origin</span>
