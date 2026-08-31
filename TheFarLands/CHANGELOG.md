@@ -1,54 +1,15 @@
-# The Far Lands — backend setup
+# Changelog
 
-Django backend for The Far Lands, with the site's real landing page
-(`TFL_index.html`, now `home.html`) served through Django too, so login
-state is real instead of guessed. Run everything from a terminal, from this
-folder (`TheFarLands`).
+Pass-by-pass history of changes to The Far Lands backend, most recent
+first. See [README.md](README.md) for current setup and usage.
 
-**This folder was moved out of `DAE_6_Month_program_ACE` and into its own
-`TheFarLands` subfolder** so the live website project is separate from your
-course exercise folders (`unix_1`, `javascript_1`, `figma_1`, etc.), which
-still live one level up, in `DAE_6_Month_program_ACE` itself, untouched.
+## Forum tab
 
-**Important:** always `cd` into this exact folder before running
-`manage.py` commands. There's an old, unused copy of the frontend under
-`../python_1/The Far Lands_Vol2/View point/` (one level up, since that
-folder wasn't part of the move) — don't run a server from there, and don't
-point tools like VS Code's "Live Server" extension at anything in that
-folder. It doesn't talk to the database or know about logins at all; it's
-kept only as a reference copy.
+- New `forum` app added with a placeholder landing page for what will
+  become a community forum. No models yet — this app is a stub future
+  passes will build on.
 
-## First-time setup
-
-```
-pip3 install -r requirements.txt
-python3 manage.py migrate
-python3 manage.py runserver
-```
-
-**If you already had this project set up before today**, just run
-`python3 manage.py migrate` again — recent passes added new fields to user
-profiles and each one needs a migration to reach your database. As of this
-pass that includes a new `email_verified` field, so run `migrate` again
-even if you already ran it for the guest-account pass.
-
-Then open **http://127.0.0.1:8000/** — that's the real Far Lands site now
-(rules gate, banners, video cards, the works), with LOGIN / REGISTER in the
-nav when you're logged out.
-
-- `/` — the main site (public)
-- `/register/` — create a full account (username, email, password) — you'll
-  need to click a verification link before you can log in, see below
-- `/guest/` — create a temporary "Hacker" guest account (username + password
-  only, no email, no verification step)
-- `/login/` — log in (same form for both account types)
-- `/profile/` — your profile: photo, rank, alias, bio, all in one page, with
-  an inline "// EDIT PROFILE" section (profile picture, alias, bio,
-  `[ SAVE ]` button) right on the page
-- `/profile/<username>/` — view someone else's profile (read-only)
-- `/admin/` — Django admin (run `python3 manage.py createsuperuser` first)
-
-## What's new in this pass: email verification + the rules gate after login
+## Email verification + the rules gate after login
 
 - **Registering (not guest) now requires email verification before you can
   log in.** After `/register/`, you land on a "check your email" page
@@ -73,7 +34,7 @@ nav when you're logged out.
   outside of a fresh login — just that one page load right after signing
   in (regular or guest).
 
-## From the guest ("Hacker") accounts pass
+## Guest ("Hacker") accounts
 
 - The login page has a **"Continue as a Guest"** link, leading to
   `/guest/` — a shorter signup that only asks for a codename and a
@@ -88,7 +49,7 @@ nav when you're logged out.
   anyone loads any page on the site — there's nothing to run manually for
   this to happen.
 
-## From earlier passes
+## Earlier passes
 
 - **"PROFILE" and "MY PROFILE" are one button and one page.** `/profile/`
   shows your username, rank, alias, the year you joined, and your bio, with
@@ -111,7 +72,9 @@ nav when you're logged out.
 - **Logout asks "Are you sure you WANT to logout?"** before it actually
   logs you out.
 
-## What was wrong originally (pass 1)
+## Pass 1 — initial fixes
+
+What was wrong originally:
 
 - `manage.py` had been moved away from `tfl_site/` (the settings module it
   needs to import) — fixed, back at the project root.
@@ -125,15 +88,9 @@ than being deleted: the old loose `urls.py`/`views.py`, the standalone
 `TFL_index_original.html` and `TFL_original.js`, and the now-unused
 `profile_edit_deprecated.html`.
 
-## Not touched
+## Open items
 
-Everything else in `DAE_6_Month_program_ACE` — your course exercise folders
-(`design_1`, `django_1`, `figma_1`, `javascript_1`, `logic_1`,
-`prompt_engineering_1`, `semester_2`, `unix_1`, `unix_2`,
-`version_control_1`), `old_project/`, and the separate Jekyll portfolio
-project under `docs/` — is unrelated to the website and untouched, still
-sitting one level up from this `TheFarLands` folder. A few small things
-flagged in earlier chats about the website itself are still open:
-Card 1/Card 2's duplicate lightbox-button bug in the video grid, the banner
-`<img>` placement, and the Twitter/X social link still pointing at `#`.
-Ask any time and I'll take those on.
+A few small things flagged in earlier chats about the website itself are
+still open: Card 1/Card 2's duplicate lightbox-button bug in the video
+grid, the banner `<img>` placement, and the Twitter/X social link still
+pointing at `#`.
