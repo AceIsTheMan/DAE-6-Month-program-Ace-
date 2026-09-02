@@ -100,6 +100,7 @@ const mediaItems = [
   { src: MEDIA_BASE + 'Player pov.mp4', type: 'video', caption: 'SLOT 03 — VIDEO' },
 ];
 
+
 function openLightbox(index) {
   const item = mediaItems[index];
   const content = document.getElementById('lightbox-content');

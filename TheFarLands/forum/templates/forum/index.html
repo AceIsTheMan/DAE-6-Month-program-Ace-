@@ -35,7 +35,8 @@
   .composer-toolbar button.tb-bold { font-weight: bold; }
   .composer-toolbar button.tb-underline { text-decoration: underline; }
   .composer-toolbar button.tb-strike { text-decoration: line-through; }
-  #post-editor {
+  .composer-body {
+    width: 100%;
     min-height: 120px;
     background: var(--black);
     border: 1px solid var(--red-dim);
@@ -44,10 +45,20 @@
     font-family: 'Share Tech Mono', monospace;
     font-size: 0.95rem;
     line-height: 1.6;
+    resize: vertical;
   }
-  #post-editor:focus { outline: none; border-color: var(--red-bright); }
-  #post-editor:empty::before { content: attr(data-placeholder); color: var(--dim-white); }
-  .hidden-body-field { display: none; }
+  .composer-body:focus { outline: none; border-color: var(--red-bright); }
+  .composer-syntax-help {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--dim-white);
+    letter-spacing: 0;
+    margin-top: 0.4rem;
+  }
+  .composer-syntax-help code {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--silver);
+  }
 
   /* Composer sections - one fieldset per kind of attachment, so the form
      reads as a short, clearly labeled stack instead of a flat pile of
@@ -98,7 +109,19 @@
     font-size: 1.2rem;
     text-shadow: 0 0 6px var(--red);
   }
-  .post-date { color: var(--dim-white); font-size: 0.72rem; letter-spacing: 1px; }
+  .post-date { color: var(--dim-white); font-size: 0.72rem; letter-spacing: 1px; display: flex; align-items: center; gap: 0.6rem; }
+  .delete-form { display: inline-block; }
+  .delete-btn {
+    font-family: 'Share Tech Mono', monospace;
+    background: none;
+    border: none;
+    color: var(--dim-white);
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    padding: 0;
+  }
+  .delete-btn:hover { color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
   .post-body { line-height: 1.7; color: var(--silver); overflow-wrap: anywhere; }
   .post-body .redacted-text {
     background: var(--red-bright);
@@ -120,6 +143,41 @@
     user-select: none;
   }
   .post-media video { max-height: 480px; background: #000; }
+
+  .composer-preview {
+    margin-top: 0.6rem;
+    border: 1px dashed var(--red-dim);
+    padding: 0.6rem;
+  }
+  .composer-preview img, .composer-preview video {
+    display: block;
+    max-width: 100%;
+    max-height: 320px;
+    border: 1px solid var(--red-dim);
+  }
+  .composer-preview-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-top: 0.4rem;
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    color: var(--dim-white);
+  }
+  .composer-preview-meta span { overflow-wrap: anywhere; }
+  #media-preview-clear {
+    font-family: 'Share Tech Mono', monospace;
+    background: none;
+    border: none;
+    color: var(--dim-white);
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    padding: 0;
+    white-space: nowrap;
+  }
+  #media-preview-clear:hover { color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
   .post-link {
     display: inline-block;
     margin-top: 0.6rem;
@@ -178,15 +236,18 @@
     {% csrf_token %}
 
     <div class="composer-toolbar">
-      <button type="button" class="tb-bold" data-cmd="b">Bold</button>
-      <button type="button" class="tb-underline" data-cmd="u">Underline</button>
-      <button type="button" class="tb-strike" data-cmd="s">Cross Out</button>
-      <button type="button" data-cmd="span" data-class="redacted-text">Redacted</button>
-      <button type="button" data-cmd="span" data-class="highlight-text">Highlight</button>
+      <button type="button" class="tb-bold" data-before="**" data-after="**">Bold</button>
+      <button type="button" class="tb-underline" data-before="__" data-after="__">Underline</button>
+      <button type="button" class="tb-strike" data-before="~~" data-after="~~">Cross Out</button>
+      <button type="button" data-before="||" data-after="||">Redacted</button>
+      <button type="button" data-before="==" data-after="==">Highlight</button>
     </div>
 
-    <div id="post-editor" contenteditable="true" data-placeholder="Write a transmission..."></div>
     {{ form.body }}
+    <span class="composer-syntax-help">
+      <code>**bold**</code> &nbsp; <code>__underline__</code> &nbsp; <code>~~crossed~~</code> &nbsp;
+      <code>||redacted||</code> &nbsp; <code>==highlight==</code> - select text and click a button above, or type the markers directly.
+    </span>
     {% for error in form.body.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
 
     <div class="composer-section">
@@ -195,6 +256,14 @@
       {{ form.media }}
       <span class="field-help">{{ form.media.help_text }}</span>
       {% for error in form.media.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+      <div id="media-preview" class="composer-preview" hidden>
+        <img id="media-preview-img" alt="" hidden>
+        <video id="media-preview-video" controls hidden></video>
+        <div class="composer-preview-meta">
+          <span id="media-preview-name"></span>
+          <button type="button" id="media-preview-clear">[ REMOVE ]</button>
+        </div>
+      </div>
     </div>
 
     <div class="composer-section">
@@ -218,48 +287,77 @@
 
 <script>
   (function () {
-    var editor = document.getElementById('post-editor');
-    var hidden = document.getElementById('{{ form.body.id_for_label }}');
-    var form = document.getElementById('post-form');
-    if (!editor || !hidden || !form) return;
+    var textarea = document.getElementById('{{ form.body.id_for_label }}');
+    if (!textarea) return;
 
-    if (hidden.value) editor.innerHTML = hidden.value;
-
-    function wrapSelection(tagName, className) {
-      var sel = window.getSelection();
-      if (!sel.rangeCount || sel.isCollapsed) return;
-      var range = sel.getRangeAt(0);
-      if (!editor.contains(range.commonAncestorContainer)) return;
-      var wrapper = document.createElement(tagName);
-      if (className) wrapper.className = className;
-      wrapper.appendChild(range.extractContents());
-      range.insertNode(wrapper);
-      sel.removeAllRanges();
-      var after = document.createRange();
-      after.selectNodeContents(wrapper);
-      sel.addRange(after);
-    }
-
+    // Wrap the current selection in the marker pair, or insert an empty
+    // pair with the cursor left in the middle when nothing's selected -
+    // plain textarea selection APIs, so this works the same everywhere
+    // (the old contenteditable + execCommand toolbar didn't).
     document.querySelectorAll('.composer-toolbar button').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        editor.focus();
-        wrapSelection(btn.getAttribute('data-cmd'), btn.getAttribute('data-class'));
+        var before = btn.getAttribute('data-before');
+        var after = btn.getAttribute('data-after');
+        var start = textarea.selectionStart;
+        var end = textarea.selectionEnd;
+        var value = textarea.value;
+        var selected = value.slice(start, end);
+
+        textarea.value = value.slice(0, start) + before + selected + after + value.slice(end);
+        textarea.focus();
+        textarea.selectionStart = start + before.length;
+        textarea.selectionEnd = start + before.length + selected.length;
       });
     });
+  })();
 
-    // Keep block markup out of the body entirely - Enter inserts a <br>
-    // instead of letting the browser create a <div>/<p>, so the saved
-    // HTML stays within the small inline set the server sanitizer allows
-    // (see forum/sanitize.py).
-    editor.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        document.execCommand('insertLineBreak');
+  (function () {
+    // Local preview only - nothing here touches the server. Shows the
+    // picked file (image or video) in the composer before it's posted,
+    // via an object URL, and lets the poster clear the selection.
+    var input = document.getElementById('{{ form.media.id_for_label }}');
+    var box = document.getElementById('media-preview');
+    if (!input || !box) return;
+
+    var img = document.getElementById('media-preview-img');
+    var video = document.getElementById('media-preview-video');
+    var nameLabel = document.getElementById('media-preview-name');
+    var clearBtn = document.getElementById('media-preview-clear');
+    var currentUrl = null;
+
+    function reset() {
+      if (currentUrl) { URL.revokeObjectURL(currentUrl); currentUrl = null; }
+      box.hidden = true;
+      img.hidden = true;
+      video.hidden = true;
+      img.src = '';
+      video.src = '';
+      nameLabel.textContent = '';
+    }
+
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      if (!file) { reset(); return; }
+
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      currentUrl = URL.createObjectURL(file);
+      nameLabel.textContent = file.name + ' (' + (file.size / (1024 * 1024)).toFixed(1) + ' MB)';
+
+      if (file.type.indexOf('video/') === 0) {
+        video.src = currentUrl;
+        video.hidden = false;
+        img.hidden = true;
+      } else {
+        img.src = currentUrl;
+        img.hidden = false;
+        video.hidden = true;
       }
+      box.hidden = false;
     });
 
-    form.addEventListener('submit', function () {
-      hidden.value = editor.innerHTML;
+    clearBtn.addEventListener('click', function () {
+      input.value = '';
+      reset();
     });
   })();
 </script>
@@ -270,7 +368,15 @@
   <div class="card post-card" id="post-{{ post.id }}">
     <div class="post-meta">
       <span class="post-author">// {{ post.author.username }}</span>
-      <span class="post-date">{{ post.created_at|date:"Y-m-d H:i" }}</span>
+      <span class="post-date">
+        {{ post.created_at|date:"Y-m-d H:i" }}
+        {% if can_post %}
+          <form class="delete-form" method="post" action="{% url 'forum_delete_post' post.id %}" onsubmit="return confirm('Delete this transmission? This can\'t be undone.');">
+            {% csrf_token %}
+            <button type="submit" class="delete-btn" title="Delete post">[ DELETE ]</button>
+          </form>
+        {% endif %}
+      </span>
     </div>
 
     {% if post.body %}<div class="post-body">{{ post.body|safe }}</div>{% endif %}

@@ -16,10 +16,13 @@ class PostForm(forms.ModelForm):
             'media': 'Image',
         }
         widgets = {
-            # The real editing surface is the contenteditable toolbar div
-            # in the template - this textarea just carries its sanitized
-            # HTML on submit (see the script in templates/forum/index.html).
-            'body': forms.Textarea(attrs={'class': 'hidden-body-field'}),
+            # Plain textarea - the poster types the formatting markers
+            # directly (see forum.sanitize), no rich-text editing surface.
+            'body': forms.Textarea(attrs={
+                'class': 'composer-body',
+                'placeholder': 'Write a transmission... **bold** __underline__ ~~crossed~~ ||redacted|| ==highlight==',
+                'rows': 5,
+            }),
             'media': forms.ClearableFileInput(attrs={'accept': 'image/*,video/*'}),
             'link_url': forms.URLInput(attrs={'placeholder': 'https://... (can point to footage)'}),
             'link_label': forms.TextInput(attrs={'placeholder': 'Optional link text'}),

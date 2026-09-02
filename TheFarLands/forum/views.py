@@ -82,3 +82,18 @@ def forum_react_view(request, post_id):
     ):
         return redirect(next_url)
     return redirect('forum')
+
+
+@login_required
+def forum_delete_post_view(request, post_id):
+    """Delete a post - Director-only, same gate as posting (see
+    forum_index_view), enforced here too in case of a direct POST from
+    anyone else."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    if not request.user.is_director:
+        raise PermissionDenied('Only the Director can delete posts.')
+
+    post = get_object_or_404(Post, pk=post_id)
+    post.delete()
+    return redirect('forum')
