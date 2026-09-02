@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load forum_extras %}
 
 {% block title %}FORUM // The Far Lands{% endblock %}
 
@@ -48,6 +49,39 @@
   #post-editor:empty::before { content: attr(data-placeholder); color: var(--dim-white); }
   .hidden-body-field { display: none; }
 
+  /* Composer sections - one fieldset per kind of attachment, so the form
+     reads as a short, clearly labeled stack instead of a flat pile of
+     inputs. */
+  .composer-section {
+    margin-top: 1.2rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--red-dim);
+  }
+  .composer-section-title {
+    font-family: 'VT323', monospace;
+    color: var(--dim-white);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+  }
+  .composer-section label {
+    display: block;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--dim-white);
+    margin: 0.6rem 0 0.3rem;
+  }
+  .composer-section .field-help {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--dim-white);
+    text-transform: none;
+    letter-spacing: 0;
+    margin-top: 0.2rem;
+  }
+
   .post-card { margin-bottom: 1.5rem; }
   .post-meta {
     display: flex;
@@ -76,11 +110,16 @@
   .post-body .redacted-text:hover, .post-body .redacted-text:focus { color: var(--white); }
   .post-body .highlight-text { background: rgba(255,26,26,0.35); color: var(--white); padding: 0 3px; }
   .post-media { margin-top: 1rem; }
-  .post-media img { max-width: 100%; border: 1px solid var(--red-dim); display: block; }
-  .post-video { position: relative; width: 100%; max-width: 640px; aspect-ratio: 16/9; }
-  .post-video iframe, .post-video video {
-    width: 100%; height: 100%; border: 1px solid var(--red-dim); display: block; background: #000;
+  .post-media img, .post-media video {
+    max-width: 100%;
+    border: 1px solid var(--red-dim);
+    display: block;
+    /* Discourage casual saving - not foolproof, but keeps drag-out-to-
+       desktop and the obvious right-click "Save as" off the menu. */
+    -webkit-user-drag: none;
+    user-select: none;
   }
+  .post-media video { max-height: 480px; background: #000; }
   .post-link {
     display: inline-block;
     margin-top: 0.6rem;
@@ -93,6 +132,37 @@
     text-transform: uppercase;
   }
   .post-link:hover { border-color: var(--red-bright); background: rgba(204,0,0,0.1); }
+
+  .post-reactions {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 1rem;
+    padding-top: 0.7rem;
+    border-top: 1px dashed var(--red-dim);
+  }
+  .reaction-form { display: inline-block; }
+  .reaction-btn {
+    font-family: 'Share Tech Mono', monospace;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--dim-white);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.82rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .reaction-btn:hover { border-color: var(--red-bright); color: var(--red-bright); background: rgba(204,0,0,0.1); }
+  .reaction-btn.active {
+    border-color: var(--red-bright);
+    color: var(--red-bright);
+    background: rgba(204,0,0,0.15);
+    text-shadow: 0 0 6px var(--red);
+  }
+
   .empty-feed { color: var(--dim-white); font-size: 0.85rem; letter-spacing: 1px; }
 </style>
 {% endblock %}
@@ -103,7 +173,7 @@
 
 {% if can_post %}
 <div class="card composer">
-  <div class="composer-label">// New Transmission (Director Only)</div>
+  <div class="composer-label">// New Transmission (Director/Developer Only)</div>
   <form method="post" enctype="multipart/form-data" novalidate id="post-form">
     {% csrf_token %}
 
@@ -119,21 +189,24 @@
     {{ form.body }}
     {% for error in form.body.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
 
-    <label for="{{ form.image.id_for_label }}">Image</label>
-    {{ form.image }}
-    {% for error in form.image.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+    <div class="composer-section">
+      <div class="composer-section-title">// Attachment</div>
+      <label for="{{ form.media.id_for_label }}">Image</label>
+      {{ form.media }}
+      <span class="field-help">{{ form.media.help_text }}</span>
+      {% for error in form.media.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+    </div>
 
-    <label for="{{ form.video_url.id_for_label }}">Video (YouTube or direct .mp4/.webm link)</label>
-    {{ form.video_url }}
-    {% for error in form.video_url.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+    <div class="composer-section">
+      <div class="composer-section-title">// Link</div>
+      <label for="{{ form.link_url.id_for_label }}">Link <span class="field-help" style="display:inline; text-transform:none;">(can point to footage hosted elsewhere)</span></label>
+      {{ form.link_url }}
+      {% for error in form.link_url.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
 
-    <label for="{{ form.link_url.id_for_label }}">Link</label>
-    {{ form.link_url }}
-    {% for error in form.link_url.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
-
-    <label for="{{ form.link_label.id_for_label }}">Link text <span class="field-help" style="text-transform:none;">(optional)</span></label>
-    {{ form.link_label }}
-    {% for error in form.link_label.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+      <label for="{{ form.link_label.id_for_label }}">Link text <span class="field-help" style="display:inline; text-transform:none;">(optional)</span></label>
+      {{ form.link_label }}
+      {% for error in form.link_label.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+    </div>
 
     {% for error in form.non_field_errors %}<div class="field-error">{{ error }}</div>{% endfor %}
 
@@ -194,7 +267,7 @@
 
 {% if posts %}
   {% for post in posts %}
-  <div class="card post-card">
+  <div class="card post-card" id="post-{{ post.id }}">
     <div class="post-meta">
       <span class="post-author">// {{ post.author.username }}</span>
       <span class="post-date">{{ post.created_at|date:"Y-m-d H:i" }}</span>
@@ -202,18 +275,14 @@
 
     {% if post.body %}<div class="post-body">{{ post.body|safe }}</div>{% endif %}
 
-    {% if post.image or post.video_url or post.link_url %}
+    {% if post.media or post.link_url %}
     <div class="post-media">
-      {% if post.image %}<img src="{{ post.image.url }}" alt="">{% endif %}
-
-      {% if post.video_url %}
-        <div class="post-video">
-          {% if post.video_embed_url %}
-            <iframe src="{{ post.video_embed_url }}" title="" allowfullscreen></iframe>
-          {% else %}
-            <video src="{{ post.video_url }}" controls></video>
-          {% endif %}
-        </div>
+      {% if post.media %}
+        {% if post.media_is_video %}
+          <video src="{{ post.media.url }}" controls controlslist="nodownload noremoteplayback" disablepictureinpicture oncontextmenu="return false"></video>
+        {% else %}
+          <img src="{{ post.media.url }}" alt="" oncontextmenu="return false" draggable="false">
+        {% endif %}
       {% endif %}
 
       {% if post.link_url %}
@@ -221,6 +290,26 @@
       {% endif %}
     </div>
     {% endif %}
+
+    <div class="post-reactions">
+      {% if user.is_authenticated %}
+        <form class="reaction-form" method="post" action="{% url 'forum_react' post.id %}">
+          {% csrf_token %}
+          <input type="hidden" name="value" value="like">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}#post-{{ post.id }}">
+          <button type="submit" class="reaction-btn{% if my_reactions|dict_get:post.id == 'like' %} active{% endif %}">👍 {{ post.like_total }}</button>
+        </form>
+        <form class="reaction-form" method="post" action="{% url 'forum_react' post.id %}">
+          {% csrf_token %}
+          <input type="hidden" name="value" value="dislike">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}#post-{{ post.id }}">
+          <button type="submit" class="reaction-btn{% if my_reactions|dict_get:post.id == 'dislike' %} active{% endif %}">👎 {{ post.dislike_total }}</button>
+        </form>
+      {% else %}
+        <span class="reaction-btn" style="cursor:default;">👍 {{ post.like_total }}</span>
+        <span class="reaction-btn" style="cursor:default;">👎 {{ post.dislike_total }}</span>
+      {% endif %}
+    </div>
   </div>
   {% endfor %}
 {% else %}

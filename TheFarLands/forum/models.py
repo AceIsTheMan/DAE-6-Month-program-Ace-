@@ -1,31 +1,23 @@
-from urllib.parse import parse_qs, urlparse
-
 from django.conf import settings
+from django.core.validators import FileExtensionValidator
 from django.db import models
 
-
-def _youtube_id(url):
-    """Pull the video id out of a youtube.com/watch, youtu.be/, or
-    youtube.com/embed/ URL, or None if it isn't a YouTube link."""
-    parsed = urlparse(url)
-    host = parsed.netloc.lower().replace('www.', '')
-    if host == 'youtu.be':
-        return parsed.path.lstrip('/').split('/')[0] or None
-    if host.endswith('youtube.com'):
-        if parsed.path == '/watch':
-            values = parse_qs(parsed.query).get('v')
-            return values[0] if values else None
-        if parsed.path.startswith('/embed/'):
-            return parsed.path[len('/embed/'):].split('/')[0] or None
-    return None
+# Extensions the "Image" upload accepts. The composer label stays "Image"
+# (see forum.forms.PostForm / templates/forum/index.html) but the field
+# takes either an image or a short video uploaded straight from the
+# poster's computer - there's no separate "video" upload.
+IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+VIDEO_EXTENSIONS = ['mp4', 'webm', 'mov', 'ogg']
+MEDIA_EXTENSIONS = IMAGE_EXTENSIONS + VIDEO_EXTENSIONS
 
 
 class Post(models.Model):
     """
     A forum post - currently a one-way broadcast board: posting is
     restricted to the Director role (see forum.views.forum_index_view
-    and accounts.models.CustomUser.is_director), everyone else just reads
-    the feed.
+    and accounts.models.CustomUser.is_director), the site's sole
+    Director/Developer account. Everyone else just reads the feed and
+    can react with a like or dislike (see PostReaction below).
     """
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='forum_posts')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -35,13 +27,20 @@ class Post(models.Model):
     # through, redacted, highlight, line breaks, and plain links.
     body = models.TextField(blank=True)
 
-    image = models.ImageField(upload_to='forum_posts/images/', blank=True, null=True)
+    # Uploaded straight from the poster's computer: an image or a short
+    # video file. Still labeled "Image" in the composer to keep the form
+    # simple, but accepts either - see media_is_video below for which one
+    # a given post has.
+    media = models.FileField(
+        upload_to='forum_posts/media/',
+        blank=True,
+        null=True,
+        validators=[FileExtensionValidator(allowed_extensions=MEDIA_EXTENSIONS)],
+    )
 
-    # Video is a URL, not an upload - keeps this simple (YouTube links or
-    # a direct .mp4/.webm link) without needing to store/transcode large
-    # files server-side.
-    video_url = models.URLField(blank=True)
-
+    # A general link, not restricted to any one site - may point to
+    # footage hosted elsewhere (YouTube, etc.) or anything worth sharing.
+    # Always rendered as a plain outbound button, never embedded.
     link_url = models.URLField(blank=True)
     link_label = models.CharField(max_length=200, blank=True)
 
@@ -52,13 +51,43 @@ class Post(models.Model):
         return f'Post #{self.pk} by {self.author}'
 
     @property
-    def youtube_id(self):
-        return _youtube_id(self.video_url) if self.video_url else None
+    def media_is_video(self):
+        """Whether `media` should render with <video> instead of <img>."""
+        if not self.media:
+            return False
+        ext = self.media.name.rsplit('.', 1)[-1].lower()
+        return ext in VIDEO_EXTENSIONS
 
     @property
-    def video_embed_url(self):
-        """A YouTube URL safe to embed in an <iframe> (built from an id we
-        extracted ourselves, never the raw stored URL), or None - in which
-        case video_url is rendered as a direct <video src> instead."""
-        vid = self.youtube_id
-        return f'https://www.youtube.com/embed/{vid}' if vid else None
+    def like_count(self):
+        return self.reactions.filter(value=PostReaction.LIKE).count()
+
+    @property
+    def dislike_count(self):
+        return self.reactions.filter(value=PostReaction.DISLIKE).count()
+
+
+class PostReaction(models.Model):
+    """
+    One like or dislike from one user on one post (see
+    forum.views.forum_react_view). A user has at most one reaction per
+    post: reacting the same way again clears it, reacting the other way
+    flips it. Open to anyone signed in - reacting isn't Director-gated,
+    only posting is.
+    """
+    LIKE = 'like'
+    DISLIKE = 'dislike'
+    VALUE_CHOICES = [(LIKE, 'Like'), (DISLIKE, 'Dislike')]
+
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='reactions')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='forum_reactions')
+    value = models.CharField(max_length=7, choices=VALUE_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['post', 'user'], name='one_reaction_per_user_per_post'),
+        ]
+
+    def __str__(self):
+        return f'{self.user} {self.value}s Post #{self.post_id}'
