@@ -1,0 +1,127 @@
+<!-- Shared by forum/index.html (new post) and forum/edit_post.html (edit) -
+     the composer/attachment form styling, kept in one place so the two
+     forms can never drift apart. -->
+<style>
+  .composer { margin-bottom: 2rem; }
+  .composer-label {
+    font-family: 'VT323', monospace;
+    color: var(--red-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: 1.1rem;
+    margin-bottom: 0.8rem;
+  }
+  .composer-toolbar { display: flex; gap: 0.4rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
+  .composer-toolbar button {
+    font-family: 'Share Tech Mono', monospace;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--dim-white);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .composer-toolbar button:hover {
+    border-color: var(--red-bright);
+    color: var(--red-bright);
+    background: rgba(204,0,0,0.1);
+  }
+  .composer-toolbar button.tb-bold { font-weight: bold; }
+  .composer-toolbar button.tb-underline { text-decoration: underline; }
+  .composer-toolbar button.tb-strike { text-decoration: line-through; }
+  .composer-body {
+    width: 100%;
+    min-height: 120px;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--white);
+    padding: 0.8rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    resize: vertical;
+  }
+  .composer-body:focus { outline: none; border-color: var(--red-bright); }
+  .composer-syntax-help {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--dim-white);
+    letter-spacing: 0;
+    margin-top: 0.4rem;
+  }
+  .composer-syntax-help code {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--silver);
+  }
+
+  /* Composer sections - one fieldset per kind of attachment, so the form
+     reads as a short, clearly labeled stack instead of a flat pile of
+     inputs. */
+  .composer-section {
+    margin-top: 1.2rem;
+    padding-top: 1rem;
+    border-top: 1px dashed var(--red-dim);
+  }
+  .composer-section-title {
+    font-family: 'VT323', monospace;
+    color: var(--dim-white);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+  }
+  .composer-section label {
+    display: block;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--dim-white);
+    margin: 0.6rem 0 0.3rem;
+  }
+  .composer-section .field-help {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--dim-white);
+    text-transform: none;
+    letter-spacing: 0;
+    margin-top: 0.2rem;
+  }
+
+  .composer-preview {
+    margin-top: 0.6rem;
+    border: 1px dashed var(--red-dim);
+    padding: 0.6rem;
+  }
+  .composer-preview img, .composer-preview video {
+    display: block;
+    max-width: 100%;
+    max-height: 320px;
+    border: 1px solid var(--red-dim);
+  }
+  .composer-preview-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-top: 0.4rem;
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    color: var(--dim-white);
+  }
+  .composer-preview-meta span { overflow-wrap: anywhere; }
+  #media-preview-clear {
+    font-family: 'Share Tech Mono', monospace;
+    background: none;
+    border: none;
+    color: var(--dim-white);
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    padding: 0;
+    white-space: nowrap;
+  }
+  #media-preview-clear:hover { color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
+</style>

@@ -22,6 +22,11 @@ class Post(models.Model):
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='forum_posts')
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # Set only by forum.views.forum_edit_post_view, never shown to anyone
+    # but the Director (see templates/forum/index.html) - an edited post
+    # looks identical to an unedited one for every other role.
+    edited_at = models.DateTimeField(null=True, blank=True)
+
     # Rich text body - sanitized HTML (see forum.sanitize.sanitize_post_html),
     # limited to the composer's own formatting: bold, underline, strike-
     # through, redacted, highlight, line breaks, and plain links.
@@ -91,3 +96,26 @@ class PostReaction(models.Model):
 
     def __str__(self):
         return f'{self.user} {self.value}s Post #{self.post_id}'
+
+
+class Comment(models.Model):
+    """
+    A comment on a Post. Open to every signed-in account except guest
+    ("Hacker") accounts - see forum.views._can_comment - unlike reactions,
+    which are open to any signed-in user. Plain text, run through the
+    same marker-based formatting as post bodies (see forum.sanitize), no
+    media/link attachments.
+    """
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='forum_comments')
+    body = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        # Oldest first - the comment section loads forward in time as you
+        # scroll and ask for more (see forum.views.forum_comments_view),
+        # like reading a conversation from the start.
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'Comment #{self.pk} by {self.author} on Post #{self.post_id}'
