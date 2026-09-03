@@ -1,7 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
-from django.http import HttpResponseNotAllowed
+from django.http import HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -9,7 +9,7 @@ from django.utils.dateparse import parse_date
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from .forms import CommentForm, PostForm
-from .models import Post, PostReaction
+from .models import Comment, Post, PostReaction
 
 COMMENTS_PAGE_SIZE = 5
 
@@ -193,6 +193,7 @@ def forum_comments_view(request, post_id):
         'has_more': next_offset < total,
         'next_offset': next_offset,
         'post_id': post.id,
+        'can_delete_comments': request.user.is_authenticated and request.user.is_director,
     })
 
 
@@ -220,3 +221,23 @@ def forum_add_comment_view(request, post_id):
     ):
         return redirect(next_url)
     return redirect('forum')
+
+
+@login_required
+def forum_delete_comment_view(request, comment_id):
+    """
+    Delete a comment - Director-only, and unlike everything else the
+    Director can moderate, this covers every comment including their own
+    (see _can_comment for who may add one in the first place). AJAX-only:
+    comments are loaded into the page without a full reload, so deleting
+    one removes it from the DOM in place instead of redirecting - see the
+    script in templates/forum/index.html.
+    """
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    if not request.user.is_director:
+        raise PermissionDenied('Only the Director can delete comments.')
+
+    comment = get_object_or_404(Comment, pk=comment_id)
+    comment.delete()
+    return HttpResponse(status=204)

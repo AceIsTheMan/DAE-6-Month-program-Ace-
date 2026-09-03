@@ -9,4 +9,5 @@ urlpatterns = [
     path('edit/<int:post_id>/', views.forum_edit_post_view, name='forum_edit_post'),
     path('<int:post_id>/comments/', views.forum_comments_view, name='forum_comments'),
     path('<int:post_id>/comments/add/', views.forum_add_comment_view, name='forum_add_comment'),
+    path('comments/delete/<int:comment_id>/', views.forum_delete_comment_view, name='forum_delete_comment'),
 ]

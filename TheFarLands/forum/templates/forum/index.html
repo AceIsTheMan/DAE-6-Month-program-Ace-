@@ -150,6 +150,14 @@
     gap: 0.4rem;
   }
   .reaction-btn:hover { border-color: var(--red-bright); color: var(--red-bright); background: rgba(204,0,0,0.1); }
+  /* Plain text glyphs (not color emoji) so they can actually be recolored -
+     a red "digital readout" face instead of the default thumbs emoji. */
+  .reaction-icon {
+    color: var(--red-bright);
+    text-shadow: 0 0 4px var(--red);
+    font-size: 1rem;
+    line-height: 1;
+  }
   .reaction-btn.active {
     border-color: var(--red-bright);
     color: var(--red-bright);
@@ -199,9 +207,30 @@
   .comment-submit-btn:hover { background: var(--red); }
   .comment-list { display: flex; flex-direction: column; gap: 0.7rem; }
   .comment-item { padding: 0.6rem 0.8rem; border-left: 2px solid var(--red-dim); background: rgba(204,0,0,0.05); }
-  .comment-meta { display: flex; gap: 0.6rem; align-items: baseline; margin-bottom: 0.3rem; }
+  .comment-meta { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.3rem; }
+  .comment-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--red-dim);
+    flex-shrink: 0;
+  }
   .comment-author { color: var(--red-bright); font-size: 0.85rem; letter-spacing: 1px; }
   .comment-date { color: var(--dim-white); font-size: 0.68rem; letter-spacing: 1px; }
+  .comment-delete-btn {
+    margin-left: auto;
+    font-family: 'Share Tech Mono', monospace;
+    background: none;
+    border: none;
+    color: var(--dim-white);
+    font-size: 0.68rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+  }
+  .comment-delete-btn:hover { color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
   .comment-body { color: var(--silver); font-size: 0.85rem; line-height: 1.5; overflow-wrap: anywhere; }
   .comment-empty { color: var(--dim-white); font-size: 0.8rem; letter-spacing: 1px; }
   .comment-load-more {
@@ -304,24 +333,25 @@
           {% csrf_token %}
           <input type="hidden" name="value" value="like">
           <input type="hidden" name="next" value="{{ request.get_full_path }}#post-{{ post.id }}">
-          <button type="submit" class="reaction-btn{% if my_reactions|dict_get:post.id == 'like' %} active{% endif %}">👍 {{ post.like_total }}</button>
+          <button type="submit" class="reaction-btn{% if my_reactions|dict_get:post.id == 'like' %} active{% endif %}"><span class="reaction-icon">☺</span> {{ post.like_total }}</button>
         </form>
         <form class="reaction-form" method="post" action="{% url 'forum_react' post.id %}">
           {% csrf_token %}
           <input type="hidden" name="value" value="dislike">
           <input type="hidden" name="next" value="{{ request.get_full_path }}#post-{{ post.id }}">
-          <button type="submit" class="reaction-btn{% if my_reactions|dict_get:post.id == 'dislike' %} active{% endif %}">👎 {{ post.dislike_total }}</button>
+          <button type="submit" class="reaction-btn{% if my_reactions|dict_get:post.id == 'dislike' %} active{% endif %}"><span class="reaction-icon">☹</span> {{ post.dislike_total }}</button>
         </form>
       {% else %}
-        <span class="reaction-btn" style="cursor:default;">👍 {{ post.like_total }}</span>
-        <span class="reaction-btn" style="cursor:default;">👎 {{ post.dislike_total }}</span>
+        <span class="reaction-btn" style="cursor:default;"><span class="reaction-icon">☺</span> {{ post.like_total }}</span>
+        <span class="reaction-btn" style="cursor:default;"><span class="reaction-icon">☹</span> {{ post.dislike_total }}</span>
       {% endif %}
     </div>
 
     {% if can_comment %}
     <div class="comment-toggle-row">
       <button type="button" class="comment-toggle-btn" data-post="{{ post.id }}">
-        Comment section{% if post.comment_total %} ({{ post.comment_total }}){% endif %}
+        Comment section
+        <span class="comment-count" id="comment-count-{{ post.id }}">{% if post.comment_total %}({{ post.comment_total }}){% endif %}</span>
         <span class="comment-toggle-icon">[+]</span>
       </button>
     </div>
@@ -346,13 +376,23 @@
     var toggles = document.querySelectorAll('.comment-toggle-btn');
     if (!toggles.length) return;
 
-    // '/forum/0/comments/' - the '0' stands in for whatever post id we
-    // actually need, swapped in below. Keeps the JS from hardcoding the
-    // URL layout (see forum/urls.py).
+    // '/forum/0/comments/' and '/forum/comments/delete/0/' - the '0'
+    // stands in for whatever id we actually need, swapped in below. Keeps
+    // the JS from hardcoding the URL layout (see forum/urls.py).
     var urlTemplate = "{% url 'forum_comments' 0 %}";
+    var deleteUrlTemplate = "{% url 'forum_delete_comment' 0 %}";
 
     function commentsUrl(postId, offset) {
       return urlTemplate.replace('/0/', '/' + postId + '/') + '?offset=' + offset;
+    }
+
+    function deleteCommentUrl(commentId) {
+      return deleteUrlTemplate.replace('/0/', '/' + commentId + '/');
+    }
+
+    function getCookie(name) {
+      var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? decodeURIComponent(match.pop()) : '';
     }
 
     function loadComments(postId, offset, list) {
@@ -396,6 +436,34 @@
       var list = document.getElementById('comment-list-' + postId);
       btn.remove();
       loadComments(postId, offset, list);
+    });
+
+    // Director-only [DELETE] on each comment (see can_delete_comments in
+    // forum.views.forum_comments_view) - also delegated, same reason.
+    // Removes the comment in place and decrements the visible count,
+    // no page reload.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.comment-delete-btn');
+      if (!btn) return;
+      if (!confirm('Delete this comment? This can\'t be undone.')) return;
+
+      var commentId = btn.getAttribute('data-comment');
+      var postId = btn.getAttribute('data-post');
+      fetch(deleteCommentUrl(commentId), {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      }).then(function (r) {
+        if (!r.ok) return;
+        var item = document.getElementById('comment-' + commentId);
+        if (item) item.remove();
+
+        var countEl = document.getElementById('comment-count-' + postId);
+        if (countEl) {
+          var current = parseInt((countEl.textContent.match(/\d+/) || [0])[0], 10) || 0;
+          var next = Math.max(0, current - 1);
+          countEl.textContent = next > 0 ? '(' + next + ')' : '';
+        }
+      });
     });
   })();
 </script>
