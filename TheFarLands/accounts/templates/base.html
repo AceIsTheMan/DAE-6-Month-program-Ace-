@@ -95,11 +95,21 @@
     transition: all 0.2s;
     position: relative;
   }
-  .nav-links li a:hover {
+  .nav-links li a:hover,
+  .nav-links li a.active {
     color: var(--red-bright);
     border-color: var(--red);
     background: rgba(204,0,0,0.1);
     text-shadow: 0 0 6px var(--red);
+  }
+  .nav-links li a.active::after {
+    content: '◆';
+    position: absolute;
+    bottom: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.5rem;
+    color: var(--red-bright);
   }
   /* Auth links (LOGIN / REGISTER / PROFILE / LOGOUT) get their own
      treatment: a thin divider to set them apart, and REGISTER as the
@@ -252,11 +262,11 @@
   <a href="{% url 'home' %}" class="nav-logo">{% if user.is_authenticated and user.profile_picture %}<img src="{{ user.profile_picture.url }}" alt="" class="nav-avatar">{% endif %}// {% if user.is_authenticated %}{{ user.username }}{% else %}UnknownUser{% endif %}</a>
   <ul class="nav-links">
     <li><a href="{% url 'home' %}">HOME</a></li>
-    <li><a href="{% url 'forum' %}">FORUM</a></li>
+    <li><a href="{% url 'forum' %}"{% if request.resolver_match.url_name == 'forum' %} class="active"{% endif %}>FORUM</a></li>
     <li><a href="{% url 'home' %}?page=updates">UPDATES</a></li>
     <li><a href="{% url 'home' %}?page=socials">SOCIALS &amp; SUPPORT</a></li>
     {% if user.is_authenticated %}
-    <li class="nav-auth-link"><a href="{% url 'profile' %}">PROFILE</a></li>
+    <li class="nav-auth-link"><a href="{% url 'profile' %}"{% if request.resolver_match.url_name == 'profile' or request.resolver_match.url_name == 'user_profile' %} class="active"{% endif %}>PROFILE</a></li>
     <li class="nav-auth-link">
       <form action="{% url 'logout' %}" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you WANT to logout?');">
         {% csrf_token %}

@@ -76,3 +76,42 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.username
+
+
+class GuestArchive(models.Model):
+    """
+    A frozen snapshot of a guest ("Hacker") account, taken the moment
+    before accounts.middleware.GuestExpiryMiddleware deletes it for real
+    once its 7-day trial runs out. The account itself is gone - username
+    freed up, login dead, everything CASCADE-linked to it removed (their
+    reactions, etc.) - but this row is the record that they existed:
+    who they were, when they were here, and how much they did with it.
+
+    Never updated after creation, and never linked back to a live
+    CustomUser (there isn't one anymore) - purely historical, viewable in
+    the Django admin (see accounts.admin.GuestArchiveAdmin).
+    """
+    original_user_id = models.PositiveIntegerField(
+        help_text='The id the account had before it was deleted - not a live foreign key.'
+    )
+    username = models.CharField(max_length=150)
+    alias = models.CharField(max_length=12, blank=True)
+    rank = models.CharField(max_length=50)
+    bio = models.TextField(max_length=500, blank=True)
+    # Just the storage path, not a live ImageField - Django never deletes
+    # the actual file on model delete, so the picture itself survives on
+    # disk even though nothing else points to it anymore. This is the
+    # pointer back to it.
+    profile_picture_path = models.CharField(max_length=255, blank=True)
+    date_joined = models.DateTimeField()
+    last_login = models.DateTimeField(null=True, blank=True)
+    reaction_count = models.PositiveIntegerField(
+        default=0, help_text='How many forum reactions they had at the moment of expiry.'
+    )
+    archived_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-archived_at']
+
+    def __str__(self):
+        return f'{self.username} (expired {self.archived_at:%Y-%m-%d})'
