@@ -54,14 +54,20 @@ class CommentForm(forms.ModelForm):
         widgets = {
             'body': forms.Textarea(attrs={
                 'class': 'composer-body comment-input',
-                'placeholder': 'Write a comment... **bold** __underline__ ~~crossed~~ ||redacted|| ==highlight==',
+                'placeholder': 'Write a comment...',
                 'rows': 2,
                 'maxlength': 2000,
             }),
         }
 
     def clean_body(self):
+        """Only validate here - left un-sanitized on purpose. Whether the
+        **bold**-style markers get turned into real formatting depends on
+        the comment's author (Director-only - see forum.views.
+        forum_add_comment_view), which this form doesn't know; the view
+        calls forum.sanitize.sanitize_post_html itself once it does,
+        before ever saving this to the database."""
         raw = self.cleaned_data.get('body', '')
         if not raw.strip():
             raise forms.ValidationError('Comment cannot be empty.')
-        return sanitize_post_html(raw)
+        return raw

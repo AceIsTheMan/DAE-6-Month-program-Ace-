@@ -94,15 +94,16 @@
   .delete-btn:hover, .edit-btn:hover { color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
   .post-card { margin-bottom: 1.5rem; }
   .post-body { line-height: 1.7; color: var(--silver); overflow-wrap: anywhere; }
-  .post-body .redacted-text {
+  .post-body .redacted-text, .comment-body .redacted-text {
     background: var(--red-bright);
     color: var(--red-bright);
     padding: 0 4px;
     cursor: help;
     transition: color 0.15s;
   }
-  .post-body .redacted-text:hover, .post-body .redacted-text:focus { color: var(--white); }
-  .post-body .highlight-text { background: rgba(255,26,26,0.35); color: var(--white); padding: 0 3px; }
+  .post-body .redacted-text:hover, .post-body .redacted-text:focus,
+  .comment-body .redacted-text:hover, .comment-body .redacted-text:focus { color: var(--white); }
+  .post-body .highlight-text, .comment-body .highlight-text { background: rgba(255,26,26,0.35); color: var(--white); padding: 0 3px; }
   .post-media { margin-top: 1rem; }
   .post-media img, .post-media video {
     max-width: 100%;
@@ -309,7 +310,7 @@
       </span>
     </div>
 
-    {% if post.body %}<div class="post-body">{{ post.body|highlight:search_query|safe }}</div>{% endif %}
+    {% if post.body %}<div class="post-body">{{ post.body|redact_for_viewer:can_post|highlight:search_query|safe }}</div>{% endif %}
 
     {% if post.media or post.link_url %}
     <div class="post-media">

@@ -1,6 +1,7 @@
 <!-- One page of a post's comments - rendered by forum.views.forum_comments_view
      and fetched/appended by the comment section script in
      templates/forum/index.html. Never rendered as a full page. -->
+{% load forum_extras %}
 {% for c in comments %}
 <div class="comment-item" id="comment-{{ c.id }}">
   <div class="comment-meta">
@@ -11,7 +12,7 @@
       <button type="button" class="comment-delete-btn" data-comment="{{ c.id }}" data-post="{{ post_id }}" title="Delete comment">[ DELETE ]</button>
     {% endif %}
   </div>
-  <div class="comment-body">{{ c.body|safe }}</div>
+  <div class="comment-body">{{ c.body|redact_for_viewer:can_delete_comments|safe }}</div>
 </div>
 {% endfor %}
 {% if has_more %}

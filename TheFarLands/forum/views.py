@@ -10,6 +10,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 
 from .forms import CommentForm, PostForm
 from .models import Comment, Post, PostReaction
+from .sanitize import sanitize_post_html
 
 COMMENTS_PAGE_SIZE = 5
 
@@ -193,6 +194,9 @@ def forum_comments_view(request, post_id):
         'has_more': next_offset < total,
         'next_offset': next_offset,
         'post_id': post.id,
+        # Also doubles as "is this viewer the Director" for
+        # _comments_page.html's redact_for_viewer filter - both gates are
+        # the exact same check, so one flag covers both.
         'can_delete_comments': request.user.is_authenticated and request.user.is_director,
     })
 
@@ -201,7 +205,13 @@ def forum_comments_view(request, post_id):
 def forum_add_comment_view(request, post_id):
     """Post a comment - any signed-in account except guest ("Hacker")
     accounts, see _can_comment. Same next-url redirect pattern as
-    forum_react_view."""
+    forum_react_view.
+
+    The **bold**-style markers (see forum.sanitize) only turn into real
+    formatting for the Director - no new UI for this, everyone else's
+    comment is still escaped for safety, just without the marker step, so
+    their ** stays literal text instead of becoming <b>.
+    """
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
     if not _can_comment(request.user):
@@ -213,6 +223,7 @@ def forum_add_comment_view(request, post_id):
         comment = form.save(commit=False)
         comment.post = post
         comment.author = request.user
+        comment.body = sanitize_post_html(form.cleaned_data['body'], apply_markers=request.user.is_director)
         comment.save()
 
     next_url = request.POST.get('next')

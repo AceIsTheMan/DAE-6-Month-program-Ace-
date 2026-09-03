@@ -46,3 +46,21 @@ def highlight(html_text, query):
             lambda m: '<mark class="search-hit">' + m.group(0) + '</mark>', part
         )
     return mark_safe(''.join(parts))
+
+
+# Matches exactly what forum.sanitize.sanitize_post_html emits for a
+# ||redacted|| marker - safe to match non-greedily since the inner text
+# was HTML-escaped going in, so it can never contain a literal </span>.
+_REDACTED_SPAN_RE = re.compile(r'(<span class="redacted-text">).*?(</span>)')
+
+
+@register.filter
+def redact_for_viewer(html_text, is_director):
+    """Blank out the real text of every ||redacted|| span (see
+    forum.sanitize) for everyone except the Director - swapped for the
+    literal word CLASSIFIED, so there's nothing to read even by viewing
+    page source or copying the text. The Director's own page load is
+    left untouched: same markup, same hover-to-reveal behavior as always."""
+    if not html_text or is_director:
+        return html_text
+    return _REDACTED_SPAN_RE.sub(r'\1CLASSIFIED\2', html_text)

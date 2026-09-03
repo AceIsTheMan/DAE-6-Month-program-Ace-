@@ -1,19 +1,26 @@
 """
-Turns a forum post body into safe HTML ready to render with the `safe`
-filter.
+Turns a forum post/comment body into safe HTML ready to render with the
+`safe` filter.
 
-The composer (see templates/forum/index.html) is a plain <textarea> now,
-not a contenteditable rich-text box - what the poster types is exactly
-what gets saved, so there's no pasted HTML to allowlist. Instead: the
-whole body is HTML-escaped first (so no tag typed or pasted in ever
-reaches the page as markup), then a small set of inline markers are
-turned into the matching safe tag. A marker never crosses a line break.
+The composer and comment box (see templates/forum/index.html) are plain
+<textarea>s - what's typed is exactly what gets saved, so there's no
+pasted HTML to allowlist. Instead: the whole body is HTML-escaped first
+(so no tag typed or pasted in ever reaches the page as markup), then a
+small set of inline markers are turned into the matching safe tag. A
+marker never crosses a line break.
 
     **bold**            -> <b>bold</b>
     __underline__        -> <u>underline</u>
     ~~crossed out~~      -> <s>crossed out</s>
     ||redacted||         -> <span class="redacted-text">redacted</span>
     ==highlighted==      -> <span class="highlight-text">highlighted</span>
+
+Posting is Director-only already, so post bodies always get the markers.
+Comments are open to more roles (see forum.views._can_comment), but the
+markers themselves stay Director-only there too - `apply_markers=False`
+(see forum.views.forum_add_comment_view) skips that step entirely, so
+anyone else's ** stays literal, plain, escaped text instead of turning
+into <b>.
 """
 import re
 from html import escape
@@ -27,13 +34,14 @@ _MARKERS = [
 ]
 
 
-def sanitize_post_html(raw_text):
-    """Escape raw_text, apply the marker substitutions above, and turn
-    newlines into <br>."""
+def sanitize_post_html(raw_text, apply_markers=True):
+    """Escape raw_text, apply the marker substitutions above (unless
+    apply_markers=False), and turn newlines into <br>."""
     if not raw_text:
         return ''
     text = raw_text.replace('\r\n', '\n').replace('\r', '\n')
     text = escape(text)
-    for pattern, replacement in _MARKERS:
-        text = pattern.sub(replacement, text)
+    if apply_markers:
+        for pattern, replacement in _MARKERS:
+            text = pattern.sub(replacement, text)
     return text.replace('\n', '<br>')
