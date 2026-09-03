@@ -1,0 +1,15 @@
+<!-- One page of a post's comments - rendered by forum.views.forum_comments_view
+     and fetched/appended by the comment section script in
+     templates/forum/index.html. Never rendered as a full page. -->
+{% for c in comments %}
+<div class="comment-item" id="comment-{{ c.id }}">
+  <div class="comment-meta">
+    <span class="comment-author">{{ c.author.username }}</span>
+    <span class="comment-date">{{ c.created_at|date:"m/d/Y g:i A" }}</span>
+  </div>
+  <div class="comment-body">{{ c.body|safe }}</div>
+</div>
+{% endfor %}
+{% if has_more %}
+<button type="button" class="comment-load-more" data-post="{{ post_id }}" data-offset="{{ next_offset }}">[ + ] Load 5 more</button>
+{% endif %}

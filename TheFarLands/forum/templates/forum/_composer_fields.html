@@ -1,0 +1,47 @@
+<!-- Shared by forum/index.html (new post) and forum/edit_post.html (edit).
+     Expects a `form` (forum.forms.PostForm) in context and to be included
+     inside a <form method="post" enctype="multipart/form-data"> that has
+     already emitted {% csrf_token %}. -->
+<div class="composer-toolbar">
+  <button type="button" class="tb-bold" data-before="**" data-after="**">Bold</button>
+  <button type="button" class="tb-underline" data-before="__" data-after="__">Underline</button>
+  <button type="button" class="tb-strike" data-before="~~" data-after="~~">Cross Out</button>
+  <button type="button" data-before="||" data-after="||">Redacted</button>
+  <button type="button" data-before="==" data-after="==">Highlight</button>
+</div>
+
+{{ form.body }}
+<span class="composer-syntax-help">
+  <code>**bold**</code> &nbsp; <code>__underline__</code> &nbsp; <code>~~crossed~~</code> &nbsp;
+  <code>||redacted||</code> &nbsp; <code>==highlight==</code> - select text and click a button above, or type the markers directly.
+</span>
+{% for error in form.body.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+<div class="composer-section">
+  <div class="composer-section-title">// Attachment</div>
+  <label for="{{ form.media.id_for_label }}">Image</label>
+  {{ form.media }}
+  <span class="field-help">{{ form.media.help_text }}</span>
+  {% for error in form.media.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+  <div id="media-preview" class="composer-preview" hidden>
+    <img id="media-preview-img" alt="" hidden>
+    <video id="media-preview-video" controls hidden></video>
+    <div class="composer-preview-meta">
+      <span id="media-preview-name"></span>
+      <button type="button" id="media-preview-clear">[ REMOVE ]</button>
+    </div>
+  </div>
+</div>
+
+<div class="composer-section">
+  <div class="composer-section-title">// Link</div>
+  <label for="{{ form.link_url.id_for_label }}">Link <span class="field-help" style="display:inline; text-transform:none;">(can point to footage hosted elsewhere)</span></label>
+  {{ form.link_url }}
+  {% for error in form.link_url.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+  <label for="{{ form.link_label.id_for_label }}">Link text <span class="field-help" style="display:inline; text-transform:none;">(optional)</span></label>
+  {{ form.link_label }}
+  {% for error in form.link_label.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+</div>
+
+{% for error in form.non_field_errors %}<div class="field-error">{{ error }}</div>{% endfor %}
