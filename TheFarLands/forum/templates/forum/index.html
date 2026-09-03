@@ -4,96 +4,64 @@
 {% block title %}FORUM // The Far Lands{% endblock %}
 
 {% block extra_head %}
+{% include "forum/_composer_style.html" %}
 <style>
-  .composer { margin-bottom: 2rem; }
-  .composer-label {
-    font-family: 'VT323', monospace;
-    color: var(--red-dim);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    font-size: 1.1rem;
-    margin-bottom: 0.8rem;
+  .section-label-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
   }
-  .composer-toolbar { display: flex; gap: 0.4rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
-  .composer-toolbar button {
-    font-family: 'Share Tech Mono', monospace;
+  .forum-search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+  }
+  .forum-search input[type="text"] {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    min-width: 160px;
+  }
+  .forum-search .search-date-group {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--dim-white);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .forum-search input[type="date"], .forum-search select {
     background: var(--black);
     border: 1px solid var(--red-dim);
-    color: var(--dim-white);
-    padding: 0.35rem 0.8rem;
+    color: var(--white);
+    padding: 0.35rem 0.5rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+  }
+  .forum-search input[type="date"]:focus, .forum-search select:focus { outline: none; border-color: var(--red-bright); }
+  .forum-search button, .forum-search a.search-clear {
+    font-family: 'Share Tech Mono', monospace;
+    background: var(--red-dim);
+    border: 1px solid var(--red-bright);
+    color: var(--white);
+    padding: 0.4rem 0.8rem;
     font-size: 0.78rem;
     letter-spacing: 1px;
     text-transform: uppercase;
     cursor: pointer;
-    transition: all 0.2s;
+    text-decoration: none;
   }
-  .composer-toolbar button:hover {
-    border-color: var(--red-bright);
-    color: var(--red-bright);
-    background: rgba(204,0,0,0.1);
-  }
-  .composer-toolbar button.tb-bold { font-weight: bold; }
-  .composer-toolbar button.tb-underline { text-decoration: underline; }
-  .composer-toolbar button.tb-strike { text-decoration: line-through; }
-  .composer-body {
-    width: 100%;
-    min-height: 120px;
-    background: var(--black);
-    border: 1px solid var(--red-dim);
-    color: var(--white);
-    padding: 0.8rem;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.95rem;
-    line-height: 1.6;
-    resize: vertical;
-  }
-  .composer-body:focus { outline: none; border-color: var(--red-bright); }
-  .composer-syntax-help {
-    display: block;
-    font-size: 0.72rem;
-    color: var(--dim-white);
-    letter-spacing: 0;
-    margin-top: 0.4rem;
-  }
-  .composer-syntax-help code {
-    font-family: 'Share Tech Mono', monospace;
-    color: var(--silver);
+  .forum-search button:hover, .forum-search a.search-clear:hover { background: var(--red); }
+  mark.search-hit {
+    background: var(--red-bright);
+    color: var(--black);
+    padding: 0 2px;
+    font-weight: bold;
   }
 
-  /* Composer sections - one fieldset per kind of attachment, so the form
-     reads as a short, clearly labeled stack instead of a flat pile of
-     inputs. */
-  .composer-section {
-    margin-top: 1.2rem;
-    padding-top: 1rem;
-    border-top: 1px dashed var(--red-dim);
-  }
-  .composer-section-title {
-    font-family: 'VT323', monospace;
-    color: var(--dim-white);
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    font-size: 0.95rem;
-    margin-bottom: 0.5rem;
-  }
-  .composer-section label {
-    display: block;
-    font-size: 0.78rem;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    color: var(--dim-white);
-    margin: 0.6rem 0 0.3rem;
-  }
-  .composer-section .field-help {
-    display: block;
-    font-size: 0.72rem;
-    color: var(--dim-white);
-    text-transform: none;
-    letter-spacing: 0;
-    margin-top: 0.2rem;
-  }
-
-  .post-card { margin-bottom: 1.5rem; }
   .post-meta {
     display: flex;
     justify-content: space-between;
@@ -110,8 +78,9 @@
     text-shadow: 0 0 6px var(--red);
   }
   .post-date { color: var(--dim-white); font-size: 0.72rem; letter-spacing: 1px; display: flex; align-items: center; gap: 0.6rem; }
+  .edited-marker { color: var(--red-dim); cursor: help; }
   .delete-form { display: inline-block; }
-  .delete-btn {
+  .delete-btn, .edit-btn {
     font-family: 'Share Tech Mono', monospace;
     background: none;
     border: none;
@@ -120,8 +89,10 @@
     letter-spacing: 1px;
     cursor: pointer;
     padding: 0;
+    text-decoration: none;
   }
-  .delete-btn:hover { color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
+  .delete-btn:hover, .edit-btn:hover { color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
+  .post-card { margin-bottom: 1.5rem; }
   .post-body { line-height: 1.7; color: var(--silver); overflow-wrap: anywhere; }
   .post-body .redacted-text {
     background: var(--red-bright);
@@ -143,41 +114,6 @@
     user-select: none;
   }
   .post-media video { max-height: 480px; background: #000; }
-
-  .composer-preview {
-    margin-top: 0.6rem;
-    border: 1px dashed var(--red-dim);
-    padding: 0.6rem;
-  }
-  .composer-preview img, .composer-preview video {
-    display: block;
-    max-width: 100%;
-    max-height: 320px;
-    border: 1px solid var(--red-dim);
-  }
-  .composer-preview-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.6rem;
-    margin-top: 0.4rem;
-    font-size: 0.72rem;
-    letter-spacing: 1px;
-    color: var(--dim-white);
-  }
-  .composer-preview-meta span { overflow-wrap: anywhere; }
-  #media-preview-clear {
-    font-family: 'Share Tech Mono', monospace;
-    background: none;
-    border: none;
-    color: var(--dim-white);
-    font-size: 0.72rem;
-    letter-spacing: 1px;
-    cursor: pointer;
-    padding: 0;
-    white-space: nowrap;
-  }
-  #media-preview-clear:hover { color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
   .post-link {
     display: inline-block;
     margin-top: 0.6rem;
@@ -221,12 +157,91 @@
     text-shadow: 0 0 6px var(--red);
   }
 
+  /* Comment section - collapsed by default, opened with the [+] toggle
+     below the like/dislike row (see forum.views.forum_comments_view for
+     the incremental "Load 5 more" fetches). */
+  .comment-toggle-row { margin-top: 0.5rem; }
+  .comment-toggle-btn {
+    font-family: 'Share Tech Mono', monospace;
+    background: none;
+    border: none;
+    color: var(--dim-white);
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .comment-toggle-btn:hover { color: var(--red-bright); }
+  .comment-toggle-icon { color: var(--red-bright); font-weight: bold; }
+  .comment-section {
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 1px dashed var(--red-dim);
+  }
+  .comment-form { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.9rem; }
+  .comment-input { min-height: 50px; font-size: 0.85rem; }
+  .comment-submit-btn {
+    align-self: flex-end;
+    font-family: 'Share Tech Mono', monospace;
+    background: var(--red-dim);
+    border: 1px solid var(--red-bright);
+    color: var(--white);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .comment-submit-btn:hover { background: var(--red); }
+  .comment-list { display: flex; flex-direction: column; gap: 0.7rem; }
+  .comment-item { padding: 0.6rem 0.8rem; border-left: 2px solid var(--red-dim); background: rgba(204,0,0,0.05); }
+  .comment-meta { display: flex; gap: 0.6rem; align-items: baseline; margin-bottom: 0.3rem; }
+  .comment-author { color: var(--red-bright); font-size: 0.85rem; letter-spacing: 1px; }
+  .comment-date { color: var(--dim-white); font-size: 0.68rem; letter-spacing: 1px; }
+  .comment-body { color: var(--silver); font-size: 0.85rem; line-height: 1.5; overflow-wrap: anywhere; }
+  .comment-empty { color: var(--dim-white); font-size: 0.8rem; letter-spacing: 1px; }
+  .comment-load-more {
+    align-self: flex-start;
+    font-family: 'Share Tech Mono', monospace;
+    background: none;
+    border: 1px solid var(--red-dim);
+    color: var(--dim-white);
+    padding: 0.3rem 0.7rem;
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 0.2rem;
+  }
+  .comment-load-more:hover { border-color: var(--red-bright); color: var(--red-bright); }
+
   .empty-feed { color: var(--dim-white); font-size: 0.85rem; letter-spacing: 1px; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="section-label">// FORUM</div>
+<div class="section-label-row">
+  <div class="section-label">// FORUM</div>
+  <form method="get" class="forum-search">
+    <input type="text" name="q" value="{{ search_query }}" placeholder="Search keywords...">
+    <span class="search-date-group">
+      Posted
+      <input type="date" name="date_from" value="{{ date_from }}" title="From">
+      &ndash;
+      <input type="date" name="date_to" value="{{ date_to }}" title="To">
+    </span>
+    <select name="sort">
+      <option value="new" {% if sort == 'old' %}{% else %}selected{% endif %}>Newest first</option>
+      <option value="old" {% if sort == 'old' %}selected{% endif %}>Oldest first</option>
+    </select>
+    <button type="submit">[ SEARCH ]</button>
+    {% if search_query or date_from or date_to %}<a href="{% url 'forum' %}" class="search-clear">[ CLEAR ]</a>{% endif %}
+  </form>
+</div>
 <div class="section-divider"></div>
 
 {% if can_post %}
@@ -234,50 +249,7 @@
   <div class="composer-label">// New Transmission (Director/Developer Only)</div>
   <form method="post" enctype="multipart/form-data" novalidate id="post-form">
     {% csrf_token %}
-
-    <div class="composer-toolbar">
-      <button type="button" class="tb-bold" data-before="**" data-after="**">Bold</button>
-      <button type="button" class="tb-underline" data-before="__" data-after="__">Underline</button>
-      <button type="button" class="tb-strike" data-before="~~" data-after="~~">Cross Out</button>
-      <button type="button" data-before="||" data-after="||">Redacted</button>
-      <button type="button" data-before="==" data-after="==">Highlight</button>
-    </div>
-
-    {{ form.body }}
-    <span class="composer-syntax-help">
-      <code>**bold**</code> &nbsp; <code>__underline__</code> &nbsp; <code>~~crossed~~</code> &nbsp;
-      <code>||redacted||</code> &nbsp; <code>==highlight==</code> - select text and click a button above, or type the markers directly.
-    </span>
-    {% for error in form.body.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
-
-    <div class="composer-section">
-      <div class="composer-section-title">// Attachment</div>
-      <label for="{{ form.media.id_for_label }}">Image</label>
-      {{ form.media }}
-      <span class="field-help">{{ form.media.help_text }}</span>
-      {% for error in form.media.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
-      <div id="media-preview" class="composer-preview" hidden>
-        <img id="media-preview-img" alt="" hidden>
-        <video id="media-preview-video" controls hidden></video>
-        <div class="composer-preview-meta">
-          <span id="media-preview-name"></span>
-          <button type="button" id="media-preview-clear">[ REMOVE ]</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="composer-section">
-      <div class="composer-section-title">// Link</div>
-      <label for="{{ form.link_url.id_for_label }}">Link <span class="field-help" style="display:inline; text-transform:none;">(can point to footage hosted elsewhere)</span></label>
-      {{ form.link_url }}
-      {% for error in form.link_url.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
-
-      <label for="{{ form.link_label.id_for_label }}">Link text <span class="field-help" style="display:inline; text-transform:none;">(optional)</span></label>
-      {{ form.link_label }}
-      {% for error in form.link_label.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
-    </div>
-
-    {% for error in form.non_field_errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+    {% include "forum/_composer_fields.html" %}
 
     <div style="margin-top: 1.2rem;">
       <button type="submit" class="donate-btn" style="font-size: 1rem;">[ TRANSMIT ]</button>
@@ -285,82 +257,7 @@
   </form>
 </div>
 
-<script>
-  (function () {
-    var textarea = document.getElementById('{{ form.body.id_for_label }}');
-    if (!textarea) return;
-
-    // Wrap the current selection in the marker pair, or insert an empty
-    // pair with the cursor left in the middle when nothing's selected -
-    // plain textarea selection APIs, so this works the same everywhere
-    // (the old contenteditable + execCommand toolbar didn't).
-    document.querySelectorAll('.composer-toolbar button').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var before = btn.getAttribute('data-before');
-        var after = btn.getAttribute('data-after');
-        var start = textarea.selectionStart;
-        var end = textarea.selectionEnd;
-        var value = textarea.value;
-        var selected = value.slice(start, end);
-
-        textarea.value = value.slice(0, start) + before + selected + after + value.slice(end);
-        textarea.focus();
-        textarea.selectionStart = start + before.length;
-        textarea.selectionEnd = start + before.length + selected.length;
-      });
-    });
-  })();
-
-  (function () {
-    // Local preview only - nothing here touches the server. Shows the
-    // picked file (image or video) in the composer before it's posted,
-    // via an object URL, and lets the poster clear the selection.
-    var input = document.getElementById('{{ form.media.id_for_label }}');
-    var box = document.getElementById('media-preview');
-    if (!input || !box) return;
-
-    var img = document.getElementById('media-preview-img');
-    var video = document.getElementById('media-preview-video');
-    var nameLabel = document.getElementById('media-preview-name');
-    var clearBtn = document.getElementById('media-preview-clear');
-    var currentUrl = null;
-
-    function reset() {
-      if (currentUrl) { URL.revokeObjectURL(currentUrl); currentUrl = null; }
-      box.hidden = true;
-      img.hidden = true;
-      video.hidden = true;
-      img.src = '';
-      video.src = '';
-      nameLabel.textContent = '';
-    }
-
-    input.addEventListener('change', function () {
-      var file = input.files && input.files[0];
-      if (!file) { reset(); return; }
-
-      if (currentUrl) URL.revokeObjectURL(currentUrl);
-      currentUrl = URL.createObjectURL(file);
-      nameLabel.textContent = file.name + ' (' + (file.size / (1024 * 1024)).toFixed(1) + ' MB)';
-
-      if (file.type.indexOf('video/') === 0) {
-        video.src = currentUrl;
-        video.hidden = false;
-        img.hidden = true;
-      } else {
-        img.src = currentUrl;
-        img.hidden = false;
-        video.hidden = true;
-      }
-      box.hidden = false;
-    });
-
-    clearBtn.addEventListener('click', function () {
-      input.value = '';
-      reset();
-    });
-  })();
-</script>
+{% include "forum/_composer_scripts.html" %}
 {% endif %}
 
 {% if posts %}
@@ -369,8 +266,12 @@
     <div class="post-meta">
       <span class="post-author">// {{ post.author.username }}</span>
       <span class="post-date">
-        {{ post.created_at|date:"Y-m-d H:i" }}
+        {{ post.created_at|date:"m/d/Y g:i A" }}
         {% if can_post %}
+          {% if post.edited_at %}
+            <span class="edited-marker" title="Edited {{ post.edited_at|date:'m/d/Y g:i A' }} - only visible to Directors">[EDITED]</span>
+          {% endif %}
+          <a href="{% url 'forum_edit_post' post.id %}" class="edit-btn" title="Edit post">[ EDIT ]</a>
           <form class="delete-form" method="post" action="{% url 'forum_delete_post' post.id %}" onsubmit="return confirm('Delete this transmission? This can\'t be undone.');">
             {% csrf_token %}
             <button type="submit" class="delete-btn" title="Delete post">[ DELETE ]</button>
@@ -379,7 +280,7 @@
       </span>
     </div>
 
-    {% if post.body %}<div class="post-body">{{ post.body|safe }}</div>{% endif %}
+    {% if post.body %}<div class="post-body">{{ post.body|highlight:search_query|safe }}</div>{% endif %}
 
     {% if post.media or post.link_url %}
     <div class="post-media">
@@ -416,9 +317,86 @@
         <span class="reaction-btn" style="cursor:default;">👎 {{ post.dislike_total }}</span>
       {% endif %}
     </div>
+
+    {% if can_comment %}
+    <div class="comment-toggle-row">
+      <button type="button" class="comment-toggle-btn" data-post="{{ post.id }}">
+        Comment section{% if post.comment_total %} ({{ post.comment_total }}){% endif %}
+        <span class="comment-toggle-icon">[+]</span>
+      </button>
+    </div>
+    <div class="comment-section" id="comments-{{ post.id }}" hidden>
+      <form method="post" action="{% url 'forum_add_comment' post.id %}" class="comment-form">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}#post-{{ post.id }}">
+        <textarea name="body" class="composer-body comment-input" rows="2" maxlength="2000" placeholder="Write a comment..." required></textarea>
+        <button type="submit" class="comment-submit-btn">[ POST COMMENT ]</button>
+      </form>
+      <div class="comment-list" id="comment-list-{{ post.id }}"></div>
+    </div>
+    {% endif %}
   </div>
   {% endfor %}
 {% else %}
   <div class="card"><span class="empty-feed">No transmissions yet, Agent.</span></div>
 {% endif %}
+
+<script>
+  (function () {
+    var toggles = document.querySelectorAll('.comment-toggle-btn');
+    if (!toggles.length) return;
+
+    // '/forum/0/comments/' - the '0' stands in for whatever post id we
+    // actually need, swapped in below. Keeps the JS from hardcoding the
+    // URL layout (see forum/urls.py).
+    var urlTemplate = "{% url 'forum_comments' 0 %}";
+
+    function commentsUrl(postId, offset) {
+      return urlTemplate.replace('/0/', '/' + postId + '/') + '?offset=' + offset;
+    }
+
+    function loadComments(postId, offset, list) {
+      if (!list) return;
+      fetch(commentsUrl(postId, offset))
+        .then(function (r) { return r.ok ? r.text() : ''; })
+        .then(function (html) {
+          if (!html.trim() && Number(offset) === 0) {
+            list.innerHTML = '<div class="comment-empty">No comments yet.</div>';
+            return;
+          }
+          list.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    toggles.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var postId = btn.getAttribute('data-post');
+        var section = document.getElementById('comments-' + postId);
+        var icon = btn.querySelector('.comment-toggle-icon');
+        if (!section) return;
+
+        var opening = section.hidden;
+        section.hidden = !opening;
+        if (icon) icon.textContent = opening ? '[-]' : '[+]';
+
+        if (opening && !section.dataset.loaded) {
+          section.dataset.loaded = '1';
+          loadComments(postId, 0, document.getElementById('comment-list-' + postId));
+        }
+      });
+    });
+
+    // Delegated - "Load 5 more" buttons are inserted dynamically as pages
+    // of comments get fetched in, so they can't be wired up up front.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.comment-load-more');
+      if (!btn) return;
+      var postId = btn.getAttribute('data-post');
+      var offset = btn.getAttribute('data-offset');
+      var list = document.getElementById('comment-list-' + postId);
+      btn.remove();
+      loadComments(postId, offset, list);
+    });
+  })();
+</script>
 {% endblock %}
