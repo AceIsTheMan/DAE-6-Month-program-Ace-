@@ -83,6 +83,12 @@
     gap: 0.2rem;
     list-style: none;
   }
+  /* Without this, PROFILE/LOGOUT's small text links and the mail/gear
+     icon buttons (bigger font-size, different padding - see
+     _nav_mail_icons.html) sit at different heights within the row: each
+     <li> is a flex item, but its own <a>/<button> child isn't centered
+     inside it unless the <li> is itself a flex container. */
+  .nav-links li { display: flex; align-items: center; }
   .nav-links li a {
     font-family: 'Share Tech Mono', monospace;
     font-size: 0.78rem;

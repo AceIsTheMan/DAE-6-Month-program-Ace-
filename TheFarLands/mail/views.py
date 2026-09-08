@@ -246,7 +246,10 @@ def mail_group_new(request):
         if form.is_valid():
             recipients = form.cleaned_data['usernames']
             conversation = Conversation.objects.create(
-                category=Conversation.SOCIAL, created_by=request.user, title=form.cleaned_data.get('title', '')
+                category=Conversation.SOCIAL,
+                created_by=request.user,
+                title=form.cleaned_data.get('title', ''),
+                is_group=True,
             )
             ConversationParticipant.objects.create(
                 conversation=conversation, user=request.user, last_read_at=timezone.now()

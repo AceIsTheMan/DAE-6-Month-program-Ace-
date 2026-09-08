@@ -22,6 +22,15 @@ If you already had this project set up before and just pulled new changes,
 re-run `python3 manage.py migrate` — new passes sometimes add fields to the
 user model, and each one needs a migration applied to your local database.
 
+Optional: the Mail app's Social composer can search real GIFs via Tenor.
+Without a key it just shows "no GIFs found" and everything else still
+works fine. Get a free key at https://tenor.com/gifapi, then:
+
+```
+export TENOR_API_KEY=your-key-here
+python3 manage.py runserver
+```
+
 ## Pages / routes
 
 - `/` — the main site (public)
@@ -33,6 +42,10 @@ user model, and each one needs a migration applied to your local database.
 - `/profile/` — your profile: photo, rank, alias, bio, with an inline
   "// EDIT PROFILE" section
 - `/profile/<username>/` — view someone else's profile (read-only)
+- `/mail/` — internal site mail: Inbox/Sent/Updates/Social/Reports, reached
+  via the envelope icon in the nav (hidden for guest accounts) - this is
+  in-site messaging stored in the database, not real email
+- `/settings/` — placeholder settings page (gear icon), nothing configurable yet
 - `/admin/` — Django admin (run `python3 manage.py createsuperuser` first)
 
 ## Email verification
@@ -49,7 +62,9 @@ immediately.
 - `accounts/` — custom user model, auth (register/login/guest/verify),
   profile pages, and the real site's landing page + static assets
   (`accounts/static/accounts/`, `accounts/templates/`)
-- `forum/` — forum app (placeholder landing page so far, no models yet)
+- `forum/` — forum app: Director broadcast posts, reactions, comments
+- `mail/` — internal mail app: DMs, group chats, Director Updates/Directives,
+  moderation Reports (Director/Admin only)
 - `tfl_site/` — Django project settings and URL routing
 - `media/` — user-uploaded content (profile pictures)
 - `db.sqlite3` — local dev database (not shared — everyone gets their own

@@ -90,6 +90,11 @@
       list-style: none;
     }
 
+    /* See base.html's identical rule for why this is needed - keeps
+       PROFILE/LOGOUT and the mail/gear icon buttons vertically centered
+       at the same height despite very different font-sizes/padding. */
+    .nav-links li { display: flex; align-items: center; }
+
     .nav-links li a {
       font-family: 'Share Tech Mono', monospace;
       font-size: 0.78rem;

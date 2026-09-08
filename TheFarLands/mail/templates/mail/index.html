@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load mail_extras %}
 {% block title %}Mail // The Far Lands{% endblock %}
 
 {% block extra_head %}
@@ -48,7 +49,24 @@
   .thread-date { color: var(--dim-white); font-size: 0.7rem; white-space: nowrap; }
 
   .conversation-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px dashed var(--red-dim); }
+  .conversation-title-group { display: flex; align-items: center; gap: 0.6rem; }
   .conversation-title { font-family: 'VT323', monospace; color: var(--red-bright); font-size: 1.3rem; letter-spacing: 1px; }
+  .conversation-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--red-dim);
+    flex-shrink: 0;
+  }
+  .conversation-avatar-blank {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a0000;
+    color: var(--red-dim);
+    font-size: 0.9rem;
+  }
   .conversation-back { font-size: 0.75rem; color: var(--dim-white); text-decoration: none; border: 1px solid var(--red-dim); padding: 0.3rem 0.7rem; }
   .conversation-back:hover { color: var(--red-bright); border-color: var(--red-bright); }
 
@@ -67,18 +85,55 @@
   .char-counter { color: var(--dim-white); font-size: 0.72rem; letter-spacing: 1px; }
   .char-counter.warn { color: var(--red-bright); }
   .char-counter.limit { color: var(--red-bright); font-weight: bold; text-shadow: 0 0 6px var(--red); }
+  .compose-row-right { display: flex; align-items: center; gap: 0.6rem; }
   .compose-tools { display: flex; gap: 0.5rem; align-items: center; position: relative; }
+  .mail-send-btn {
+    font-size: 1.1rem;
+    line-height: 1;
+    height: 2rem;
+    min-width: 2.4rem;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--red-dim);
+    border: 1px solid var(--red-bright);
+    color: var(--white);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .mail-send-btn:hover { background: var(--red); }
   .compose-tool-btn {
     font-family: 'Share Tech Mono', monospace;
     background: var(--black);
     border: 1px solid var(--red-dim);
     color: var(--dim-white);
-    padding: 0.3rem 0.6rem;
+    padding: 0 0.6rem;
     font-size: 0.78rem;
+    line-height: 1;
     cursor: pointer;
+    /* Fixed height + internal centering - without this, the emoji glyph
+       and "[GIF]"/"[ ATTACH ]" text render at different natural heights
+       (one's a <button>, one's a <label>, and glyph metrics vary), so
+       the three controls end up visibly different sizes even though
+       .compose-tools centers them on the same line. */
+    height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    vertical-align: middle;
+    /* The Attach control is a <label> (so clicking it opens the file
+       picker) and base.html's global `label { margin-top: 1rem;
+       margin-bottom: 0.3rem; }` rule (meant for real form field labels)
+       otherwise leaks into it, pushing it out of line with the emoji/GIF
+       <button>s despite all three computing to the same height. */
+    margin: 0;
+    text-transform: none;
+    letter-spacing: normal;
   }
   .compose-tool-btn:hover { border-color: var(--red-bright); color: var(--red-bright); }
-  .compose-attach-label { position: relative; overflow: hidden; display: inline-block; }
+  .compose-attach-label { position: relative; overflow: hidden; }
   .compose-attach-label input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
   #mail-emoji-panel, #mail-gif-panel { top: auto; bottom: 100%; right: auto; left: 0; margin-bottom: 0.4rem; margin-top: 0; padding: 0.6rem; }
   .emoji-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.3rem; }
@@ -115,6 +170,9 @@
   .chip-remove { background: none; border: none; color: var(--white); cursor: pointer; font-size: 0.85rem; padding: 0; }
   .recipient-counter { display: block; color: var(--dim-white); font-size: 0.72rem; margin-top: 0.3rem; }
   .recipient-picker-title { font-family: 'VT323', monospace; color: var(--red-dim); letter-spacing: 1px; margin-bottom: 0.4rem; }
+  .social-dm-search { margin-bottom: 1rem; }
+  .social-dm-search .recipient-results { margin-top: 0.3rem; }
+  .social-dm-search .recipient-row { text-decoration: none; display: block; }
 
   .reports-list { display: flex; flex-direction: column; gap: 0.8rem; }
   .report-item { border: 1px solid var(--red-dim); padding: 0.8rem; }
@@ -138,16 +196,27 @@
 <div class="section-label">// {% if active_category == 'directives' %}DIRECTIVE{% else %}MAIL{% endif %}</div>
 <div class="section-divider"></div>
 
-<div class="mail-layout{% if open_conversation %} has-members{% endif %}">
+<div class="mail-layout{% if open_conversation.is_group %} has-members{% endif %}">
   {% include "mail/_sidebar.html" %}
 
   <div class="mail-main">
     {% if active_category == 'social' %}
       {% if open_conversation %}
+        {% with partner=open_conversation|dm_partner:user %}
         <div class="conversation-header">
-          <span class="conversation-title">{{ open_conversation.title|default:"Direct Message" }}</span>
+          <span class="conversation-title-group">
+            {% if partner %}
+              {% if partner.profile_picture %}
+                <img src="{{ partner.profile_picture.url }}" alt="" class="conversation-avatar">
+              {% else %}
+                <span class="conversation-avatar conversation-avatar-blank">?</span>
+              {% endif %}
+            {% endif %}
+            <span class="conversation-title">{{ open_conversation|conversation_display_name:user }}</span>
+          </span>
           <a href="{% url 'mail_social' %}" class="conversation-back">[ BACK ]</a>
         </div>
+        {% endwith %}
         <div class="message-bubble-list">
           {% for message in thread_messages %}
           <div class="message-bubble {% if message.sender_id == user.id %}mine{% else %}theirs{% endif %}">
@@ -185,19 +254,54 @@
         {% include "mail/_compose.html" %}
         {% include "mail/_compose_scripts.html" %}
       {% else %}
+        <div class="social-dm-search">
+          <input type="text" id="social-dm-search-input" class="recipient-search-input" placeholder="Search a username to message directly...">
+          <div class="recipient-results" id="social-dm-search-results"></div>
+        </div>
         <div style="margin-bottom: 1rem;">
           <a href="{% url 'mail_group_new' %}" class="donate-btn" style="font-size: 0.85rem;">[ + NEW GROUP ]</a>
         </div>
         {% for conversation in conversations %}
         <a href="{% url 'mail_social_thread' conversation.id %}" class="thread-list-item">
           <div class="thread-list-main">
-            <span class="thread-sender">{{ conversation.title|default:"Direct Message" }}</span>
+            <span class="thread-sender">{{ conversation|conversation_display_name:user }}</span>
           </div>
           <span class="thread-date">{{ conversation.last_message_at|date:"m/d/Y g:i A" }}</span>
         </a>
         {% empty %}
         <div class="empty-feed">No conversations yet.</div>
         {% endfor %}
+        <script>
+          (function () {
+            var input = document.getElementById('social-dm-search-input');
+            var results = document.getElementById('social-dm-search-results');
+            if (!input || !results) return;
+            var timer = null;
+            var urlTemplate = "{% url 'mail_social_dm_start' 'PLACEHOLDER' %}";
+            input.addEventListener('input', function () {
+              clearTimeout(timer);
+              var q = input.value.trim();
+              if (!q) { results.innerHTML = ''; return; }
+              timer = setTimeout(function () {
+                fetch("{% url 'mail_recipient_search' %}?q=" + encodeURIComponent(q) + '&mode=social')
+                  .then(function (r) { return r.json(); })
+                  .then(function (data) {
+                    results.innerHTML = '';
+                    (data.results || []).forEach(function (u) {
+                      var row = document.createElement('a');
+                      row.className = 'recipient-row';
+                      row.textContent = u.username;
+                      row.href = urlTemplate.replace('PLACEHOLDER', encodeURIComponent(u.username));
+                      results.appendChild(row);
+                    });
+                    if (!(data.results || []).length) {
+                      results.innerHTML = '<div class="empty-feed" style="font-size:0.75rem;">No matches.</div>';
+                    }
+                  });
+              }, 250);
+            });
+          })();
+        </script>
       {% endif %}
     {% elif active_category == 'reports' %}
       <div class="reports-list">
@@ -254,7 +358,9 @@
         {% endif %}
           <div class="thread-list-main">
             <span class="thread-sender">
-              {% if active_category == 'sent' %}{{ message.conversation.get_category_display }} conversation{% else %}{{ message.sender.username }}{% endif %}
+              {% if active_category == 'sent' %}
+                {% if message.conversation.category == 'social' %}{{ message.conversation|conversation_display_name:user }}{% else %}{{ message.conversation.get_category_display }} conversation{% endif %}
+              {% else %}{{ message.sender.username }}{% endif %}
             </span>
             <span class="thread-snippet">
               {% if message.shared_post_id %}[Shared post] {% endif %}{% if message.gif_url %}[GIF] {% endif %}{% if message.media %}[Attachment] {% endif %}{{ message.body|striptags|truncatechars:100 }}
@@ -268,7 +374,7 @@
     {% endif %}
   </div>
 
-  {% if open_conversation %}
+  {% if open_conversation.is_group %}
   <div class="member-list">
     <div class="dossier-bio-label" style="font-size: 0.9rem;">// Members</div>
     {% for m in members %}

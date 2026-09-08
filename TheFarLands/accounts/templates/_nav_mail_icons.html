@@ -60,18 +60,29 @@ convention (see forum/templates/forum/index.html:154-155's comment on
   .nav-icon-wrap { position: relative; }
   .nav-icon-btn {
     background: none;
-    border: none;
+    border: 1px solid var(--red-dim);
     cursor: pointer;
     text-decoration: none;
     display: inline-block;
+    /* Fixed width, not just padding - the envelope and gear glyphs have
+       different intrinsic widths, so padding alone left the mail icon's
+       box narrower than the gear's. */
+    min-width: 2.4rem;
+    text-align: center;
     font-size: 1.25rem;
     line-height: 1;
     color: var(--dim-white);
     padding: 0.3rem 0.5rem;
     position: relative;
-    transition: color 0.2s, text-shadow 0.2s;
+    box-sizing: border-box;
+    transition: color 0.2s, text-shadow 0.2s, border-color 0.2s, background 0.2s;
   }
-  .nav-icon-btn:hover, .nav-icon-btn.open { color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
+  .nav-icon-btn:hover, .nav-icon-btn.open {
+    color: var(--red-bright);
+    text-shadow: 0 0 6px var(--red);
+    border-color: var(--red-bright);
+    background: rgba(204,0,0,0.1);
+  }
   .nav-icon-badge {
     position: absolute;
     top: 2px;

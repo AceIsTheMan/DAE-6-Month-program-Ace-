@@ -40,6 +40,15 @@ class Conversation(models.Model):
 
     category = models.CharField(max_length=10, choices=CATEGORY_CHOICES)
 
+    # True only for a Social conversation actually created as a group
+    # (see mail.views.mail_group_new) - never set for a 1:1 DM (see
+    # _get_or_create_dm), regardless of how many participants a
+    # conversation happens to have at any given moment. The member-list
+    # sidebar, HOST badge, and "N/10" cap indicator (see mail/templates/
+    # mail/index.html) only ever show for a real group - a DM between two
+    # people is not treated as a tiny group with a host.
+    is_group = models.BooleanField(default=False)
+
     # The Social group's host, or the Director who sent an Update/
     # Directive. For a 1:1 DM this is whoever happened to start it - not
     # meaningfully "in charge" of anything, just who gets no special
