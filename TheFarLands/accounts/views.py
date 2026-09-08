@@ -3,6 +3,7 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.http import HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.encoding import force_bytes, force_str
@@ -187,6 +188,25 @@ def profile_view(request, username=None):
         'edit_form': edit_form,
         'can_use_mail_with_them': can_use_mail_with_them,
     })
+
+
+@login_required
+def toggle_status(request):
+    """
+    Quick one-click Online/Offline toggle for the Status row on your OWN
+    profile (see profile.html) - entirely optional, changes nothing if
+    never clicked. Deliberately narrower than the full "// EDIT PROFILE"
+    Status dropdown (accounts.forms.ProfileEditForm), which still covers
+    all four states including Active/Deactivated: this button only ever
+    lands on Online or Offline - anything else (Active/Deactivated)
+    counts as "not Offline" and flips to Offline on the first click.
+    """
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    user = request.user
+    user.status = CustomUser.STATUS_ONLINE if user.status == CustomUser.STATUS_OFFLINE else CustomUser.STATUS_OFFLINE
+    user.save(update_fields=['status'])
+    return JsonResponse({'status': user.status, 'status_display': user.get_status_display()})
 
 
 @login_required

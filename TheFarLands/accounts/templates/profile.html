@@ -148,6 +148,16 @@
      dot + label, colored from the same red/black palette everything
      else uses rather than introducing green/yellow into the theme. */
   .status-value { display: inline-flex; align-items: center; gap: 0.4rem; }
+  button.status-value {
+    background: none;
+    border: 1px solid transparent;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: inherit;
+    padding: 2px 6px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  button.status-value:hover { border-color: var(--red-dim); background: rgba(204,0,0,0.08); }
   .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
   .status-online .status-dot, .status-active .status-dot { background: var(--red-bright); box-shadow: 0 0 6px var(--red); }
   .status-offline .status-dot, .status-deactivated .status-dot { background: var(--dim-white); }
@@ -195,9 +205,15 @@
                 </div>
                 <div class="dossier-field">
                     <span class="field-key">Status</span>
+                    {% if user == profile_user %}
+                    <button type="button" id="status-toggle-btn" class="field-value status-value status-{{ profile_user.status }}" title="Click to toggle Online/Offline - optional, changes nothing unless you click it">
+                        <span class="status-dot"></span><span id="status-toggle-label">{{ profile_user.get_status_display }}</span>
+                    </button>
+                    {% else %}
                     <span class="field-value status-value status-{{ profile_user.status }}">
                         <span class="status-dot"></span>{{ profile_user.get_status_display }}
                     </span>
+                    {% endif %}
                 </div>
                 <div class="dossier-field">
                     <span class="field-key">Origin</span>
@@ -290,6 +306,35 @@
 </div>
 
 {% if user == profile_user %}
+<script>
+  // Optional one-click Online/Offline toggle (see accounts.views.
+  // toggle_status) - purely cosmetic, changes nothing unless clicked.
+  // The full "// EDIT PROFILE" Status dropdown below still covers all
+  // four states (including Active/Deactivated); this button only ever
+  // flips between Online and Offline.
+  (function () {
+    var btn = document.getElementById('status-toggle-btn');
+    var label = document.getElementById('status-toggle-label');
+    if (!btn || !label) return;
+
+    function getCookie(name) {
+      var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+
+    btn.addEventListener('click', function () {
+      fetch("{% url 'toggle_status' %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data) return;
+          btn.className = 'field-value status-value status-' + data.status;
+          label.textContent = data.status_display;
+        });
+    });
+  })();
+</script>
 <script>
   // Profile picture picking, with an optional crop/zoom step.
   //

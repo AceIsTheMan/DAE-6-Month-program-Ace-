@@ -26,6 +26,7 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
     path('settings/', views.settings_view, name='settings_page'),
+    path('status/toggle/', views.toggle_status, name='toggle_status'),
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.profile_edit_view, name='profile_edit'),
     path('profile/<str:username>/', views.profile_view, name='user_profile'),
