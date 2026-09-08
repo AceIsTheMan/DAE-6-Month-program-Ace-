@@ -8,14 +8,21 @@ from .models import Message, Report, UserRelationship
 
 MAX_MEDIA_BYTES = 25 * 1024 * 1024  # 25MB - same cap as forum.forms.PostForm
 MAX_BODY_LEN = 800
+MAX_REPORT_LEN = 1500
 GROUP_MAX_MEMBERS = 10  # host + up to 9 invitees
+REPORT_LIMIT = 3
+REPORT_COOLDOWN_HOURS = 48
 
 
 def _is_blocked_pair(user_a, user_b):
     """True if either account has blocked the other - see
     mail.models.UserRelationship's docstring on why a block is treated as
     bidirectional at this layer even though the row only records one
-    direction."""
+    direction. A block involving a moderator (Admin/Director) is always
+    inert, on either side - "the block button is futile" against/from a
+    moderator, so their reach can never be walled off."""
+    if user_a.is_moderator or user_b.is_moderator:
+        return False
     return UserRelationship.objects.filter(
         kind=UserRelationship.BLOCK
     ).filter(
@@ -143,19 +150,32 @@ class UpdateForm(forms.Form):
 
 
 class ReportForm(forms.ModelForm):
-    """Reporter and target are set by the view from context, never from
-    client input - see mail.models.Report's docstring on why."""
+    """Reporter and target (reported_user/reported_message) are set by
+    the view from resolved context, never from raw client input - see
+    mail.models.Report's docstring on why. Rendered on its own full page
+    (mail/templates/mail/report_new.html), not a modal - see
+    mail.views.mail_report_new."""
     class Meta:
         model = Report
-        fields = ['reason']
+        fields = ['category', 'reason', 'media']
         widgets = {
-            'reason': forms.Textarea(attrs={'maxlength': MAX_BODY_LEN, 'rows': 4, 'placeholder': 'What happened?'}),
+            'category': forms.Select(),
+            'reason': forms.Textarea(attrs={
+                'maxlength': MAX_REPORT_LEN, 'rows': 6, 'placeholder': 'What happened?',
+            }),
+            'media': forms.ClearableFileInput(attrs={'accept': 'image/*,video/*'}),
         }
 
     def clean_reason(self):
         raw = self.cleaned_data.get('reason', '')
         if not raw.strip():
             raise forms.ValidationError('A report needs a reason.')
-        if len(raw) > MAX_BODY_LEN:
-            raise forms.ValidationError(f'Reports are capped at {MAX_BODY_LEN} characters.')
+        if len(raw) > MAX_REPORT_LEN:
+            raise forms.ValidationError(f'Reports are capped at {MAX_REPORT_LEN} characters.')
         return sanitize_post_html(raw, apply_markers=False)
+
+    def clean_media(self):
+        media = self.cleaned_data.get('media')
+        if media and getattr(media, 'size', 0) > MAX_MEDIA_BYTES:
+            raise forms.ValidationError('That file is too large (25MB max).')
+        return media

@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 import requests
 from django.conf import settings
+from django.contrib import messages as flash
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
@@ -12,6 +15,8 @@ from forum.models import Post
 
 from .forms import (
     GROUP_MAX_MEMBERS,
+    REPORT_COOLDOWN_HOURS,
+    REPORT_LIMIT,
     DirectiveForm,
     ForumShareForm,
     GroupCreateForm,
@@ -38,6 +43,24 @@ def _sidebar_context(user, active):
         'active_category': active,
         'can_moderate': user.is_moderator,
     }
+
+
+def _report_cooldown_remaining(user):
+    """None if `user` may file another report right now; otherwise the
+    timedelta until they can again. Rolling window, not a fixed lockout
+    timestamp: once REPORT_LIMIT reports have been filed within the last
+    REPORT_COOLDOWN_HOURS, filing is blocked until the OLDEST of those
+    reports ages past the window - at which point there are fewer than
+    REPORT_LIMIT left in the window again and filing reopens on its own,
+    no separate "cooldown ends at" field needed."""
+    window_start = timezone.now() - timedelta(hours=REPORT_COOLDOWN_HOURS)
+    recent = list(
+        Report.objects.filter(reporter=user, created_at__gte=window_start).order_by('created_at')
+    )
+    if len(recent) < REPORT_LIMIT:
+        return None
+    oldest_of_the_limit = recent[len(recent) - REPORT_LIMIT]
+    return (oldest_of_the_limit.created_at + timedelta(hours=REPORT_COOLDOWN_HOURS)) - timezone.now()
 
 
 def _get_or_create_dm(user_a, user_b):
@@ -193,6 +216,16 @@ def mail_social_thread(request, conversation_id):
     _require_mail_access(request.user)
     conversation = get_object_or_404(Conversation, pk=conversation_id, category=Conversation.SOCIAL)
     membership = get_object_or_404(ConversationParticipant, conversation=conversation, user=request.user)
+
+    if not conversation.is_group:
+        # Retroactive block enforcement for an existing DM - "prevent
+        # that user from ... interacting with them completely" means a
+        # block also closes off a conversation that already existed, not
+        # just new ones (see mail.forms._is_blocked_pair for the
+        # moderator exemption this respects automatically).
+        other = conversation.memberships.exclude(user=request.user).select_related('user').first()
+        if other and _is_blocked_pair(request.user, other.user):
+            raise PermissionDenied('This conversation is not available between these accounts.')
 
     if request.method == 'POST':
         form = MessageComposeForm(request.POST, request.FILES)

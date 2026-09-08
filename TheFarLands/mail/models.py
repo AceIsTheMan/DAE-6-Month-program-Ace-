@@ -172,7 +172,22 @@ class Report(models.Model):
     Targets either a specific Message or a user in general (from their
     profile page) - at least one of the two is required, enforced both at
     the DB layer (CheckConstraint below) and in mail.forms.ReportForm.
+
+    Filing is rate-limited (see mail.views._report_cooldown_remaining):
+    3 reports filed by the same reporter within a rolling 48 hours locks
+    them out of filing more until the oldest of those 3 ages past 48h.
     """
+    BULLYING = 'bullying'
+    NSFW = 'nsfw'
+    GUIDELINES = 'guidelines'
+    PERSONAL_INFO = 'personal_info'
+    CATEGORY_CHOICES = [
+        (BULLYING, 'Bullying'),
+        (NSFW, 'NSFW'),
+        (GUIDELINES, 'Profile threatens guidelines'),
+        (PERSONAL_INFO, 'Leaking personal information'),
+    ]
+
     OPEN = 'open'
     RESOLVED = 'resolved'
     DISMISSED = 'dismissed'
@@ -189,7 +204,19 @@ class Report(models.Model):
     reported_message = models.ForeignKey(
         Message, on_delete=models.SET_NULL, null=True, blank=True, related_name='reports'
     )
-    reason = models.TextField(max_length=800)
+    # Default only matters for the migration itself (this table has never
+    # held real data) - every report going forward always sets one
+    # explicitly via mail.forms.ReportForm, which has no blank choice.
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default=GUIDELINES)
+    reason = models.TextField(max_length=1500)
+    # Reuses forum's media allowlist/validator, same as Message.media -
+    # one attachment per report, same convention as the mail composer.
+    media = models.FileField(
+        upload_to='reports/media/',
+        blank=True,
+        null=True,
+        validators=[FileExtensionValidator(allowed_extensions=MEDIA_EXTENSIONS)],
+    )
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=OPEN)
     created_at = models.DateTimeField(auto_now_add=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
@@ -217,19 +244,32 @@ class Report(models.Model):
 
 class UserRelationship(models.Model):
     """
-    Minimum-viable Friend/Block between two accounts - deliberately no
-    request/accept step (instant friend) since nothing else in this
-    project has a pending-request notification pattern to extend. A
-    block is treated as bidirectional at the permission-check layer (see
-    mail.views._is_blocked_pair) even though the row itself only records
-    one direction, so either party blocking the other stops messaging
-    between them either way.
+    Minimum-viable Friend/Block/Mute between two accounts - deliberately
+    no request/accept step (instant friend) since nothing else in this
+    project has a pending-request notification pattern to extend.
+
+    Block is treated as bidirectional at the permission-check layer (see
+    mail.forms._is_blocked_pair) even though the row itself only records
+    one direction, so either party blocking the other stops messaging/
+    searching between them either way - EXCEPT when either account is a
+    moderator (Admin/Director): a block involving a moderator is inert,
+    on either side, so a regular account can never wall off a moderator's
+    reach (see _is_blocked_pair).
+
+    Mute is one-directional and much narrower than Block: it only
+    suppresses the notification badge for messages from the muted
+    account (see mail.context_processors.notification_counts) - the
+    muted account can still message/find/interact with the muter
+    completely normally, nothing is hidden or blocked, their messages
+    just don't raise an alert until unmuted.
     """
     FRIEND = 'friend'
     BLOCK = 'block'
+    MUTE = 'mute'
     KIND_CHOICES = [
         (FRIEND, 'Friend'),
         (BLOCK, 'Block'),
+        (MUTE, 'Mute'),
     ]
 
     from_user = models.ForeignKey(
