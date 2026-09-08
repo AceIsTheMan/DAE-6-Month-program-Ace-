@@ -152,6 +152,16 @@
   .status-online .status-dot, .status-active .status-dot { background: var(--red-bright); box-shadow: 0 0 6px var(--red); }
   .status-offline .status-dot, .status-deactivated .status-dot { background: var(--dim-white); }
   .status-offline, .status-deactivated { color: var(--dim-white); }
+  select#id_status {
+    width: 100%;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--white);
+    padding: 0.6rem 0.8rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.95rem;
+  }
+  select#id_status:focus { outline: none; border-color: var(--red-bright); }
 </style>
 {% endblock %}
 {% block content %}
