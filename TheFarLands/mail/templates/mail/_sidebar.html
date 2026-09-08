@@ -1,0 +1,21 @@
+<!-- Left category nav. Directive isn't listed here on purpose - it's only
+     reached via the notification dropdown (see _nav_mail_icons.html), not
+     the Mail sidebar itself; the Directives page still renders through
+     this same layout so there's somewhere to land, it just isn't one of
+     the five sidebar rows. Reports is absent from the DOM entirely for
+     non-moderators, not just hidden with CSS. -->
+<div class="mail-sidebar">
+  <a href="{% url 'mail_inbox' %}" class="mail-category{% if active_category == 'inbox' %} active{% endif %}">Inbox</a>
+  <a href="{% url 'mail_sent' %}" class="mail-category{% if active_category == 'sent' %} active{% endif %}">Sent</a>
+  <a href="{% url 'mail_updates' %}" class="mail-category{% if active_category == 'updates' %} active{% endif %}">Updates</a>
+  <a href="{% url 'mail_social' %}" class="mail-category{% if active_category == 'social' %} active{% endif %}">Social</a>
+  {% if can_moderate %}
+  <a href="{% url 'mail_reports' %}" class="mail-category{% if active_category == 'reports' %} active{% endif %}">Reports</a>
+  {% endif %}
+  {% if user.is_director %}
+  <div class="mail-sidebar-directorsection">
+    <a href="{% url 'mail_update_new' %}" class="mail-category mail-category-director">+ New Update</a>
+    <a href="{% url 'mail_directive_new' %}" class="mail-category mail-category-director">+ New Directive</a>
+  </div>
+  {% endif %}
+</div>

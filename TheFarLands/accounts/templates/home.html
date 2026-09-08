@@ -979,6 +979,7 @@
     <li><a href="#" onclick="showPage('socials', this)">SOCIALS &amp; SUPPORT</a></li>
     {% if user.is_authenticated %}
     <li class="nav-auth-link"><a href="{% url 'profile' %}">PROFILE</a></li>
+    {% include "_nav_mail_icons.html" %}
     <li class="nav-auth-link">
       <form action="{% url 'logout' %}" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you WANT to logout?');">
         {% csrf_token %}

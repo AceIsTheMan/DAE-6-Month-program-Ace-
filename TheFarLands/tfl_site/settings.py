@@ -2,6 +2,7 @@
 Django settings for tfl_site project (The Far Lands).
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -28,6 +29,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'accounts',
     'forum',
+    'mail',
 ]
 
 MIDDLEWARE = [
@@ -56,6 +58,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'mail.context_processors.notification_counts',
             ],
         },
     },
@@ -140,6 +143,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # to change, send_mail() works the same either way.)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'The Far Lands <noreply@thefarlands.local>'
+
+# Tenor GIF search (mail app's Social composer - see mail.views.mail_gif_search).
+# Read from the environment rather than committed here or via a .env file/
+# extra dependency - this is the project's only third-party API secret so
+# far, so a single `export TENOR_API_KEY=...` before `runserver` is enough;
+# revisit django-environ/python-decouple if a second secret shows up.
+# Get a free key at https://tenor.com/gifapi.
+TENOR_API_KEY = os.environ.get('TENOR_API_KEY', '')
 
 # Master switch for the email-verification-before-login feature (see
 # accounts.forms.RegisterForm.save / EmailVerifiedLoginForm and

@@ -171,10 +171,32 @@ def profile_view(request, username=None):
         else:
             edit_form = ProfileEditForm(instance=request.user)
 
+    # Message/Friend/Block are only offered between two real, non-guest
+    # accounts (see mail.views._require_mail_access) - computed here so
+    # profile.html's template logic stays simple booleans, not a chain of
+    # `and`/`not` that {% include ... with %} can't express anyway.
+    can_use_mail_with_them = (
+        not is_own_profile
+        and request.user.is_authenticated
+        and not request.user.is_guest
+        and not user.is_guest
+    )
+
     return render(request, 'profile.html', {
         'profile_user': user,
         'edit_form': edit_form,
+        'can_use_mail_with_them': can_use_mail_with_them,
     })
+
+
+@login_required
+def settings_view(request):
+    """
+    Placeholder for the gear/settings nav icon (see _nav_mail_icons.html)
+    - no actual settings exist yet, same "does nothing yet" stub status
+    as the Currency/"Digit" balance in the notification dropdown.
+    """
+    return render(request, 'settings.html', {})
 
 
 @login_required

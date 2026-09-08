@@ -1,0 +1,106 @@
+<!-- Wires up every .recipient-picker on the page (see _recipient_picker.html)
+     via delegated document-level listeners - the same convention forum's
+     comment system uses for dynamically-injected content (see forum/
+     templates/forum/index.html), needed here too since the Forum Share
+     picker is injected via fetch, not present at page load. -->
+<script>
+  (function () {
+    function getCookie(name) {
+      var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+
+    function serialize(picker) {
+      var chips = picker.querySelectorAll('.chip');
+      var usernames = Array.prototype.map.call(chips, function (c) { return c.getAttribute('data-username'); });
+      var field = picker.querySelector('.recipient-usernames-field');
+      if (field) field.value = usernames.join(',');
+      var counter = picker.querySelector('.recipient-counter');
+      var max = picker.getAttribute('data-max');
+      if (counter) counter.textContent = max ? (usernames.length + '/' + max) : (usernames.length ? usernames.length + ' selected' : '');
+    }
+
+    function addUsername(picker, username) {
+      var max = parseInt(picker.getAttribute('data-max') || '0', 10);
+      var chips = picker.querySelector('.recipient-chips');
+      if (chips.querySelector('[data-username="' + username + '"]')) return;
+      if (max && chips.children.length >= max) return;
+      var chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.setAttribute('data-username', username);
+      chip.textContent = username;
+      var remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'chip-remove';
+      remove.textContent = '×';
+      chip.appendChild(remove);
+      chips.appendChild(chip);
+      serialize(picker);
+    }
+
+    var searchTimers = new WeakMap();
+    document.addEventListener('input', function (e) {
+      if (!e.target.classList || !e.target.classList.contains('recipient-search-input')) return;
+      var input = e.target;
+      var picker = input.closest('.recipient-picker');
+      var resultsBox = picker.querySelector('.recipient-results');
+      var q = input.value.trim();
+      clearTimeout(searchTimers.get(picker));
+      if (!q) { resultsBox.innerHTML = ''; return; }
+      var timer = setTimeout(function () {
+        var mode = picker.getAttribute('data-mode') || 'social';
+        fetch("{% url 'mail_recipient_search' %}?q=" + encodeURIComponent(q) + '&mode=' + mode)
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            resultsBox.innerHTML = '';
+            (data.results || []).forEach(function (u) {
+              var row = document.createElement('button');
+              row.type = 'button';
+              row.className = 'recipient-row';
+              row.textContent = u.username;
+              row.addEventListener('click', function () {
+                addUsername(picker, u.username);
+                input.value = '';
+                resultsBox.innerHTML = '';
+              });
+              resultsBox.appendChild(row);
+            });
+          });
+      }, 250);
+      searchTimers.set(picker, timer);
+    });
+
+    document.addEventListener('click', function (e) {
+      var removeBtn = e.target.closest('.chip-remove');
+      if (!removeBtn) return;
+      var chip = removeBtn.closest('.chip');
+      var picker = e.target.closest('.recipient-picker');
+      if (chip) chip.remove();
+      if (picker) serialize(picker);
+    });
+
+    // Forum Share's own [ SEND ] button - the only recipient-picker
+    // context with no surrounding <form>, so it posts directly.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-share-submit');
+      if (!btn) return;
+      var picker = btn.closest('.recipient-picker');
+      var postId = picker.getAttribute('data-share-post-id');
+      var usernames = picker.querySelector('.recipient-usernames-field').value;
+      if (!usernames || !postId) return;
+      var urlTemplate = "{% url 'mail_forum_share' 0 %}";
+      fetch(urlTemplate.replace('/0/', '/' + postId + '/'), {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'usernames=' + encodeURIComponent(usernames),
+      }).then(function (r) {
+        if (!r.ok) return;
+        btn.textContent = 'Sent!';
+        setTimeout(function () {
+          var panel = picker.closest('.dropdown-panel');
+          if (panel) panel.classList.remove('open');
+        }, 1200);
+      });
+    });
+  })();
+</script>

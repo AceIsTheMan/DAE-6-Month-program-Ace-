@@ -93,6 +93,10 @@
   }
   .delete-btn:hover, .edit-btn:hover { color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
   .post-card { margin-bottom: 1.5rem; }
+  /* Forum's own 3-dot menu (Share only) - see accounts/templates/
+     _dots_menu.html for the shared component/JS this reuses. */
+  .post-meta-actions { display: flex; align-items: center; gap: 0.6rem; }
+  .share-picker-panel { min-width: 240px; padding: 0.7rem; }
   .post-body { line-height: 1.7; color: var(--silver); overflow-wrap: anywhere; }
   .post-body .redacted-text, .comment-body .redacted-text {
     background: var(--red-bright);
@@ -295,19 +299,24 @@
   <div class="card post-card" id="post-{{ post.id }}">
     <div class="post-meta">
       <span class="post-author">// {{ post.author.username }}</span>
-      <span class="post-date">
-        {{ post.created_at|date:"m/d/Y g:i A" }}
-        {% if can_post %}
-          {% if post.edited_at %}
-            <span class="edited-marker" title="Edited {{ post.edited_at|date:'m/d/Y g:i A' }} - only visible to Directors">[EDITED]</span>
+      <div class="post-meta-actions">
+        <span class="post-date">
+          {{ post.created_at|date:"m/d/Y g:i A" }}
+          {% if can_post %}
+            {% if post.edited_at %}
+              <span class="edited-marker" title="Edited {{ post.edited_at|date:'m/d/Y g:i A' }} - only visible to Directors">[EDITED]</span>
+            {% endif %}
+            <a href="{% url 'forum_edit_post' post.id %}" class="edit-btn" title="Edit post">[ EDIT ]</a>
+            <form class="delete-form" method="post" action="{% url 'forum_delete_post' post.id %}" onsubmit="return confirm('Delete this transmission? This can\'t be undone.');">
+              {% csrf_token %}
+              <button type="submit" class="delete-btn" title="Delete post">[ DELETE ]</button>
+            </form>
           {% endif %}
-          <a href="{% url 'forum_edit_post' post.id %}" class="edit-btn" title="Edit post">[ EDIT ]</a>
-          <form class="delete-form" method="post" action="{% url 'forum_delete_post' post.id %}" onsubmit="return confirm('Delete this transmission? This can\'t be undone.');">
-            {% csrf_token %}
-            <button type="submit" class="delete-btn" title="Delete post">[ DELETE ]</button>
-          </form>
+        </span>
+        {% if user.is_authenticated and not user.is_guest %}
+        {% include "_dots_menu.html" with show_share=True target_id=post.id %}
         {% endif %}
-      </span>
+      </div>
     </div>
 
     {% if post.body %}<div class="post-body">{{ post.body|redact_for_viewer:can_post|highlight:search_query|safe }}</div>{% endif %}
@@ -465,6 +474,42 @@
           countEl.textContent = next > 0 ? '(' + next + ')' : '';
         }
       });
+    });
+  })();
+</script>
+
+{% include "mail/_recipient_picker_scripts.html" %}
+<script>
+  // Forum's Share action (see the .dots-menu in .post-meta above) -
+  // lazy-loads the recipient picker fragment from mail.views.
+  // mail_forum_share the first time Share is clicked on a given post,
+  // then leaves it in the DOM (mail/_recipient_picker_scripts.html's
+  // delegated listeners handle everything from there). Re-opens the
+  // panel after injecting since base.html's document-level "close every
+  // open panel" click listener (registered before this one) already
+  // closed it as part of handling this same click.
+  (function () {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-share-open');
+      if (!btn) return;
+      var panel = btn.closest('.dropdown-panel');
+      var trigger = panel && panel.previousElementSibling;
+      if (!panel) return;
+      if (panel.querySelector('.recipient-picker')) {
+        panel.classList.add('open');
+        if (trigger) trigger.classList.add('open');
+        return;
+      }
+      var postId = btn.getAttribute('data-post-id');
+      var urlTemplate = "{% url 'mail_forum_share' 0 %}";
+      fetch(urlTemplate.replace('/0/', '/' + postId + '/'))
+        .then(function (r) { return r.text(); })
+        .then(function (html) {
+          btn.remove();
+          panel.insertAdjacentHTML('beforeend', html);
+          panel.classList.add('share-picker-panel', 'open');
+          if (trigger) trigger.classList.add('open');
+        });
     });
   })();
 </script>

@@ -48,6 +48,12 @@ class CustomUser(AbstractUser):
     # email" error instead of a generic "wrong password" one.
     email_verified = models.BooleanField(default=True)
 
+    # The "Digit" balance shown (inert, does nothing yet) in the
+    # notification dropdown's Currency row - see mail.views. No
+    # earning/spending logic exists yet; this is a stub for a future
+    # currency system.
+    currency = models.IntegerField(default=0)
+
     GUEST_TRIAL_DAYS = 7
 
     @property
@@ -73,6 +79,15 @@ class CustomUser(AbstractUser):
         """True for the site owner's account - the top of ROLE_HIERARCHY,
         outranking every Hacker/Agent/Admin."""
         return self.role == self.ROLE_DIRECTOR
+
+    @property
+    def is_moderator(self):
+        """True for Admin or Director - the two roles allowed to view and
+        act on the mail app's Reports queue (see mail.views.mail_reports).
+        Everything else Director-only (forum posting/deleting, Directives)
+        still checks is_director alone; this is the first feature in the
+        project that actually uses the Admin role for something."""
+        return self.role in (self.ROLE_ADMIN, self.ROLE_DIRECTOR)
 
     def __str__(self):
         return self.username

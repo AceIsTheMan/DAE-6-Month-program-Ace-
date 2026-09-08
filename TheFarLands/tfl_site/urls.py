@@ -10,6 +10,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('accounts.urls')),
     path('forum/', include('forum.urls')),
+    path('mail/', include('mail.urls')),
 ]
 
 if settings.DEBUG:

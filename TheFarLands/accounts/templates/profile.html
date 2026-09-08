@@ -137,6 +137,12 @@
     cursor: nwse-resize;
   }
   .crop-live canvas { border: 1px solid var(--red-dim); background: #1a0000; display: block; }
+
+  /* Visiting-another-account actions - Report/Friend/Block live in the
+     3-dot menu (see _dots_menu.html), Message gets its own primary
+     button per that component's docstring (avoids showing "Message" in
+     both places). */
+  .profile-actions { display: flex; align-items: center; gap: 0.7rem; margin-top: 1rem; }
 </style>
 {% endblock %}
 {% block content %}
@@ -184,6 +190,15 @@
                 {% endif %}
             </div>
         </div>
+
+        {% if user != profile_user %}
+        <div class="profile-actions">
+          {% if can_use_mail_with_them %}
+          <a href="{% url 'mail_social_dm_start' profile_user.username %}" class="donate-btn" style="font-size: 0.85rem;">[ MESSAGE ]</a>
+          {% endif %}
+          {% include "_dots_menu.html" with target_type="user" target_id=profile_user.id target_username=profile_user.username show_report=user.is_authenticated show_friend=can_use_mail_with_them show_block=can_use_mail_with_them %}
+        </div>
+        {% endif %}
 
         <div class="dossier-bio">
             <div class="dossier-bio-label">// File Notes</div>

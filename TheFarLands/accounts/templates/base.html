@@ -254,6 +254,124 @@
     text-transform: uppercase;
   }
   .pw-toggle:hover { color: var(--red-bright); border-color: var(--red-bright); }
+
+  /* Shared anchored-popover primitive - backs the notification dropdown
+     (see _nav_mail_icons.html) and every .dots-menu (see _dots_menu.html,
+     used on profile.html and forum/templates/forum/index.html). This
+     codebase otherwise only has full-screen modal overlays (home.html's
+     rules-gate/lightbox), so this is a new small-anchored-panel pattern,
+     built once here and reused everywhere via the initDropdown() helper
+     defined in the shared script below. */
+  .dropdown-panel {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.4rem;
+    min-width: 190px;
+    background: rgba(0,0,0,0.95);
+    border: 1px solid var(--red);
+    box-shadow: 0 0 20px rgba(204,0,0,0.4);
+    z-index: 2000;
+  }
+  .dropdown-panel.open { display: block; }
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.6rem 0.9rem;
+    background: none;
+    border: none;
+    border-bottom: 1px dashed var(--red-dim);
+    color: var(--silver);
+    text-decoration: none;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: left;
+    cursor: pointer;
+  }
+  .dropdown-item:last-child { border-bottom: none; }
+  .dropdown-item:hover { background: rgba(204,0,0,0.15); color: var(--red-bright); }
+  /* The Currency/"Digit" row - structurally inert (rendered as a plain
+     div, no href, no click listener at all), not just visually dimmed. */
+  .dropdown-item.inert { cursor: default; color: var(--dim-white); }
+  .dropdown-item.inert:hover { background: none; color: var(--dim-white); }
+  .dropdown-badge { color: var(--red-bright); margin-left: auto; text-shadow: 0 0 4px var(--red); }
+
+  /* 3-dot menu trigger (see _dots_menu.html) - same anchored-panel recipe
+     as the notification dropdown, smaller trigger glyph. */
+  .dots-menu { position: relative; display: inline-block; }
+  .dots-menu-trigger {
+    background: none;
+    border: none;
+    color: var(--dim-white);
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0.1rem 0.4rem;
+    cursor: pointer;
+  }
+  .dots-menu-trigger:hover, .dots-menu-trigger.open { color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
+  .dots-menu .dropdown-panel { right: auto; left: 0; }
+
+  /* Small bordered role label - group-mail host badge today, reusable
+     anywhere a role needs surfacing later. */
+  .role-badge {
+    display: inline-block;
+    font-family: 'VT323', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    color: var(--red-bright);
+    border: 1px solid var(--red-bright);
+    padding: 1px 6px;
+    text-shadow: 0 0 4px var(--red);
+    text-transform: uppercase;
+  }
+
+  /* Report modal (see _report_form.html) - reuses the same full-screen
+     overlay recipe as home.html's .rules-gate/.lightbox instead of
+     stacking a form inside the still-new .dropdown-panel. */
+  .report-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 5500;
+    align-items: center;
+    justify-content: center;
+  }
+  .report-modal.active { display: flex; }
+  .report-modal-box {
+    background: linear-gradient(180deg, #0d0000, #000);
+    border: 2px solid var(--red);
+    box-shadow: 0 0 20px rgba(204,0,0,0.4);
+    padding: 1.6rem;
+    width: 90%;
+    max-width: 420px;
+  }
+  .report-modal-title {
+    font-family: 'VT323', monospace;
+    color: var(--red-bright);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: 1.4rem;
+    margin-bottom: 0.8rem;
+    text-shadow: 0 0 6px var(--red);
+  }
+  .report-modal-actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1rem; }
+  .report-modal-cancel {
+    font-family: 'Share Tech Mono', monospace;
+    background: none;
+    border: 1px solid var(--red-dim);
+    color: var(--dim-white);
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .report-modal-cancel:hover { border-color: var(--red-bright); color: var(--red-bright); }
 </style>
 {% block extra_head %}{% endblock %}
 </head>
@@ -267,6 +385,7 @@
     <li><a href="{% url 'home' %}?page=socials">SOCIALS &amp; SUPPORT</a></li>
     {% if user.is_authenticated %}
     <li class="nav-auth-link"><a href="{% url 'profile' %}"{% if request.resolver_match.url_name == 'profile' or request.resolver_match.url_name == 'user_profile' %} class="active"{% endif %}>PROFILE</a></li>
+    {% include "_nav_mail_icons.html" %}
     <li class="nav-auth-link">
       <form action="{% url 'logout' %}" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you WANT to logout?');">
         {% csrf_token %}
@@ -287,6 +406,7 @@
   {% endif %}
   {% block content %}{% endblock %}
 </main>
+{% if user.is_authenticated %}{% include "_report_form.html" %}{% endif %}
 <script>
   // Shared show/hide toggle for any password field. Call with the input's
   // id and the button that was clicked.
@@ -301,6 +421,95 @@
       btn.textContent = '[ SHOW ]';
     }
   }
+
+  // Wires up every .dots-menu on the page (see _dots_menu.html, used by
+  // profile.html and forum/templates/forum/index.html) - open/close via
+  // the shared anchored-panel recipe, plus the Report/Friend/Block
+  // actions those menus offer. Report is available even to guest
+  // accounts (see mail.models.Report's docstring); Friend/Block are not
+  // rendered into a guest's dots-menu at all (see _dots_menu.html).
+  (function () {
+    function getCookie(name) {
+      var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+    window.TFL_getCookie = window.TFL_getCookie || getCookie;
+
+    function closeAllPanels() {
+      document.querySelectorAll('.dropdown-panel.open').forEach(function (p) { p.classList.remove('open'); });
+      document.querySelectorAll('.dots-menu-trigger.open, .nav-icon-btn.open').forEach(function (t) { t.classList.remove('open'); });
+    }
+    document.addEventListener('click', closeAllPanels);
+
+    document.addEventListener('click', function (e) {
+      var trigger = e.target.closest('.dots-menu-trigger');
+      if (!trigger) return;
+      e.stopPropagation();
+      var panel = trigger.nextElementSibling;
+      var willOpen = panel && !panel.classList.contains('open');
+      closeAllPanels();
+      if (willOpen) {
+        panel.classList.add('open');
+        trigger.classList.add('open');
+      }
+    });
+
+    // Report modal - opened from any .js-report-open item, wherever it
+    // appears (Social message bubble, profile page). Target type/id are
+    // read off the clicked item's data attributes at open-time and
+    // stashed on the single shared #report-modal instance.
+    var modal = document.getElementById('report-modal');
+    var reasonField = document.getElementById('report-reason');
+    document.addEventListener('click', function (e) {
+      var opener = e.target.closest('.js-report-open');
+      if (!opener || !modal) return;
+      modal.dataset.targetType = opener.getAttribute('data-target-type') || '';
+      modal.dataset.targetId = opener.getAttribute('data-target-id') || '';
+      if (reasonField) reasonField.value = '';
+      modal.classList.add('active');
+    });
+    var cancelBtn = document.getElementById('report-modal-cancel');
+    if (cancelBtn) cancelBtn.addEventListener('click', function () { modal.classList.remove('active'); });
+
+    var submitBtn = document.getElementById('report-modal-submit');
+    if (submitBtn) submitBtn.addEventListener('click', function () {
+      if (!reasonField || !reasonField.value.trim()) { reasonField && reasonField.focus(); return; }
+      var body = new URLSearchParams();
+      body.set('reason', reasonField.value);
+      if (modal.dataset.targetType === 'user') body.set('reported_user_id', modal.dataset.targetId);
+      else body.set('reported_message_id', modal.dataset.targetId);
+      fetch("{% url 'mail_report_create' %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: body.toString(),
+      }).then(function (r) {
+        modal.classList.remove('active');
+        if (r.ok) alert('Report filed.');
+      });
+    });
+
+    // Friend/Block toggles - instant, no request/accept step (see
+    // mail.models.UserRelationship's docstring).
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-friend-toggle, .js-block-toggle');
+      if (!btn) return;
+      var kind = btn.classList.contains('js-friend-toggle') ? 'friend' : 'block';
+      var username = btn.getAttribute('data-username');
+      var urlBase = kind === 'friend' ? "{% url 'mail_relationship_friend' 'PLACEHOLDER' %}" : "{% url 'mail_relationship_block' 'PLACEHOLDER' %}";
+      fetch(urlBase.replace('PLACEHOLDER', encodeURIComponent(username)), {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data) return;
+          var active = kind === 'friend' ? data.friended : data.blocked;
+          btn.classList.toggle('active-state', !!active);
+          btn.textContent = kind === 'friend'
+            ? (active ? 'Unfriend' : 'Friend')
+            : (active ? 'Unblock' : 'Block');
+        });
+    });
+  })();
 </script>
 </body>
 </html>

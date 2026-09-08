@@ -1,0 +1,120 @@
+{% comment %}
+Mail/notification (envelope) and Settings (gear) nav icons - included from
+both accounts/templates/base.html and accounts/templates/home.html (which
+doesn't extend base.html, so this partial has to be fully self-contained
+and includable from either). Hidden entirely for guest ("Hacker")
+accounts - guests can't use any part of Mail (see mail.views.
+_require_mail_access).
+
+Glyphs are plain monochrome Unicode, matching the site's existing
+convention (see forum/templates/forum/index.html:154-155's comment on
+"plain text glyphs, not color emoji"):
+  mail/notification trigger - envelope (u2709)
+  settings/gear             - gear (u2699)
+  Directive (person icon)   - chess pawn (u265F, Chess Symbols is
+                               monochrome by definition)
+  Currency/"Digit"          - generic currency sign (u00A4)
+  unread indicator          - filled circle (u25CF)
+{% endcomment %}
+{% if user.is_authenticated and not user.is_guest %}
+<style>
+  /* Duplicated from base.html's global primitive (harmless - identical
+     rules, home.html doesn't extend base.html so this partial has to
+     carry its own copy to render correctly there too). */
+  .dropdown-panel {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.4rem;
+    min-width: 190px;
+    background: rgba(0,0,0,0.95);
+    border: 1px solid var(--red);
+    box-shadow: 0 0 20px rgba(204,0,0,0.4);
+    z-index: 2000;
+  }
+  .dropdown-panel.open { display: block; }
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.6rem 0.9rem;
+    background: none;
+    border: none;
+    border-bottom: 1px dashed var(--red-dim);
+    color: var(--silver);
+    text-decoration: none;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: left;
+    cursor: pointer;
+  }
+  .dropdown-item:last-child { border-bottom: none; }
+  .dropdown-item:hover { background: rgba(204,0,0,0.15); color: var(--red-bright); }
+  .dropdown-item.inert { cursor: default; color: var(--dim-white); }
+  .dropdown-item.inert:hover { background: none; color: var(--dim-white); }
+  .dropdown-badge { color: var(--red-bright); margin-left: auto; text-shadow: 0 0 4px var(--red); }
+  .nav-icon-wrap { position: relative; }
+  .nav-icon-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 1.25rem;
+    line-height: 1;
+    color: var(--dim-white);
+    padding: 0.3rem 0.5rem;
+    position: relative;
+    transition: color 0.2s, text-shadow 0.2s;
+  }
+  .nav-icon-btn:hover, .nav-icon-btn.open { color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
+  .nav-icon-badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--red-bright);
+    box-shadow: 0 0 6px var(--red);
+  }
+</style>
+<li class="nav-auth-link nav-icon-wrap">
+  <button type="button" class="nav-icon-btn" id="mail-nav-trigger" aria-label="Mail">
+    &#9993;{% if unread_mail_count %}<span class="nav-icon-badge"></span>{% endif %}
+  </button>
+  <div class="dropdown-panel" id="mail-nav-dropdown">
+    <a href="{% url 'mail_inbox' %}" class="dropdown-item">&#9993; Mail</a>
+    <a href="{% url 'mail_directives' %}" class="dropdown-item">
+      &#9823; Directive
+      {% if unread_directive_count %}<span class="dropdown-badge">&#9679;</span>{% endif %}
+    </a>
+    <div class="dropdown-item inert">&#164; Digit &mdash; {{ currency_balance|default:"0" }}</div>
+  </div>
+</li>
+<li class="nav-auth-link nav-icon-wrap">
+  <a href="{% url 'settings_page' %}" class="nav-icon-btn" aria-label="Settings">&#9881;</a>
+</li>
+<script>
+  (function () {
+    var trigger = document.getElementById('mail-nav-trigger');
+    var panel = document.getElementById('mail-nav-dropdown');
+    if (!trigger || !panel) return;
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var willOpen = !panel.classList.contains('open');
+      document.querySelectorAll('.dropdown-panel.open').forEach(function (p) { p.classList.remove('open'); });
+      document.querySelectorAll('.nav-icon-btn.open').forEach(function (t) { t.classList.remove('open'); });
+      if (willOpen) { panel.classList.add('open'); trigger.classList.add('open'); }
+    });
+    document.addEventListener('click', function () {
+      panel.classList.remove('open');
+      trigger.classList.remove('open');
+    });
+  })();
+</script>
+{% endif %}

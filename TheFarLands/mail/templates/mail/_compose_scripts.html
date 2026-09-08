@@ -1,0 +1,132 @@
+<!-- Wires up mail/_compose.html: char counter, emoji insert (same
+     selection-splice trick as forum's marker toolbar - see forum/
+     templates/forum/_composer_scripts.html), GIF search (debounced fetch
+     to mail_gif_search), and attachment preview (same pattern as forum's,
+     adapted to mail's ids). Only ever included once per page, since only
+     one Social thread can be open at a time. -->
+<script>
+  (function () {
+    var MAX_LEN = 800;
+    var textarea = document.getElementById('mail-compose-body');
+    var counter = document.getElementById('mail-char-counter');
+    if (!textarea || !counter) return;
+
+    function updateCounter() {
+      var len = textarea.value.length;
+      counter.textContent = len + '/' + MAX_LEN;
+      counter.classList.toggle('warn', len >= MAX_LEN * 0.9 && len < MAX_LEN);
+      counter.classList.toggle('limit', len >= MAX_LEN);
+    }
+    textarea.addEventListener('input', updateCounter);
+    updateCounter();
+
+    function insertAtCursor(text) {
+      var start = textarea.selectionStart, end = textarea.selectionEnd;
+      var value = textarea.value;
+      textarea.value = value.slice(0, start) + text + value.slice(end);
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + text.length;
+      updateCounter();
+    }
+
+    function getCookie(name) {
+      var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+
+    // Emoji picker - reuses the shared dropdown-panel open/close pattern.
+    var emojiToggle = document.getElementById('mail-emoji-toggle');
+    var emojiPanel = document.getElementById('mail-emoji-panel');
+    var gifToggle = document.getElementById('mail-gif-toggle');
+    var gifPanel = document.getElementById('mail-gif-panel');
+
+    function togglePanel(panel, trigger) {
+      var willOpen = !panel.classList.contains('open');
+      [emojiPanel, gifPanel].forEach(function (p) { if (p) p.classList.remove('open'); });
+      if (willOpen) panel.classList.add('open');
+    }
+    if (emojiToggle && emojiPanel) {
+      emojiToggle.addEventListener('click', function (e) { e.stopPropagation(); togglePanel(emojiPanel); });
+      emojiPanel.querySelectorAll('.emoji-pick').forEach(function (btn) {
+        btn.addEventListener('click', function () { insertAtCursor(btn.textContent); });
+      });
+    }
+    if (gifToggle && gifPanel) {
+      gifToggle.addEventListener('click', function (e) { e.stopPropagation(); togglePanel(gifPanel); });
+    }
+    document.addEventListener('click', function () {
+      [emojiPanel, gifPanel].forEach(function (p) { if (p) p.classList.remove('open'); });
+    });
+    if (emojiPanel) emojiPanel.addEventListener('click', function (e) { e.stopPropagation(); });
+    if (gifPanel) gifPanel.addEventListener('click', function (e) { e.stopPropagation(); });
+
+    // GIF search - server-side Tenor proxy (see mail.views.mail_gif_search),
+    // debounced so every keystroke doesn't fire a request.
+    var gifSearchInput = document.getElementById('mail-gif-search');
+    var gifResults = document.getElementById('mail-gif-results');
+    var gifUrlField = document.querySelector('input[name="gif_url"]');
+    var searchTimer = null;
+    if (gifSearchInput && gifResults) {
+      gifSearchInput.addEventListener('input', function () {
+        clearTimeout(searchTimer);
+        var q = gifSearchInput.value.trim();
+        if (!q) { gifResults.innerHTML = ''; return; }
+        searchTimer = setTimeout(function () {
+          fetch("{% url 'mail_gif_search' %}?q=" + encodeURIComponent(q))
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              gifResults.innerHTML = '';
+              (data.results || []).forEach(function (gif) {
+                var img = document.createElement('img');
+                img.src = gif.preview_url;
+                img.className = 'gif-result-thumb';
+                img.addEventListener('click', function () {
+                  if (gifUrlField) gifUrlField.value = gif.url;
+                  gifResults.innerHTML = '<div class="gif-selected-note">GIF attached - <button type="button" id="mail-gif-clear">remove</button></div>';
+                  gifPanel.classList.remove('open');
+                  var clearBtn = document.getElementById('mail-gif-clear');
+                  if (clearBtn) clearBtn.addEventListener('click', function () {
+                    if (gifUrlField) gifUrlField.value = '';
+                    gifResults.innerHTML = '';
+                  });
+                });
+                gifResults.appendChild(img);
+              });
+              if (!(data.results || []).length) {
+                gifResults.innerHTML = '<div class="gif-empty">No GIFs found (or TENOR_API_KEY isn\'t configured).</div>';
+              }
+            });
+        }, 300);
+      });
+    }
+
+    // Attachment preview - same object-URL pattern as forum's composer.
+    var mediaInput = document.querySelector('input[name="media"]');
+    var previewBox = document.getElementById('mail-media-preview');
+    var previewImg = document.getElementById('mail-media-preview-img');
+    var previewVideo = document.getElementById('mail-media-preview-video');
+    var previewClear = document.getElementById('mail-media-preview-clear');
+    var currentUrl = null;
+    if (mediaInput && previewBox && previewImg && previewVideo && previewClear) {
+      mediaInput.addEventListener('change', function () {
+        var file = mediaInput.files && mediaInput.files[0];
+        if (!file) return;
+        if (currentUrl) URL.revokeObjectURL(currentUrl);
+        currentUrl = URL.createObjectURL(file);
+        if (file.type.indexOf('video/') === 0) {
+          previewVideo.src = currentUrl; previewVideo.hidden = false; previewImg.hidden = true;
+        } else {
+          previewImg.src = currentUrl; previewImg.hidden = false; previewVideo.hidden = true;
+        }
+        previewBox.hidden = false;
+      });
+      previewClear.addEventListener('click', function () {
+        mediaInput.value = '';
+        if (currentUrl) { URL.revokeObjectURL(currentUrl); currentUrl = null; }
+        previewBox.hidden = true;
+        previewImg.hidden = true;
+        previewVideo.hidden = true;
+      });
+    }
+  })();
+</script>

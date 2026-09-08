@@ -1,0 +1,58 @@
+<!-- Compose box for an open Social thread (see mail.views.mail_social_thread).
+     Expects `form` (mail.forms.MessageComposeForm) in context. Reuses
+     forum/templates/forum/_composer_style.html's .composer-body /
+     .composer-preview classes (included by mail/index.html) rather than
+     redefining textarea/preview styling a second time. -->
+<form method="post" enctype="multipart/form-data" novalidate class="mail-compose-form" id="mail-compose-form">
+  {% csrf_token %}
+  <textarea name="body" id="mail-compose-body" class="composer-body mail-compose-body" rows="3" maxlength="800" placeholder="Write a message...">{{ form.body.value|default:'' }}</textarea>
+  {% for error in form.body.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+  <div class="compose-row">
+    <span class="char-counter" id="mail-char-counter">0/800</span>
+    <div class="compose-tools">
+      <button type="button" class="compose-tool-btn" id="mail-emoji-toggle" title="Emoji">&#9786;</button>
+      <button type="button" class="compose-tool-btn" id="mail-gif-toggle" title="GIF">[GIF]</button>
+      <label class="compose-tool-btn compose-attach-label" title="Attach image/video">
+        [ ATTACH ]
+        {{ form.media }}
+      </label>
+    </div>
+  </div>
+  {% for error in form.media.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+  <div class="dropdown-panel" id="mail-emoji-panel">
+    <div class="emoji-grid">
+      <button type="button" class="emoji-pick">&#128512;</button>
+      <button type="button" class="emoji-pick">&#128513;</button>
+      <button type="button" class="emoji-pick">&#128522;</button>
+      <button type="button" class="emoji-pick">&#128521;</button>
+      <button type="button" class="emoji-pick">&#128525;</button>
+      <button type="button" class="emoji-pick">&#128526;</button>
+      <button type="button" class="emoji-pick">&#129300;</button>
+      <button type="button" class="emoji-pick">&#128546;</button>
+      <button type="button" class="emoji-pick">&#128545;</button>
+      <button type="button" class="emoji-pick">&#128077;</button>
+      <button type="button" class="emoji-pick">&#128078;</button>
+      <button type="button" class="emoji-pick">&#128293;</button>
+      <button type="button" class="emoji-pick">&#128128;</button>
+      <button type="button" class="emoji-pick">&#128064;</button>
+      <button type="button" class="emoji-pick">&#127881;</button>
+      <button type="button" class="emoji-pick">&#10084;</button>
+    </div>
+  </div>
+  <div class="dropdown-panel" id="mail-gif-panel">
+    <input type="text" id="mail-gif-search" class="gif-search-input" placeholder="Search GIFs...">
+    <div class="gif-results" id="mail-gif-results"></div>
+  </div>
+
+  {{ form.gif_url }}
+  <div class="attachment-preview" id="mail-media-preview" hidden>
+    <img id="mail-media-preview-img" alt="" hidden>
+    <video id="mail-media-preview-video" controls hidden></video>
+    <button type="button" id="mail-media-preview-clear">[ REMOVE ]</button>
+  </div>
+
+  {% for error in form.non_field_errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+  <button type="submit" class="comment-submit-btn">[ SEND ]</button>
+</form>

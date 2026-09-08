@@ -1,0 +1,35 @@
+{% comment %}
+Shared 3-dot menu component - same anchored-panel recipe as the
+notification dropdown (see _nav_mail_icons.html), wired up generically in
+base.html's shared script (open/close, Report modal, Friend/Block
+toggles). Share is wired separately by whichever page uses it (see
+forum/templates/forum/index.html) since it opens a recipient picker, not
+a simple toggle.
+
+Include with whichever of these context vars apply:
+  target_type      - 'user', 'message', or 'post'
+  target_id        - the CustomUser/Message/Post pk
+  target_username  - only needed when show_friend/show_message/show_block
+  show_report / show_friend / show_message / show_block / show_share
+  is_friend / is_blocked - initial toggle state, if known
+{% endcomment %}
+<div class="dots-menu">
+  <button type="button" class="dots-menu-trigger" aria-label="More actions">&#8942;</button>
+  <div class="dropdown-panel">
+    {% if show_share %}
+    <button type="button" class="dropdown-item js-share-open" data-post-id="{{ target_id }}">Share</button>
+    {% endif %}
+    {% if show_message %}
+    <a href="{% url 'mail_social_dm_start' target_username %}" class="dropdown-item">Message</a>
+    {% endif %}
+    {% if show_friend %}
+    <button type="button" class="dropdown-item js-friend-toggle" data-username="{{ target_username }}">{% if is_friend %}Unfriend{% else %}Friend{% endif %}</button>
+    {% endif %}
+    {% if show_block %}
+    <button type="button" class="dropdown-item js-block-toggle" data-username="{{ target_username }}">{% if is_blocked %}Unblock{% else %}Block{% endif %}</button>
+    {% endif %}
+    {% if show_report %}
+    <button type="button" class="dropdown-item js-report-open" data-target-type="{{ target_type }}" data-target-id="{{ target_id }}">Report</button>
+    {% endif %}
+  </div>
+</div>
