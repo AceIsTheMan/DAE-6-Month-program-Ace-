@@ -101,10 +101,11 @@ class GuestRegisterForm(UserCreationForm):
 class ProfileEditForm(forms.ModelForm):
     class Meta:
         model = CustomUser
-        fields = ('alias', 'bio', 'profile_picture')
+        fields = ('alias', 'bio', 'profile_picture', 'status')
         widgets = {
             'alias': forms.TextInput(attrs={'maxlength': 12, 'placeholder': 'Name'}),
             'bio': forms.Textarea(attrs={'rows': 4, 'maxlength': 500}),
+            'status': forms.Select(),
         }
 
     def __init__(self, *args, **kwargs):

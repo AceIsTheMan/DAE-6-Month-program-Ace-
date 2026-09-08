@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% block title %}File a Report // Mail{% endblock %}
+
+{% block extra_head %}
+<style>
+  .report-target-box {
+    border: 1px dashed var(--red-dim);
+    padding: 0.8rem;
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+  .report-target-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--red-dim);
+    flex-shrink: 0;
+  }
+  .report-target-avatar-blank {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a0000;
+    color: var(--red-dim);
+  }
+  .report-target-name { color: var(--red-bright); font-family: 'VT323', monospace; font-size: 1.1rem; letter-spacing: 1px; }
+  .report-target-context { color: var(--dim-white); font-size: 0.72rem; }
+  .report-target-change {
+    margin-left: auto;
+    background: none;
+    border: 1px solid var(--red-dim);
+    color: var(--dim-white);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .report-target-change:hover { border-color: var(--red-bright); color: var(--red-bright); }
+
+  .report-username-search input[type="text"] { width: 100%; }
+  .report-search-results { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.5rem; max-height: 220px; overflow-y: auto; }
+  .report-search-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--silver);
+  }
+  .report-search-row:hover { border-color: var(--red-bright); color: var(--red-bright); }
+  .report-search-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--red-dim);
+    flex-shrink: 0;
+  }
+  .report-search-avatar-blank { display: flex; align-items: center; justify-content: center; background: #1a0000; color: var(--red-dim); font-size: 0.7rem; }
+
+  select#id_category {
+    width: 100%;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--white);
+    padding: 0.6rem 0.8rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.95rem;
+  }
+  select#id_category:focus { outline: none; border-color: var(--red-bright); }
+
+  .report-char-counter { color: var(--dim-white); font-size: 0.72rem; text-align: right; margin-top: 0.2rem; }
+  .report-char-counter.warn { color: var(--red-bright); }
+  .report-char-counter.limit { color: var(--red-bright); font-weight: bold; text-shadow: 0 0 6px var(--red); }
+
+  .report-cooldown-note {
+    color: var(--red-bright);
+    border: 1px solid var(--red);
+    background: rgba(204,0,0,0.1);
+    padding: 0.8rem 1rem;
+    margin-bottom: 1.2rem;
+    letter-spacing: 0.5px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="section-label">// FILE A REPORT</div>
+<div class="section-divider"></div>
+
+<div class="card">
+  {% if cooldown_hours_left %}
+  <div class="report-cooldown-note">
+    You've filed {{ report_limit }} reports in the last {{ report_cooldown_hours }} hours - to prevent spam,
+    reporting is on cooldown for about {{ cooldown_hours_left }} more hour{{ cooldown_hours_left|pluralize }}.
+  </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" id="report-form" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="target_type" id="report-target-type" value="{{ target_type }}">
+    <input type="hidden" name="target_id" id="report-target-id" value="{{ target_id }}">
+
+    <div id="report-target-box" class="report-target-box"{% if not reported_user and not reported_message %} hidden{% endif %}>
+      {% if reported_user %}
+        {% if reported_user.profile_picture %}
+          <img src="{{ reported_user.profile_picture.url }}" class="report-target-avatar" alt="">
+        {% else %}
+          <span class="report-target-avatar report-target-avatar-blank">?</span>
+        {% endif %}
+        <div>
+          <div class="report-target-name">{{ reported_user.username }}</div>
+          <div class="report-target-context">Reporting this account</div>
+        </div>
+      {% elif reported_message %}
+        {% if reported_message.sender.profile_picture %}
+          <img src="{{ reported_message.sender.profile_picture.url }}" class="report-target-avatar" alt="">
+        {% else %}
+          <span class="report-target-avatar report-target-avatar-blank">?</span>
+        {% endif %}
+        <div>
+          <div class="report-target-name">{{ reported_message.sender.username }}</div>
+          <div class="report-target-context">Reporting a message from this account</div>
+        </div>
+      {% endif %}
+      <button type="button" class="report-target-change" id="report-target-change">[ CHANGE ]</button>
+    </div>
+
+    <div id="report-username-search" class="report-username-search"{% if reported_user or reported_message %} hidden{% endif %}>
+      <label for="report-username-input">Username</label>
+      <input type="text" id="report-username-input" placeholder="Search the account you're reporting...">
+      <div class="report-search-results" id="report-search-results"></div>
+    </div>
+
+    <label for="{{ form.category.id_for_label }}">Reason</label>
+    {{ form.category }}
+    {% for error in form.category.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <label for="{{ form.reason.id_for_label }}">Details</label>
+    {{ form.reason }}
+    <div class="report-char-counter" id="report-char-counter">0/1500</div>
+    {% for error in form.reason.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <label for="{{ form.media.id_for_label }}">Attachment <span class="field-help" style="display:inline; text-transform:none;">(optional - image or short video)</span></label>
+    {{ form.media }}
+    {% for error in form.media.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    {% for error in form.non_field_errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <div style="margin-top: 1.2rem;">
+      <button type="submit" class="donate-btn" style="font-size: 1rem;"{% if cooldown_hours_left %} disabled{% endif %}>[ SUBMIT REPORT ]</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  (function () {
+    // Username search (single-select, with an avatar shown once picked
+    // "to prevent confusion during the report") - only relevant when no
+    // target was already handed off via the Report link in
+    // _dots_menu.html (profile page / a Social message).
+    var searchInput = document.getElementById('report-username-input');
+    var resultsBox = document.getElementById('report-search-results');
+    var targetTypeField = document.getElementById('report-target-type');
+    var targetIdField = document.getElementById('report-target-id');
+    var targetBox = document.getElementById('report-target-box');
+    var searchBox = document.getElementById('report-username-search');
+    var changeBtn = document.getElementById('report-target-change');
+
+    function avatarHtml(url) {
+      return url
+        ? '<img src="' + url + '" class="report-target-avatar" alt="">'
+        : '<span class="report-target-avatar report-target-avatar-blank">?</span>';
+    }
+
+    if (searchInput && resultsBox) {
+      var timer = null;
+      searchInput.addEventListener('input', function () {
+        clearTimeout(timer);
+        var q = searchInput.value.trim();
+        if (!q) { resultsBox.innerHTML = ''; return; }
+        timer = setTimeout(function () {
+          fetch("{% url 'mail_recipient_search' %}?q=" + encodeURIComponent(q) + '&mode=report')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              resultsBox.innerHTML = '';
+              (data.results || []).forEach(function (u) {
+                var row = document.createElement('div');
+                row.className = 'report-search-row';
+                var rowAvatar = u.profile_picture_url
+                  ? '<img src="' + u.profile_picture_url + '" class="report-search-avatar" alt="">'
+                  : '<span class="report-search-avatar report-search-avatar-blank">?</span>';
+                row.innerHTML = rowAvatar + '<span>' + u.username + '</span>';
+                row.addEventListener('click', function () {
+                  targetTypeField.value = 'user';
+                  targetIdField.value = u.id;
+                  targetBox.innerHTML =
+                    avatarHtml(u.profile_picture_url) +
+                    '<div><div class="report-target-name">' + u.username + '</div>' +
+                    '<div class="report-target-context">Reporting this account</div></div>' +
+                    '<button type="button" class="report-target-change" id="report-target-change">[ CHANGE ]</button>';
+                  targetBox.hidden = false;
+                  searchBox.hidden = true;
+                  resultsBox.innerHTML = '';
+                  searchInput.value = '';
+                });
+                resultsBox.appendChild(row);
+              });
+              if (!(data.results || []).length) {
+                resultsBox.innerHTML = '<div class="empty-feed" style="font-size:0.75rem;">No matches.</div>';
+              }
+            });
+        }, 250);
+      });
+    }
+
+    // Delegated since the [ CHANGE ] button gets replaced by the JS
+    // above once a search result is picked.
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('#report-target-change')) return;
+      targetTypeField.value = '';
+      targetIdField.value = '';
+      targetBox.hidden = true;
+      searchBox.hidden = false;
+      if (searchInput) searchInput.focus();
+    });
+
+    // Live character counter for the 1500-char reason field.
+    var MAX_LEN = 1500;
+    var reasonField = document.getElementById('{{ form.reason.id_for_label }}');
+    var counter = document.getElementById('report-char-counter');
+    if (reasonField && counter) {
+      function updateCounter() {
+        var len = reasonField.value.length;
+        counter.textContent = len + '/' + MAX_LEN;
+        counter.classList.toggle('warn', len >= MAX_LEN * 0.9 && len < MAX_LEN);
+        counter.classList.toggle('limit', len >= MAX_LEN);
+      }
+      reasonField.addEventListener('input', updateCounter);
+      updateCounter();
+    }
+  })();
+</script>
+{% endblock %}

@@ -174,9 +174,35 @@
   .social-dm-search .recipient-results { margin-top: 0.3rem; }
   .social-dm-search .recipient-row { text-decoration: none; display: block; }
 
+  .friends-list { display: flex; flex-direction: column; gap: 0.6rem; }
+  .friend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.6rem 0.9rem;
+    border-left: 2px solid var(--red-dim);
+    background: rgba(204,0,0,0.05);
+  }
+  .friend-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--red-dim); flex-shrink: 0; }
+  .friend-avatar-blank { display: flex; align-items: center; justify-content: center; background: #1a0000; color: var(--red-dim); }
+  .friend-name { color: var(--red-bright); font-family: 'VT323', monospace; font-size: 1.1rem; letter-spacing: 1px; text-decoration: none; flex-grow: 1; }
+  .friend-name:hover { text-decoration: underline; }
+  .friend-message-btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--dim-white);
+    border: 1px solid var(--red-dim);
+    padding: 0.3rem 0.6rem;
+    text-decoration: none;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .friend-message-btn:hover { color: var(--red-bright); border-color: var(--red-bright); }
   .reports-list { display: flex; flex-direction: column; gap: 0.8rem; }
   .report-item { border: 1px solid var(--red-dim); padding: 0.8rem; }
   .report-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem; font-size: 0.72rem; color: var(--dim-white); margin-bottom: 0.4rem; }
+  .report-meta a { color: var(--red-bright); text-decoration: none; }
+  .report-meta a:hover { text-decoration: underline; }
   .report-reason { color: var(--silver); font-size: 0.85rem; margin-bottom: 0.6rem; }
   .report-actions { display: flex; gap: 0.5rem; }
   .report-action-btn {
@@ -189,6 +215,9 @@
     cursor: pointer;
   }
   .report-action-btn:hover { border-color: var(--red-bright); color: var(--red-bright); }
+  .report-history-status { font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; }
+  .report-history-status-resolved { color: var(--red-bright); }
+  .report-history-status-dismissed { color: var(--dim-white); }
 </style>
 {% endblock %}
 
@@ -305,20 +334,43 @@
           })();
         </script>
       {% endif %}
+    {% elif active_category == 'friends' %}
+      <div class="friends-list">
+        {% for rel in friends %}
+        <div class="friend-item">
+          <a href="{% url 'user_profile' rel.to_user.username %}" title="View {{ rel.to_user.username }}'s profile">
+            {% if rel.to_user.profile_picture %}
+              <img src="{{ rel.to_user.profile_picture.url }}" class="friend-avatar" alt="">
+            {% else %}
+              <span class="friend-avatar friend-avatar-blank">?</span>
+            {% endif %}
+          </a>
+          <a href="{% url 'user_profile' rel.to_user.username %}" class="friend-name">{{ rel.to_user.username }}</a>
+          {% if not rel.to_user.is_guest %}
+          <a href="{% url 'mail_social_dm_start' rel.to_user.username %}" class="friend-message-btn">[ MESSAGE ]</a>
+          {% endif %}
+        </div>
+        {% empty %}
+        <div class="empty-feed">No friends yet - add one from their profile or a message's 3-dot menu.</div>
+        {% endfor %}
+      </div>
     {% elif active_category == 'reports' %}
       <div class="reports-list">
         {% for report in reports %}
         <div class="report-item" id="report-{{ report.id }}">
           <div class="report-meta">
-            <span>Filed by {{ report.reporter.username }} &middot; {{ report.created_at|date:"m/d/Y g:i A" }}</span>
+            <span>Filed by <a href="{% url 'user_profile' report.reporter.username %}">{{ report.reporter.username }}</a> &middot; {{ report.created_at|date:"m/d/Y g:i A" }} &middot; <strong>{{ report.get_category_display }}</strong></span>
             <span>
-              {% if report.reported_user %}Target: {{ report.reported_user.username }}{% endif %}
-              {% if report.reported_message %}Message #{{ report.reported_message.id }}{% endif %}
+              {% if report.reported_user %}Target: <a href="{% url 'user_profile' report.reported_user.username %}">{{ report.reported_user.username }}</a>{% endif %}
+              {% if report.reported_message %}Message #{{ report.reported_message.id }} from <a href="{% url 'user_profile' report.reported_message.sender.username %}">{{ report.reported_message.sender.username }}</a>{% endif %}
             </span>
           </div>
           <div class="report-reason">{{ report.reason|safe }}</div>
           {% if report.reported_message %}
           <div class="report-reason" style="color: var(--dim-white);">Reported content: {{ report.reported_message.body|safe|default:"(no text)" }}</div>
+          {% endif %}
+          {% if report.media %}
+          <div class="report-reason"><a href="{{ report.media.url }}" target="_blank" rel="noopener noreferrer">[ VIEW ATTACHMENT ]</a></div>
           {% endif %}
           <div class="report-actions">
             <button type="button" class="report-action-btn js-resolve-report" data-report="{{ report.id }}" data-status="resolved">[ RESOLVE ]</button>
@@ -353,6 +405,32 @@
           });
         })();
       </script>
+    {% elif active_category == 'report_history' %}
+      <div class="reports-list">
+        {% for report in reports %}
+        <div class="report-item">
+          <div class="report-meta">
+            <span>Filed by <a href="{% url 'user_profile' report.reporter.username %}">{{ report.reporter.username }}</a> &middot; {{ report.created_at|date:"m/d/Y g:i A" }} &middot; <strong>{{ report.get_category_display }}</strong></span>
+            <span>
+              {% if report.reported_user %}Target: <a href="{% url 'user_profile' report.reported_user.username %}">{{ report.reported_user.username }}</a>{% endif %}
+              {% if report.reported_message %}Message #{{ report.reported_message.id }} from <a href="{% url 'user_profile' report.reported_message.sender.username %}">{{ report.reported_message.sender.username }}</a>{% endif %}
+            </span>
+          </div>
+          <div class="report-reason">{{ report.reason|safe }}</div>
+          {% if report.reported_message %}
+          <div class="report-reason" style="color: var(--dim-white);">Reported content: {{ report.reported_message.body|safe|default:"(no text)" }}</div>
+          {% endif %}
+          {% if report.media %}
+          <div class="report-reason"><a href="{{ report.media.url }}" target="_blank" rel="noopener noreferrer">[ VIEW ATTACHMENT ]</a></div>
+          {% endif %}
+          <div class="report-history-status report-history-status-{{ report.status }}">
+            {{ report.get_status_display }}{% if report.resolved_by %} by {{ report.resolved_by.username }}{% endif %}{% if report.resolved_at %} &middot; {{ report.resolved_at|date:"m/d/Y g:i A" }}{% endif %}
+          </div>
+        </div>
+        {% empty %}
+        <div class="empty-feed">No resolved or dismissed reports yet.</div>
+        {% endfor %}
+      </div>
     {% else %}
       {% for message in messages_list %}
         {% if message.conversation.category == 'social' %}<a href="{% url 'mail_social_thread' message.conversation_id %}" class="thread-list-item">

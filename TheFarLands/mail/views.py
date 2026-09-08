@@ -29,7 +29,7 @@ from .models import Conversation, ConversationParticipant, Message, Report, User
 
 
 def _require_mail_access(user):
-    """Every mail view except mail_report_create requires a signed-in,
+    """Every mail view except mail_report_new requires a signed-in,
     non-guest account - guests can't use any part of Mail. Mirrors
     forum.views._can_comment's "authenticated and not guest" gate,
     enforced here (not just hidden in the template) in case of a direct
@@ -301,6 +301,23 @@ def mail_group_new(request):
 
 
 @login_required
+def mail_friends(request):
+    """List of accounts this user has friended - see mail.models.
+    UserRelationship's docstring (instant friend, no accept step, so this
+    is simply "everyone I've friended," not a mutual-friends concept)."""
+    _require_mail_access(request.user)
+    friends = (
+        UserRelationship.objects.filter(from_user=request.user, kind=UserRelationship.FRIEND)
+        .select_related('to_user')
+        .order_by('to_user__username')
+    )
+    return render(request, 'mail/index.html', {
+        **_sidebar_context(request.user, 'friends'),
+        'friends': friends,
+    })
+
+
+@login_required
 def mail_reports(request):
     _require_mail_access(request.user)
     if not request.user.is_moderator:
@@ -310,6 +327,24 @@ def mail_reports(request):
     )
     return render(request, 'mail/index.html', {
         **_sidebar_context(request.user, 'reports'),
+        'reports': reports,
+    })
+
+
+@login_required
+def mail_report_history(request):
+    """Every report that's been acted on (Resolved or Dismissed) - moved
+    here off the live Reports queue once mail_report_resolve fires, so
+    the queue itself only ever shows what's still open. Director/Admin
+    only, same as mail_reports."""
+    _require_mail_access(request.user)
+    if not request.user.is_moderator:
+        raise PermissionDenied('Only Director/Admin accounts can view Report History.')
+    reports = Report.objects.exclude(status=Report.OPEN).select_related(
+        'reporter', 'reported_user', 'reported_message', 'reported_message__sender', 'resolved_by'
+    ).order_by('-resolved_at')
+    return render(request, 'mail/index.html', {
+        **_sidebar_context(request.user, 'report_history'),
         'reports': reports,
     })
 
@@ -360,6 +395,7 @@ def mail_report_new(request):
     cooldown_hours_left = int(cooldown.total_seconds() // 3600) + 1 if cooldown else None
 
     if request.method == 'POST':
+        form = ReportForm(request.POST, request.FILES)
         if cooldown:
             flash.error(
                 request,
@@ -368,16 +404,14 @@ def mail_report_new(request):
             )
         elif not reported_user and not reported_message:
             flash.error(request, 'Pick who or what you\'re reporting first.')
-        else:
-            form = ReportForm(request.POST, request.FILES)
-            if form.is_valid():
-                report = form.save(commit=False)
-                report.reporter = request.user
-                report.reported_user = reported_user
-                report.reported_message = reported_message
-                report.save()
-                flash.success(request, 'Report filed - a moderator will review it.')
-                return redirect('mail_inbox' if not request.user.is_guest else 'home')
+        elif form.is_valid():
+            report = form.save(commit=False)
+            report.reporter = request.user
+            report.reported_user = reported_user
+            report.reported_message = reported_message
+            report.save()
+            flash.success(request, 'Report filed - a moderator will review it.')
+            return redirect('mail_inbox' if not request.user.is_guest else 'home')
     else:
         form = ReportForm()
 

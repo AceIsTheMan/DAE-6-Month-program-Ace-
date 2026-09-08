@@ -143,6 +143,15 @@
      button per that component's docstring (avoids showing "Message" in
      both places). */
   .profile-actions { display: flex; align-items: center; gap: 0.7rem; margin-top: 1rem; }
+
+  /* Self-reported status (see accounts.models.CustomUser.status) - a
+     dot + label, colored from the same red/black palette everything
+     else uses rather than introducing green/yellow into the theme. */
+  .status-value { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+  .status-online .status-dot, .status-active .status-dot { background: var(--red-bright); box-shadow: 0 0 6px var(--red); }
+  .status-offline .status-dot, .status-deactivated .status-dot { background: var(--dim-white); }
+  .status-offline, .status-deactivated { color: var(--dim-white); }
 </style>
 {% endblock %}
 {% block content %}
@@ -173,6 +182,12 @@
                 <div class="dossier-field">
                     <span class="field-key">Role</span>
                     <span class="field-value">{{ profile_user.role|upper }}</span>
+                </div>
+                <div class="dossier-field">
+                    <span class="field-key">Status</span>
+                    <span class="field-value status-value status-{{ profile_user.status }}">
+                        <span class="status-dot"></span>{{ profile_user.get_status_display }}
+                    </span>
                 </div>
                 <div class="dossier-field">
                     <span class="field-key">Origin</span>
@@ -249,6 +264,10 @@
                     <label for="{{ edit_form.bio.id_for_label }}">Bio</label>
                     {{ edit_form.bio }}
                     {% for error in edit_form.bio.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+                    <label for="{{ edit_form.status.id_for_label }}">Status <span class="field-help" style="display:inline; text-transform:none;">(shown on your profile - purely self-reported, not automatic)</span></label>
+                    {{ edit_form.status }}
+                    {% for error in edit_form.status.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
 
                     <div style="margin-top: 1.2rem;">
                         <button type="submit" class="donate-btn" style="font-size: 1rem;">[ SAVE ]</button>

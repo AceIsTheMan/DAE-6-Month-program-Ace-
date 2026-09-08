@@ -9,8 +9,10 @@
   <a href="{% url 'mail_sent' %}" class="mail-category{% if active_category == 'sent' %} active{% endif %}">Sent</a>
   <a href="{% url 'mail_updates' %}" class="mail-category{% if active_category == 'updates' %} active{% endif %}">Updates</a>
   <a href="{% url 'mail_social' %}" class="mail-category{% if active_category == 'social' %} active{% endif %}">Social</a>
+  <a href="{% url 'mail_friends' %}" class="mail-category{% if active_category == 'friends' %} active{% endif %}">Friends</a>
   {% if can_moderate %}
   <a href="{% url 'mail_reports' %}" class="mail-category{% if active_category == 'reports' %} active{% endif %}">Reports</a>
+  <a href="{% url 'mail_report_history' %}" class="mail-category{% if active_category == 'report_history' %} active{% endif %}">Report History</a>
   {% endif %}
   {% if user.is_director %}
   <div class="mail-sidebar-directorsection">

@@ -54,6 +54,25 @@ class CustomUser(AbstractUser):
     # currency system.
     currency = models.IntegerField(default=0)
 
+    # Self-reported presence, set by the account owner in "// EDIT
+    # PROFILE" (see accounts.forms.ProfileEditForm) and shown on their
+    # profile dossier - NOT real presence detection (no login/heartbeat
+    # tracking drives this) and NOT the same thing as Django's own
+    # is_active (which actually blocks login) - this is purely a status
+    # the user broadcasts about themselves, same spirit as a chat app's
+    # manually-set "Online"/"Away" indicator.
+    STATUS_ONLINE = 'online'
+    STATUS_OFFLINE = 'offline'
+    STATUS_ACTIVE = 'active'
+    STATUS_DEACTIVATED = 'deactivated'
+    STATUS_CHOICES = [
+        (STATUS_ONLINE, 'Online'),
+        (STATUS_OFFLINE, 'Offline'),
+        (STATUS_ACTIVE, 'Active'),
+        (STATUS_DEACTIVATED, 'Deactivated'),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_ONLINE)
+
     GUEST_TRIAL_DAYS = 7
 
     @property
