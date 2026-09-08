@@ -206,11 +206,13 @@
         <div class="conversation-header">
           <span class="conversation-title-group">
             {% if partner %}
-              {% if partner.profile_picture %}
-                <img src="{{ partner.profile_picture.url }}" alt="" class="conversation-avatar">
-              {% else %}
-                <span class="conversation-avatar conversation-avatar-blank">?</span>
-              {% endif %}
+              <a href="{% url 'user_profile' partner.username %}" title="View {{ partner.username }}'s profile">
+                {% if partner.profile_picture %}
+                  <img src="{{ partner.profile_picture.url }}" alt="" class="conversation-avatar">
+                {% else %}
+                  <span class="conversation-avatar conversation-avatar-blank">?</span>
+                {% endif %}
+              </a>
             {% endif %}
             <span class="conversation-title">{{ open_conversation|conversation_display_name:user }}</span>
           </span>
@@ -224,7 +226,7 @@
               <span class="message-sender">{{ message.sender.username }}</span>
               <span>{{ message.created_at|date:"m/d/Y g:i A" }}</span>
               {% if message.sender_id != user.id %}
-              {% include "_dots_menu.html" with target_type="message" target_id=message.id target_username=message.sender.username show_report=True show_friend=True show_message=False show_block=True %}
+              {% include "_dots_menu.html" with target_type="message" target_id=message.id target_username=message.sender.username show_report=True show_friend=True show_mute=True show_message=False show_block=True %}
               {% endif %}
             </div>
             {% if message.shared_post_id %}
@@ -379,11 +381,13 @@
     <div class="dossier-bio-label" style="font-size: 0.9rem;">// Members</div>
     {% for m in members %}
     <div class="member-item">
-      {% if m.user.profile_picture %}
-        <img src="{{ m.user.profile_picture.url }}" class="member-avatar" alt="">
-      {% else %}
-        <span class="member-avatar" style="display:flex;align-items:center;justify-content:center;color:var(--red-dim);">?</span>
-      {% endif %}
+      <a href="{% url 'user_profile' m.user.username %}" title="View {{ m.user.username }}'s profile">
+        {% if m.user.profile_picture %}
+          <img src="{{ m.user.profile_picture.url }}" class="member-avatar" alt="">
+        {% else %}
+          <span class="member-avatar" style="display:flex;align-items:center;justify-content:center;color:var(--red-dim);">?</span>
+        {% endif %}
+      </a>
       <span>{{ m.user.username }}</span>
       {% if m.user_id == open_conversation.created_by_id %}<span class="role-badge">HOST</span>{% endif %}
     </div>

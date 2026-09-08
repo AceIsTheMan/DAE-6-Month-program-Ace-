@@ -336,48 +336,6 @@
     text-transform: uppercase;
   }
 
-  /* Report modal (see _report_form.html) - reuses the same full-screen
-     overlay recipe as home.html's .rules-gate/.lightbox instead of
-     stacking a form inside the still-new .dropdown-panel. */
-  .report-modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.92);
-    z-index: 5500;
-    align-items: center;
-    justify-content: center;
-  }
-  .report-modal.active { display: flex; }
-  .report-modal-box {
-    background: linear-gradient(180deg, #0d0000, #000);
-    border: 2px solid var(--red);
-    box-shadow: 0 0 20px rgba(204,0,0,0.4);
-    padding: 1.6rem;
-    width: 90%;
-    max-width: 420px;
-  }
-  .report-modal-title {
-    font-family: 'VT323', monospace;
-    color: var(--red-bright);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    font-size: 1.4rem;
-    margin-bottom: 0.8rem;
-    text-shadow: 0 0 6px var(--red);
-  }
-  .report-modal-actions { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1rem; }
-  .report-modal-cancel {
-    font-family: 'Share Tech Mono', monospace;
-    background: none;
-    border: 1px solid var(--red-dim);
-    color: var(--dim-white);
-    padding: 0.5rem 1rem;
-    cursor: pointer;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-  }
-  .report-modal-cancel:hover { border-color: var(--red-bright); color: var(--red-bright); }
 </style>
 {% block extra_head %}{% endblock %}
 </head>
@@ -412,7 +370,6 @@
   {% endif %}
   {% block content %}{% endblock %}
 </main>
-{% if user.is_authenticated %}{% include "_report_form.html" %}{% endif %}
 <script>
   // Shared show/hide toggle for any password field. Call with the input's
   // id and the button that was clicked.
@@ -430,10 +387,10 @@
 
   // Wires up every .dots-menu on the page (see _dots_menu.html, used by
   // profile.html and forum/templates/forum/index.html) - open/close via
-  // the shared anchored-panel recipe, plus the Report/Friend/Block
-  // actions those menus offer. Report is available even to guest
-  // accounts (see mail.models.Report's docstring); Friend/Block are not
-  // rendered into a guest's dots-menu at all (see _dots_menu.html).
+  // the shared anchored-panel recipe, plus the Friend/Mute/Block toggles
+  // those menus offer. Report is a plain link (to mail_report_new), not
+  // wired here at all. Friend/Mute/Block are not rendered into a guest's
+  // dots-menu at all (see _dots_menu.html).
   (function () {
     function getCookie(name) {
       var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
@@ -460,59 +417,34 @@
       }
     });
 
-    // Report modal - opened from any .js-report-open item, wherever it
-    // appears (Social message bubble, profile page). Target type/id are
-    // read off the clicked item's data attributes at open-time and
-    // stashed on the single shared #report-modal instance.
-    var modal = document.getElementById('report-modal');
-    var reasonField = document.getElementById('report-reason');
-    document.addEventListener('click', function (e) {
-      var opener = e.target.closest('.js-report-open');
-      if (!opener || !modal) return;
-      modal.dataset.targetType = opener.getAttribute('data-target-type') || '';
-      modal.dataset.targetId = opener.getAttribute('data-target-id') || '';
-      if (reasonField) reasonField.value = '';
-      modal.classList.add('active');
-    });
-    var cancelBtn = document.getElementById('report-modal-cancel');
-    if (cancelBtn) cancelBtn.addEventListener('click', function () { modal.classList.remove('active'); });
-
-    var submitBtn = document.getElementById('report-modal-submit');
-    if (submitBtn) submitBtn.addEventListener('click', function () {
-      if (!reasonField || !reasonField.value.trim()) { reasonField && reasonField.focus(); return; }
-      var body = new URLSearchParams();
-      body.set('reason', reasonField.value);
-      if (modal.dataset.targetType === 'user') body.set('reported_user_id', modal.dataset.targetId);
-      else body.set('reported_message_id', modal.dataset.targetId);
-      fetch("{% url 'mail_report_create' %}", {
-        method: 'POST',
-        headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: body.toString(),
-      }).then(function (r) {
-        modal.classList.remove('active');
-        if (r.ok) alert('Report filed.');
-      });
-    });
-
-    // Friend/Block toggles - instant, no request/accept step (see
+    // Friend/Mute/Block toggles - instant, no request/accept step (see
     // mail.models.UserRelationship's docstring).
+    var relationshipUrls = {
+      friend: "{% url 'mail_relationship_friend' 'PLACEHOLDER' %}",
+      mute: "{% url 'mail_relationship_mute' 'PLACEHOLDER' %}",
+      block: "{% url 'mail_relationship_block' 'PLACEHOLDER' %}",
+    };
+    var relationshipLabels = {
+      friend: ['Friend', 'Unfriend'],
+      mute: ['Mute', 'Unmute'],
+      block: ['Block', 'Unblock'],
+    };
+    var relationshipResponseKey = { friend: 'friended', mute: 'muted', block: 'blocked' };
     document.addEventListener('click', function (e) {
-      var btn = e.target.closest('.js-friend-toggle, .js-block-toggle');
+      var btn = e.target.closest('.js-friend-toggle, .js-mute-toggle, .js-block-toggle');
       if (!btn) return;
-      var kind = btn.classList.contains('js-friend-toggle') ? 'friend' : 'block';
+      var kind = btn.classList.contains('js-friend-toggle') ? 'friend'
+        : btn.classList.contains('js-mute-toggle') ? 'mute' : 'block';
       var username = btn.getAttribute('data-username');
-      var urlBase = kind === 'friend' ? "{% url 'mail_relationship_friend' 'PLACEHOLDER' %}" : "{% url 'mail_relationship_block' 'PLACEHOLDER' %}";
-      fetch(urlBase.replace('PLACEHOLDER', encodeURIComponent(username)), {
+      fetch(relationshipUrls[kind].replace('PLACEHOLDER', encodeURIComponent(username)), {
         method: 'POST',
         headers: { 'X-CSRFToken': getCookie('csrftoken') },
       }).then(function (r) { return r.ok ? r.json() : null; })
         .then(function (data) {
           if (!data) return;
-          var active = kind === 'friend' ? data.friended : data.blocked;
-          btn.classList.toggle('active-state', !!active);
-          btn.textContent = kind === 'friend'
-            ? (active ? 'Unfriend' : 'Friend')
-            : (active ? 'Unblock' : 'Block');
+          var active = !!data[relationshipResponseKey[kind]];
+          btn.classList.toggle('active-state', active);
+          btn.textContent = active ? relationshipLabels[kind][1] : relationshipLabels[kind][0];
         });
     });
   })();

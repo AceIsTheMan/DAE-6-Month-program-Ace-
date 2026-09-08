@@ -332,45 +332,94 @@ def mail_report_resolve(request, report_id):
 
 
 @login_required
-def mail_report_create(request):
-    """The one mail view that deliberately allows guest accounts through
-    - reporting is a safety valve, not a privilege (see mail.models.
-    Report's docstring)."""
-    if request.method != 'POST':
-        return HttpResponseNotAllowed(['POST'])
-    reported_user_id = request.POST.get('reported_user_id')
-    reported_message_id = request.POST.get('reported_message_id')
-    if not reported_user_id and not reported_message_id:
-        return HttpResponse(status=400)
-    form = ReportForm(request.POST)
-    if not form.is_valid():
-        return HttpResponse(status=400)
-    report = form.save(commit=False)
-    report.reporter = request.user
-    if reported_user_id:
-        report.reported_user = get_object_or_404(CustomUser, pk=reported_user_id)
-    if reported_message_id:
-        report.reported_message = get_object_or_404(Message, pk=reported_message_id)
-    report.save()
-    return HttpResponse(status=204)
+def mail_report_new(request):
+    """Full-page report form (mail/templates/mail/report_new.html) -
+    replaces the old modal entirely. Deliberately NOT gated by
+    _require_mail_access - reporting is open to guest accounts too (see
+    mail.models.Report's docstring), it's the one mail-adjacent action
+    that isn't a "Mail" privilege.
+
+    Target is resolved from `target_type`('user'/'message') + `target_id`
+    - as GET query params when arriving from a Report link (see
+    _dots_menu.html, prefilled from a profile page or a Social message),
+    or as POST fields once the on-page username search (see
+    mail/_recipient_picker_scripts.html's single-select mode) has picked
+    someone with no message/profile context at hand.
+    """
+    target_type = request.POST.get('target_type') or request.GET.get('target_type', '')
+    target_id = request.POST.get('target_id') or request.GET.get('target_id', '')
+
+    reported_user = None
+    reported_message = None
+    if target_type == 'user' and target_id:
+        reported_user = CustomUser.objects.filter(pk=target_id).first()
+    elif target_type == 'message' and target_id:
+        reported_message = Message.objects.select_related('sender').filter(pk=target_id).first()
+
+    cooldown = _report_cooldown_remaining(request.user)
+    cooldown_hours_left = int(cooldown.total_seconds() // 3600) + 1 if cooldown else None
+
+    if request.method == 'POST':
+        if cooldown:
+            flash.error(
+                request,
+                f'You\'ve filed {REPORT_LIMIT} reports in the last {REPORT_COOLDOWN_HOURS} hours - '
+                f'try again in about {cooldown_hours_left} hour(s).',
+            )
+        elif not reported_user and not reported_message:
+            flash.error(request, 'Pick who or what you\'re reporting first.')
+        else:
+            form = ReportForm(request.POST, request.FILES)
+            if form.is_valid():
+                report = form.save(commit=False)
+                report.reporter = request.user
+                report.reported_user = reported_user
+                report.reported_message = reported_message
+                report.save()
+                flash.success(request, 'Report filed - a moderator will review it.')
+                return redirect('mail_inbox' if not request.user.is_guest else 'home')
+    else:
+        form = ReportForm()
+
+    return render(request, 'mail/report_new.html', {
+        'form': form,
+        'target_type': target_type,
+        'target_id': target_id,
+        'reported_user': reported_user,
+        'reported_message': reported_message,
+        'cooldown_hours_left': cooldown_hours_left,
+        'report_limit': REPORT_LIMIT,
+        'report_cooldown_hours': REPORT_COOLDOWN_HOURS,
+    })
 
 
 @login_required
 def mail_recipient_search(request):
     """AJAX username search backing every recipient picker (New Group,
-    Directive send, Forum Share). `mode=directive` skips the block-filter
-    so a Director can always reach anyone, and requires the requester
-    actually be the Director."""
-    _require_mail_access(request.user)
+    Directive send, Forum Share, and the report page's username search).
+
+    `mode=directive` skips the block-filter so a Director can always
+    reach anyone, and requires the requester actually be the Director.
+    `mode=report` is the least restrictive: no guest-exclusion (a guest
+    account can absolutely be the subject of a report) and no
+    block-filter (blocking someone shouldn't hide them from being
+    reported) - just "who is this account," which is also why it's the
+    only mode that doesn't require _require_mail_access (reporting is
+    open to guests too, see mail.models.Report's docstring)."""
     query = request.GET.get('q', '').strip()
     mode = request.GET.get('mode', 'social')
+    if mode == 'report':
+        if not request.user.is_authenticated:
+            raise PermissionDenied('You must be signed in to search.')
+    else:
+        _require_mail_access(request.user)
     if mode == 'directive' and not request.user.is_director:
         raise PermissionDenied('Only the Director can search recipients in Directive mode.')
 
     users = CustomUser.objects.exclude(pk=request.user.pk)
     if query:
         users = users.filter(username__icontains=query)
-    if mode != 'directive':
+    if mode not in ('directive', 'report'):
         users = users.filter(is_guest=False)
         blocked_pairs = UserRelationship.objects.filter(kind=UserRelationship.BLOCK).filter(
             Q(from_user=request.user) | Q(to_user=request.user)
@@ -378,7 +427,14 @@ def mail_recipient_search(request):
         blocked_ids = {uid for pair in blocked_pairs for uid in pair if uid != request.user.pk}
         users = users.exclude(pk__in=blocked_ids)
     users = users.order_by('username')[:20]
-    return JsonResponse({'results': [{'id': u.id, 'username': u.username} for u in users]})
+    return JsonResponse({'results': [
+        {
+            'id': u.id,
+            'username': u.username,
+            'profile_picture_url': u.profile_picture.url if u.profile_picture else None,
+        }
+        for u in users
+    ]})
 
 
 @login_required
@@ -452,6 +508,29 @@ def mail_relationship_friend(request, username):
         UserRelationship.objects.create(from_user=request.user, to_user=target, kind=UserRelationship.FRIEND)
         friended = True
     return JsonResponse({'friended': friended})
+
+
+@login_required
+def mail_relationship_mute(request, username):
+    """Toggle muting notifications from `username` - unlike Block, this
+    is purely a notification-badge suppression (see mail.context_
+    processors.notification_counts), never a messaging/search
+    restriction; the muted account can interact completely normally."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    target = get_object_or_404(CustomUser, username=username)
+    if target == request.user:
+        raise PermissionDenied('You cannot mute yourself.')
+    existing = UserRelationship.objects.filter(
+        from_user=request.user, to_user=target, kind=UserRelationship.MUTE
+    ).first()
+    if existing:
+        existing.delete()
+        muted = False
+    else:
+        UserRelationship.objects.create(from_user=request.user, to_user=target, kind=UserRelationship.MUTE)
+        muted = True
+    return JsonResponse({'muted': muted})
 
 
 @login_required

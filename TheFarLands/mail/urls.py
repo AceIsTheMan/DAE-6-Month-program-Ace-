@@ -15,10 +15,11 @@ urlpatterns = [
     path('social/<int:conversation_id>/', views.mail_social_thread, name='mail_social_thread'),
     path('reports/', views.mail_reports, name='mail_reports'),
     path('reports/<int:report_id>/resolve/', views.mail_report_resolve, name='mail_report_resolve'),
-    path('report/', views.mail_report_create, name='mail_report_create'),
+    path('report/new/', views.mail_report_new, name='mail_report_new'),
     path('recipients/search/', views.mail_recipient_search, name='mail_recipient_search'),
     path('share/post/<int:post_id>/', views.mail_forum_share, name='mail_forum_share'),
     path('gif-search/', views.mail_gif_search, name='mail_gif_search'),
     path('relationship/<str:username>/friend/', views.mail_relationship_friend, name='mail_relationship_friend'),
+    path('relationship/<str:username>/mute/', views.mail_relationship_mute, name='mail_relationship_mute'),
     path('relationship/<str:username>/block/', views.mail_relationship_block, name='mail_relationship_block'),
 ]

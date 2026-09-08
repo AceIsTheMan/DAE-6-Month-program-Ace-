@@ -1,17 +1,19 @@
 {% comment %}
 Shared 3-dot menu component - same anchored-panel recipe as the
 notification dropdown (see _nav_mail_icons.html), wired up generically in
-base.html's shared script (open/close, Report modal, Friend/Block
-toggles). Share is wired separately by whichever page uses it (see
-forum/templates/forum/index.html) since it opens a recipient picker, not
-a simple toggle.
+base.html's shared script (open/close, Friend/Mute/Block toggles). Share
+is wired separately by whichever page uses it (see forum/templates/
+forum/index.html) since it opens a recipient picker, not a simple
+toggle. Report is a plain link to the full report page (mail.views.
+mail_report_new), not a modal - it round-trips target_type/target_id as
+query params so that page arrives pre-filled.
 
 Include with whichever of these context vars apply:
   target_type      - 'user', 'message', or 'post'
   target_id        - the CustomUser/Message/Post pk
-  target_username  - only needed when show_friend/show_message/show_block
-  show_report / show_friend / show_message / show_block / show_share
-  is_friend / is_blocked - initial toggle state, if known
+  target_username  - only needed when show_friend/show_message/show_block/show_mute
+  show_report / show_friend / show_message / show_block / show_mute / show_share
+  is_friend / is_muted / is_blocked - initial toggle state, if known
 {% endcomment %}
 <div class="dots-menu">
   <button type="button" class="dots-menu-trigger" aria-label="More actions">&#8942;</button>
@@ -25,11 +27,14 @@ Include with whichever of these context vars apply:
     {% if show_friend %}
     <button type="button" class="dropdown-item js-friend-toggle" data-username="{{ target_username }}">{% if is_friend %}Unfriend{% else %}Friend{% endif %}</button>
     {% endif %}
+    {% if show_mute %}
+    <button type="button" class="dropdown-item js-mute-toggle" data-username="{{ target_username }}">{% if is_muted %}Unmute{% else %}Mute{% endif %}</button>
+    {% endif %}
     {% if show_block %}
     <button type="button" class="dropdown-item js-block-toggle" data-username="{{ target_username }}">{% if is_blocked %}Unblock{% else %}Block{% endif %}</button>
     {% endif %}
     {% if show_report %}
-    <button type="button" class="dropdown-item js-report-open" data-target-type="{{ target_type }}" data-target-id="{{ target_id }}">Report</button>
+    <a href="{% url 'mail_report_new' %}?target_type={{ target_type }}&amp;target_id={{ target_id }}" class="dropdown-item">Report</a>
     {% endif %}
   </div>
 </div>
