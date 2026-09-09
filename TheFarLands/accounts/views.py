@@ -9,6 +9,8 @@ from django.urls import reverse
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
+from mail.models import ModerationAction
+
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
 from .models import CustomUser
 
@@ -194,11 +196,19 @@ def profile_view(request, username=None):
         and not user.is_director
     )
 
+    # An active Mute/Ban/Perm Ban (mail.models.ModerationAction) takes
+    # over the Status row on the dossier entirely - see
+    # ModerationAction.status_label and templates/profile.html.
+    active_moderation = ModerationAction.active_for(
+        user, [ModerationAction.MUTE, ModerationAction.BAN, ModerationAction.PERM_BAN]
+    )
+
     return render(request, 'profile.html', {
         'profile_user': user,
         'edit_form': edit_form,
         'can_use_mail_with_them': can_use_mail_with_them,
         'can_moderate_them': can_moderate_them,
+        'active_moderation': active_moderation,
     })
 
 

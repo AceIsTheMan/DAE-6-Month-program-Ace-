@@ -3,8 +3,8 @@
 
 {% block extra_head %}
 <style>
-  .mod-kind-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
-  .mod-kind-tab {
+  .mod-kind-tabs, .mod-unit-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
+  .mod-kind-tab, .mod-unit-tab {
     font-family: 'Share Tech Mono', monospace;
     background: var(--black);
     border: 1px solid var(--red-dim);
@@ -15,20 +15,11 @@
     text-transform: uppercase;
     cursor: pointer;
   }
-  .mod-kind-tab.active, .mod-kind-tab:hover { border-color: var(--red-bright); color: var(--red-bright); background: rgba(204,0,0,0.1); }
-  .mod-duration-row { display: flex; gap: 0.6rem; align-items: flex-end; }
-  .mod-duration-row > div { flex: 1; }
+  .mod-kind-tab.active, .mod-kind-tab:hover,
+  .mod-unit-tab.active, .mod-unit-tab:hover { border-color: var(--red-bright); color: var(--red-bright); background: rgba(204,0,0,0.1); }
+  .mod-duration-row { display: flex; gap: 1.2rem; align-items: flex-start; flex-wrap: wrap; }
+  .mod-duration-row > div:first-child { width: 120px; }
   .mod-duration-row input[type="number"] { width: 100%; }
-  select#id_duration_unit {
-    width: 100%;
-    background: var(--black);
-    border: 1px solid var(--red-dim);
-    color: var(--white);
-    padding: 0.6rem 0.8rem;
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.95rem;
-  }
-  select#id_duration_unit:focus { outline: none; border-color: var(--red-bright); }
   .mod-permban-note { color: var(--dim-white); font-size: 0.82rem; border: 1px dashed var(--red-dim); padding: 0.7rem; }
   .mod-target-box { display: flex; align-items: center; gap: 0.7rem; border: 1px dashed var(--red-dim); padding: 0.7rem; margin-bottom: 1.2rem; }
   .mod-target-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid var(--red-dim); }
@@ -55,6 +46,7 @@
 
   <form method="post" id="moderation-form" novalidate>
     {% csrf_token %}
+    <label>Action</label>
     <div class="mod-kind-tabs">
       <button type="button" class="mod-kind-tab" data-kind="mute">Mute</button>
       <button type="button" class="mod-kind-tab" data-kind="ban">Ban</button>
@@ -68,12 +60,11 @@
         <input type="number" name="duration_amount" id="id_duration_amount" min="1" value="{{ form.duration_amount.value|default:'' }}">
       </div>
       <div>
-        <label for="id_duration_unit">&nbsp;</label>
-        <select name="duration_unit" id="id_duration_unit">
-          <option value="" data-for="mute,ban">-- unit --</option>
-          {% for u in mute_units %}<option value="{{ u }}" data-for="mute">{{ u|title }}</option>{% endfor %}
-          {% for u in ban_units %}<option value="{{ u }}" data-for="ban">{{ u|title }}</option>{% endfor %}
-        </select>
+        <label>Unit</label>
+        <div class="mod-unit-tabs">
+          {% for u in duration_units %}<button type="button" class="mod-unit-tab" data-unit="{{ u }}">{{ u|title }}</button>{% endfor %}
+        </div>
+        <input type="hidden" name="duration_unit" id="id_duration_unit" value="{{ form.duration_unit.value|default:'' }}">
       </div>
     </div>
     <div id="mod-permban-note" class="mod-permban-note" hidden>
@@ -93,34 +84,33 @@
 
 <script>
   (function () {
-    var tabs = document.querySelectorAll('.mod-kind-tab');
+    var kindTabs = document.querySelectorAll('.mod-kind-tab');
+    var unitTabs = document.querySelectorAll('.mod-unit-tab');
     var kindField = document.getElementById('id_kind');
+    var unitField = document.getElementById('id_duration_unit');
     var durationFields = document.getElementById('mod-duration-fields');
     var permbanNote = document.getElementById('mod-permban-note');
-    var unitSelect = document.getElementById('id_duration_unit');
 
     function setKind(kind) {
       kindField.value = kind;
-      tabs.forEach(function (t) { t.classList.toggle('active', t.getAttribute('data-kind') === kind); });
-      if (kind === 'perm_ban') {
-        durationFields.hidden = true;
-        permbanNote.hidden = false;
-      } else {
-        durationFields.hidden = false;
-        permbanNote.hidden = true;
-        Array.prototype.forEach.call(unitSelect.options, function (opt) {
-          if (!opt.value) { opt.hidden = false; return; }
-          var forList = (opt.getAttribute('data-for') || '').split(',');
-          opt.hidden = forList.indexOf(kind) === -1;
-        });
-        unitSelect.value = '';
-      }
+      kindTabs.forEach(function (t) { t.classList.toggle('active', t.getAttribute('data-kind') === kind); });
+      durationFields.hidden = kind === 'perm_ban';
+      permbanNote.hidden = kind !== 'perm_ban';
+    }
+    function setUnit(unit) {
+      unitField.value = unit;
+      unitTabs.forEach(function (t) { t.classList.toggle('active', t.getAttribute('data-unit') === unit); });
     }
 
-    tabs.forEach(function (btn) {
+    kindTabs.forEach(function (btn) {
       btn.addEventListener('click', function () { setKind(btn.getAttribute('data-kind')); });
     });
+    unitTabs.forEach(function (btn) {
+      btn.addEventListener('click', function () { setUnit(btn.getAttribute('data-unit')); });
+    });
+
     setKind(kindField.value || 'mute');
+    setUnit(unitField.value || unitTabs[0].getAttribute('data-unit'));
   })();
 </script>
 {% endblock %}

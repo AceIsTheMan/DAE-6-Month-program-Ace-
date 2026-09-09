@@ -368,6 +368,24 @@ class ModerationAction(models.Model):
             return True
         return timezone.now() < self.expires_at
 
+    @property
+    def status_label(self):
+        """Punishment label that overrides CustomUser.status on the
+        target's profile dossier while this action is active - see
+        accounts.views.profile_view / templates/profile.html. Perm Ban
+        has no expiry date since it's indefinite ("Until Further
+        Notice"); Mute/Ban always show their actual expiry, localized to
+        the project's TIME_ZONE (America/New_York - shown as EST per how
+        the site already talks about time elsewhere, not recalculated
+        for EDT)."""
+        if self.kind == self.PERM_BAN:
+            return 'Banned Until Further Notice'
+        verb = 'Muted' if self.kind == self.MUTE else 'Banned'
+        if not self.expires_at:
+            return verb
+        local_expiry = timezone.localtime(self.expires_at).strftime('%m/%d/%Y %I:%M %p')
+        return f'{verb}, Until {local_expiry} EST'
+
     @classmethod
     def active_for(cls, target, kinds):
         """The most recent still-active row of any of `kinds` against

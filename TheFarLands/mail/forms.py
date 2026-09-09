@@ -15,14 +15,19 @@ GROUP_MAX_MEMBERS = 10  # host + up to 9 invitees
 REPORT_LIMIT = 3
 REPORT_COOLDOWN_HOURS = 48
 
-# Duration units accepted per ModerationAction kind - Mute is fine-grained
-# (minutes up to months), Ban is coarse (weeks/months/years); Perm Ban
-# takes no duration at all. Approximated as fixed day-counts (a "month"
-# is 30 days, a "year" 365) rather than calendar-accurate - good enough
-# for a moderation cooldown, and avoids adding a dateutil dependency for
+# One unified set of duration units - same choices for Mute and Ban
+# alike (Perm Ban takes no duration at all). Order matters here: it's
+# also the display order in mail/templates/mail/moderation_new.html's
+# unit buttons. Approximated as fixed day-counts (a "month" is 30 days,
+# a "year" 365) rather than calendar-accurate - good enough for a
+# moderation duration, and avoids adding a dateutil dependency for
 # calendar math the project has never needed before.
-MUTE_UNITS = {'minutes': timedelta(minutes=1), 'days': timedelta(days=1), 'weeks': timedelta(weeks=1), 'months': timedelta(days=30)}
-BAN_UNITS = {'weeks': timedelta(weeks=1), 'months': timedelta(days=30), 'years': timedelta(days=365)}
+DURATION_UNITS = {
+    'minutes': timedelta(minutes=1),
+    'weeks': timedelta(weeks=1),
+    'months': timedelta(days=30),
+    'years': timedelta(days=365),
+}
 MAX_MODERATION_REASON_LEN = 1500
 
 
@@ -195,10 +200,11 @@ class ReportForm(forms.ModelForm):
 
 class ModerationActionForm(forms.Form):
     """Backs mail.views.mail_moderation_new - a moderator muting/banning
-    an account. `kind` decides which duration units are even valid (see
-    MUTE_UNITS/BAN_UNITS) - Perm Ban ignores duration entirely, it's
-    indefinite until lifted by hand (see mail.views.mail_moderation_lift).
-    A reason is required no matter which kind this is."""
+    an account. Duration units (see DURATION_UNITS) are the same set
+    whichever kind this is - Perm Ban is the only kind that ignores
+    duration entirely, since it's indefinite until lifted by hand (see
+    mail.views.mail_moderation_lift). A reason is required no matter
+    which kind this is."""
     kind = forms.ChoiceField(choices=ModerationAction.KIND_CHOICES)
     duration_amount = forms.IntegerField(required=False, min_value=1)
     duration_unit = forms.CharField(required=False)
@@ -219,12 +225,11 @@ class ModerationActionForm(forms.Form):
             cleaned['duration'] = None
             return cleaned
 
-        units = MUTE_UNITS if kind == ModerationAction.MUTE else BAN_UNITS
         amount = cleaned.get('duration_amount')
         unit = cleaned.get('duration_unit')
         if not amount:
             raise forms.ValidationError('Pick a duration.')
-        if unit not in units:
-            raise forms.ValidationError(f'Duration must be one of: {", ".join(units)}.')
-        cleaned['duration'] = units[unit] * amount
+        if unit not in DURATION_UNITS:
+            raise forms.ValidationError(f'Duration must be one of: {", ".join(DURATION_UNITS)}.')
+        cleaned['duration'] = DURATION_UNITS[unit] * amount
         return cleaned

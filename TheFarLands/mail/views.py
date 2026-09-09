@@ -14,9 +14,8 @@ from accounts.models import CustomUser
 from forum.models import Post
 
 from .forms import (
-    BAN_UNITS,
+    DURATION_UNITS,
     GROUP_MAX_MEMBERS,
-    MUTE_UNITS,
     REPORT_COOLDOWN_HOURS,
     REPORT_LIMIT,
     DirectiveForm,
@@ -85,6 +84,27 @@ def _notify_director_of_moderation_action(action):
         Message.objects.create(conversation=conversation, sender=action.moderator, body=summary)
         conversation.last_message_at = timezone.now()
         conversation.save(update_fields=['last_message_at'])
+
+
+def _notify_target_of_moderation_action(action):
+    """Delivers the muted/banned account its own notice - a DIRECTIVE-
+    category Conversation, same as mail.views.mail_directive_new, so it
+    inherits that category's structural guarantee for free: no reply
+    endpoint and no delete/dismiss endpoint exist for it anywhere, which
+    is exactly "they get a mail, they can't reply back" - not a UI
+    restriction bolted on, an absence of the capability entirely."""
+    conversation = Conversation.objects.create(category=Conversation.DIRECTIVE, created_by=action.moderator)
+    ConversationParticipant.objects.create(conversation=conversation, user=action.target)
+    expiry_line = (
+        f'Expires: {action.expires_at.strftime("%m/%d/%Y %I:%M %p")}'
+        if action.expires_at else 'This is permanent until a Director/Admin lifts it.'
+    )
+    body = (
+        f'You have received a {action.get_kind_display()}.<br>'
+        f'{expiry_line}<br>'
+        f'Reason: {action.reason}'
+    )
+    Message.objects.create(conversation=conversation, sender=action.moderator, body=body)
 
 
 def _report_cooldown_remaining(user):
@@ -463,6 +483,7 @@ def mail_moderation_new(request, username):
                 expires_at=(timezone.now() + duration) if duration else None,
             )
             _notify_director_of_moderation_action(action)
+            _notify_target_of_moderation_action(action)
             flash.success(request, f'{action.get_kind_display()} issued against {target.username}.')
             return redirect('user_profile', username=target.username)
     else:
@@ -471,8 +492,7 @@ def mail_moderation_new(request, username):
     return render(request, 'mail/moderation_new.html', {
         'form': form,
         'target': target,
-        'mute_units': sorted(MUTE_UNITS),
-        'ban_units': sorted(BAN_UNITS, key=lambda u: ['weeks', 'months', 'years'].index(u)),
+        'duration_units': list(DURATION_UNITS),
     })
 
 
