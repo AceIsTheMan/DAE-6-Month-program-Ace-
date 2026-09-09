@@ -78,34 +78,55 @@ body {
 .page {
   max-width: 760px;
   margin: 0 auto;
-  padding: 2.75rem 1.25rem 4rem;
+  padding: 2.5rem 1.25rem 4rem;
 }
 
-/* ---- Brand + nav ---- */
+/* ---- Site nav bar (logo, page links, View GitHub button) ---- */
+
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.site-nav-inner {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: .75rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
 
 .dae-brand {
-  margin: 0 0 1.5rem;
+  display: block;
+  flex-shrink: 0;
+  line-height: 0;
 }
 
 .dae-brand img {
   display: block;
-  width: min(180px, 42%);
-  height: auto;
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
   border-radius: 8px;
 }
 
 .portfolio-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: .5rem;
-  margin: 0 0 2.5rem;
+  gap: .35rem;
+  margin: 0;
   padding: 0;
   line-height: 1;
+  flex: 1;
 }
 
 .portfolio-nav a {
   display: inline-block;
-  padding: .5rem 1rem;
+  padding: .5rem .9rem;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--bg-alt);
@@ -125,8 +146,26 @@ body {
   transform: translateY(-1px);
 }
 
-.portfolio-nav span[aria-hidden="true"] {
-  display: none;
+.btn-github {
+  flex-shrink: 0;
+  display: inline-block;
+  padding: .55rem 1.1rem;
+  border: 1px solid var(--fg);
+  border-radius: 6px;
+  background: var(--fg);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: .95rem;
+  white-space: nowrap;
+  transition: background .15s ease, border-color .15s ease, transform .1s ease;
+}
+
+.btn-github:hover {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+  transform: translateY(-1px);
 }
 
 /* ---- Headings ---- */
@@ -317,17 +356,27 @@ blockquote {
     padding: 2rem 1rem 3rem;
   }
 
-  .dae-brand img {
-    width: 55%;
-    max-width: 150px;
-  }
-
   .page > h1 {
     font-size: 1.75rem;
   }
 
+  .site-nav-inner {
+    flex-wrap: wrap;
+    padding: .6rem 1rem;
+  }
+
+  .portfolio-nav {
+    order: 3;
+    width: 100%;
+  }
+
   .portfolio-nav a {
-    padding: .45rem .8rem;
-    font-size: .9rem;
+    padding: .4rem .75rem;
+    font-size: .85rem;
+  }
+
+  .btn-github {
+    padding: .45rem .85rem;
+    font-size: .85rem;
   }
 }
