@@ -12,13 +12,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg: #ffffff;
-  --bg-tile: #f0f0f1;
-  --bg-alt: #f5f5f6;
-  --fg: #141414;
-  --fg-muted: #55575c;
+  --bg: #f6f6f4;
+  --bg-tile: #ebebe8;
+  --bg-alt: #eeeeec;
+  --fg: #202124;
+  --fg-muted: #5a5c60;
   --silver: #9a9da3;
-  --border: #dcdde0;
+  --border: #d9d9d6;
   --red: #c8102e;
   --radius: 12px;
 }
@@ -48,28 +48,34 @@ body {
   color: #fff;
 }
 
-/* ---- Hero banners (top: flying cards / bottom: chess battlefield) ---- */
+/* ---- Hero banners (top: assets/images/topbanner.jpeg — flying cards /
+   bottom: assets/images/bottombanner.jpeg — chess battlefield) ----
+   Each stacks 3 layers: the fade-to-page-background gradient, the actual
+   photo, and (bottom-most, so it only shows while the photo is missing or
+   still loading) a black/white checker fallback in the site's own tokens —
+   so the banner always reads as "on theme" rather than a blank bar. */
 
 .banner {
   height: clamp(160px, 26vw, 280px);
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-color: #000;
+  background-repeat: no-repeat, no-repeat, repeat;
+  background-position: center, center, center;
+  background-size: cover, cover, 40px 40px;
   transition: opacity .15s linear;
 }
 
 .banner-top {
   background-image:
     linear-gradient(to bottom, rgba(0, 0, 0, 0) 55%, var(--bg) 100%),
-    url('{{ "/assets/images/banner-top.jpg" | relative_url }}');
+    url('{{ "/assets/images/topbanner.jpeg" | relative_url }}'),
+    repeating-conic-gradient(var(--fg) 0% 25%, var(--bg-alt) 0% 50%);
   opacity: 1;
 }
 
 .banner-bottom {
   background-image:
     linear-gradient(to top, rgba(0, 0, 0, 0) 55%, var(--bg) 100%),
-    url('{{ "/assets/images/banner-bottom.jpg" | relative_url }}');
+    url('{{ "/assets/images/bottombanner.jpeg" | relative_url }}'),
+    repeating-conic-gradient(var(--fg) 0% 25%, var(--bg-alt) 0% 50%);
   opacity: 0;
 }
 
@@ -293,6 +299,27 @@ img[alt^="Project "] {
   width: 100%;
   height: auto;
   margin-bottom: 1rem;
+}
+
+/* Real project media (as opposed to the alt-text-matched placeholders
+   above) carries this class explicitly via kramdown's {: .project-media } */
+.project-media,
+.project-video {
+  display: block;
+  max-width: 760px;
+  width: 100%;
+  height: auto;
+  background: var(--bg-alt);
+  border-radius: var(--radius);
+  padding: 10px;
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 18px rgba(20, 20, 20, .12);
+  margin-bottom: 1rem;
+}
+
+.project-video {
+  padding: 0;
+  overflow: hidden;
 }
 
 /* ---- Rules / dividers: card-edge stripe (the deck's red, in small doses) ---- */
