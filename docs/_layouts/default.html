@@ -8,8 +8,41 @@
   <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
 </head>
 <body>
+  <header class="banner banner-top" role="presentation" aria-hidden="true"></header>
+
   <main class="page">
     {{ content }}
   </main>
+
+  <footer class="banner banner-bottom" role="presentation" aria-hidden="true"></footer>
+
+  <script>
+    (function () {
+      var top = document.querySelector('.banner-top');
+      var bottom = document.querySelector('.banner-bottom');
+
+      // Top banner: fades out as the page scrolls past it.
+      function onScroll() {
+        if (!top) return;
+        var distance = top.offsetHeight || 1;
+        var fade = 1 - (window.scrollY / distance);
+        top.style.opacity = Math.max(0, Math.min(1, fade));
+      }
+      window.addEventListener('scroll', onScroll, { passive: true });
+      onScroll();
+
+      // Bottom banner: fades in once it scrolls into view near the bottom of the page.
+      if (bottom && 'IntersectionObserver' in window) {
+        var io = new IntersectionObserver(function (entries) {
+          entries.forEach(function (entry) {
+            bottom.style.opacity = entry.isIntersecting ? 1 : 0;
+          });
+        }, { threshold: 0.15 });
+        io.observe(bottom);
+      } else if (bottom) {
+        bottom.style.opacity = 1;
+      }
+    })();
+  </script>
 </body>
 </html>

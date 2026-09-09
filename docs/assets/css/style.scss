@@ -48,6 +48,31 @@ body {
   color: #fff;
 }
 
+/* ---- Hero banners (top: flying cards / bottom: chess battlefield) ---- */
+
+.banner {
+  height: clamp(160px, 26vw, 280px);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: #000;
+  transition: opacity .15s linear;
+}
+
+.banner-top {
+  background-image:
+    linear-gradient(to bottom, rgba(11, 11, 12, 0) 55%, var(--bg) 100%),
+    url('{{ "/assets/images/banner-top.jpg" | relative_url }}');
+  opacity: 1;
+}
+
+.banner-bottom {
+  background-image:
+    linear-gradient(to top, rgba(11, 11, 12, 0) 55%, var(--bg) 100%),
+    url('{{ "/assets/images/banner-bottom.jpg" | relative_url }}');
+  opacity: 0;
+}
+
 /* ---- Layout ---- */
 
 .page {
