@@ -14,18 +14,21 @@ from accounts.models import CustomUser
 from forum.models import Post
 
 from .forms import (
+    BAN_UNITS,
     GROUP_MAX_MEMBERS,
+    MUTE_UNITS,
     REPORT_COOLDOWN_HOURS,
     REPORT_LIMIT,
     DirectiveForm,
     ForumShareForm,
     GroupCreateForm,
     MessageComposeForm,
+    ModerationActionForm,
     ReportForm,
     UpdateForm,
     _is_blocked_pair,
 )
-from .models import Conversation, ConversationParticipant, Message, Report, UserRelationship
+from .models import Conversation, ConversationParticipant, Message, ModerationAction, Report, UserRelationship
 
 
 def _require_mail_access(user):
@@ -43,6 +46,45 @@ def _sidebar_context(user, active):
         'active_category': active,
         'can_moderate': user.is_moderator,
     }
+
+
+def _require_not_muted_by_moderator(user):
+    """A real moderator Mute (see mail.models.ModerationAction - not the
+    self-service notification mute) blocks sending anything in Mail:
+    Social messages, group creation, DM starts, forum shares. Reading is
+    never affected."""
+    action = ModerationAction.active_for(user, [ModerationAction.MUTE])
+    if action:
+        raise PermissionDenied(
+            f'This account is muted until '
+            f'{action.expires_at.strftime("%m/%d/%Y %I:%M %p") if action.expires_at else "further notice"}.'
+        )
+
+
+def _notify_director_of_moderation_action(action):
+    """Drops a DM from the acting moderator to every current Director
+    summarizing the action taken - "sent to the directors mail" per the
+    feature's requirements. The action itself (mail.models.
+    ModerationAction) is already the permanent, immediately-visible
+    record moderators review in Report History's Bans/Mutes tab; this
+    mail is just the notification trail on top of that, not a gate on
+    when the record becomes visible."""
+    directors = CustomUser.objects.filter(role=CustomUser.ROLE_DIRECTOR).exclude(pk=action.moderator_id)
+    # action.reason is already sanitized (escaped + newlines -> <br>, see
+    # ModerationActionForm.clean_reason) - this body is rendered with the
+    # `safe` filter same as any other message, so the surrounding text
+    # needs a real <br> too, not a literal \n. Usernames are safe as-is:
+    # Django's default username validator never allows HTML-special
+    # characters.
+    summary = (
+        f'{action.moderator.username} issued a {action.get_kind_display()} against {action.target.username}.<br>'
+        f'Reason: {action.reason}'
+    )
+    for director in directors:
+        conversation = _get_or_create_dm(action.moderator, director)
+        Message.objects.create(conversation=conversation, sender=action.moderator, body=summary)
+        conversation.last_message_at = timezone.now()
+        conversation.save(update_fields=['last_message_at'])
 
 
 def _report_cooldown_remaining(user):
@@ -228,6 +270,7 @@ def mail_social_thread(request, conversation_id):
             raise PermissionDenied('This conversation is not available between these accounts.')
 
     if request.method == 'POST':
+        _require_not_muted_by_moderator(request.user)
         form = MessageComposeForm(request.POST, request.FILES)
         if form.is_valid():
             message = form.save(commit=False)
@@ -267,6 +310,7 @@ def mail_social_dm_start(request, username):
         raise PermissionDenied('Guest accounts cannot be messaged.')
     if _is_blocked_pair(request.user, target):
         raise PermissionDenied('Messaging is not available between these accounts.')
+    _require_not_muted_by_moderator(request.user)
     conversation = _get_or_create_dm(request.user, target)
     return redirect('mail_social_thread', conversation_id=conversation.id)
 
@@ -275,6 +319,7 @@ def mail_social_dm_start(request, username):
 def mail_group_new(request):
     _require_mail_access(request.user)
     if request.method == 'POST':
+        _require_not_muted_by_moderator(request.user)
         form = GroupCreateForm(request.POST, sender=request.user)
         if form.is_valid():
             recipients = form.cleaned_data['usernames']
@@ -333,19 +378,43 @@ def mail_reports(request):
 
 @login_required
 def mail_report_history(request):
-    """Every report that's been acted on (Resolved or Dismissed) - moved
-    here off the live Reports queue once mail_report_resolve fires, so
-    the queue itself only ever shows what's still open. Director/Admin
-    only, same as mail_reports."""
+    """Two sub-tabs, both Director/Admin only: 'reports' (every report
+    that's been Resolved or Dismissed - moved here off the live Reports
+    queue once mail_report_resolve fires, so that queue only ever shows
+    what's still open) and 'actions' (every Mute/Ban/Perm Ban ever
+    issued - mail.models.ModerationAction is the permanent record; this
+    is where moderators review each other's actions and why, alongside
+    the DM notification mail.views._notify_director_of_moderation_action
+    sends). `q` filters either tab by username - reporter/reported_user
+    on 'reports', moderator/target on 'actions'."""
     _require_mail_access(request.user)
     if not request.user.is_moderator:
         raise PermissionDenied('Only Director/Admin accounts can view Report History.')
-    reports = Report.objects.exclude(status=Report.OPEN).select_related(
-        'reporter', 'reported_user', 'reported_message', 'reported_message__sender', 'resolved_by'
-    ).order_by('-resolved_at')
+
+    tab = request.GET.get('tab', 'reports')
+    if tab not in ('reports', 'actions'):
+        tab = 'reports'
+    query = request.GET.get('q', '').strip()
+
+    reports = None
+    actions = None
+    if tab == 'actions':
+        actions = ModerationAction.objects.select_related('moderator', 'target', 'lifted_by')
+        if query:
+            actions = actions.filter(Q(moderator__username__icontains=query) | Q(target__username__icontains=query))
+    else:
+        reports = Report.objects.exclude(status=Report.OPEN).select_related(
+            'reporter', 'reported_user', 'reported_message', 'reported_message__sender', 'resolved_by'
+        ).order_by('-resolved_at')
+        if query:
+            reports = reports.filter(Q(reporter__username__icontains=query) | Q(reported_user__username__icontains=query))
+
     return render(request, 'mail/index.html', {
         **_sidebar_context(request.user, 'report_history'),
+        'history_tab': tab,
+        'history_query': query,
         'reports': reports,
+        'actions': actions,
     })
 
 
@@ -363,6 +432,62 @@ def mail_report_resolve(request, report_id):
     report.resolved_by = request.user
     report.resolved_at = timezone.now()
     report.save(update_fields=['status', 'resolved_by', 'resolved_at'])
+    return HttpResponse(status=204)
+
+
+@login_required
+def mail_moderation_new(request, username):
+    """Director/Admin issuing a Mute/Ban/Perm Ban against `username` -
+    see mail.forms.ModerationActionForm for the duration-unit rules per
+    kind. The Director can never be targeted (accounts.models.CustomUser.
+    is_director), mirroring the "block is futile against a moderator"
+    exemption elsewhere in this app - moderation power only ever flows
+    downward. A reason is mandatory no matter which kind this is."""
+    if not request.user.is_moderator:
+        raise PermissionDenied('Only Director/Admin accounts can take moderation action.')
+    target = get_object_or_404(CustomUser, username=username)
+    if target.is_director:
+        raise PermissionDenied('The Director cannot be moderated.')
+    if target == request.user:
+        raise PermissionDenied('You cannot moderate yourself.')
+
+    if request.method == 'POST':
+        form = ModerationActionForm(request.POST)
+        if form.is_valid():
+            duration = form.cleaned_data['duration']
+            action = ModerationAction.objects.create(
+                moderator=request.user,
+                target=target,
+                kind=form.cleaned_data['kind'],
+                reason=form.cleaned_data['reason'],
+                expires_at=(timezone.now() + duration) if duration else None,
+            )
+            _notify_director_of_moderation_action(action)
+            flash.success(request, f'{action.get_kind_display()} issued against {target.username}.')
+            return redirect('user_profile', username=target.username)
+    else:
+        form = ModerationActionForm()
+
+    return render(request, 'mail/moderation_new.html', {
+        'form': form,
+        'target': target,
+        'mute_units': sorted(MUTE_UNITS),
+        'ban_units': sorted(BAN_UNITS, key=lambda u: ['weeks', 'months', 'years'].index(u)),
+    })
+
+
+@login_required
+def mail_moderation_lift(request, action_id):
+    """Early Unmute/Unban - also how a Perm Ban ever ends, since it has
+    no expires_at to age out on its own."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    if not request.user.is_moderator:
+        raise PermissionDenied('Only Director/Admin accounts can lift a moderation action.')
+    action = get_object_or_404(ModerationAction, pk=action_id)
+    action.lifted_at = timezone.now()
+    action.lifted_by = request.user
+    action.save(update_fields=['lifted_at', 'lifted_by'])
     return HttpResponse(status=204)
 
 
@@ -476,6 +601,7 @@ def mail_forum_share(request, post_id):
     _require_mail_access(request.user)
     post = get_object_or_404(Post, pk=post_id)
     if request.method == 'POST':
+        _require_not_muted_by_moderator(request.user)
         form = ForumShareForm(request.POST, sender=request.user)
         if form.is_valid():
             for target in form.cleaned_data['usernames']:

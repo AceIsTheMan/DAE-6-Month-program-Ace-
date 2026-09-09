@@ -218,6 +218,35 @@
   .report-history-status { font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; }
   .report-history-status-resolved { color: var(--red-bright); }
   .report-history-status-dismissed { color: var(--dim-white); }
+  .report-history-status-active-mod { color: var(--red-bright); text-shadow: 0 0 4px var(--red); }
+
+  .history-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+  .history-tab {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--silver);
+    text-decoration: none;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--red-dim);
+  }
+  .history-tab:hover, .history-tab.active { color: var(--red-bright); border-color: var(--red-bright); background: rgba(204,0,0,0.1); }
+  .history-search { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; }
+  .history-search input[type="text"] { min-width: 220px; }
+  .history-search button, .history-search a.search-clear {
+    font-family: 'Share Tech Mono', monospace;
+    background: var(--red-dim);
+    border: 1px solid var(--red-bright);
+    color: var(--white);
+    padding: 0.5rem 0.9rem;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .history-search button:hover, .history-search a.search-clear:hover { background: var(--red); }
 </style>
 {% endblock %}
 
@@ -406,6 +435,66 @@
         })();
       </script>
     {% elif active_category == 'report_history' %}
+      <div class="history-tabs">
+        <a href="{% url 'mail_report_history' %}?tab=reports{% if history_query %}&q={{ history_query }}{% endif %}" class="history-tab{% if history_tab == 'reports' %} active{% endif %}">Reports</a>
+        <a href="{% url 'mail_report_history' %}?tab=actions{% if history_query %}&q={{ history_query }}{% endif %}" class="history-tab{% if history_tab == 'actions' %} active{% endif %}">Bans &amp; Mutes</a>
+      </div>
+      <form method="get" class="history-search">
+        <input type="hidden" name="tab" value="{{ history_tab }}">
+        <input type="text" name="q" value="{{ history_query }}" placeholder="Search by username...">
+        <button type="submit">[ SEARCH ]</button>
+        {% if history_query %}<a href="{% url 'mail_report_history' %}?tab={{ history_tab }}" class="search-clear">[ CLEAR ]</a>{% endif %}
+      </form>
+
+      {% if history_tab == 'actions' %}
+      <div class="reports-list">
+        {% for action in actions %}
+        <div class="report-item">
+          <div class="report-meta">
+            <span>
+              <strong>{{ action.get_kind_display }}</strong> on
+              <a href="{% url 'user_profile' action.target.username %}">{{ action.target.username }}</a>
+              by <a href="{% url 'user_profile' action.moderator.username %}">{{ action.moderator.username }}</a>
+              &middot; {{ action.created_at|date:"m/d/Y g:i A" }}
+            </span>
+            <span class="report-history-status {% if action.is_active %}report-history-status-active-mod{% else %}report-history-status-dismissed{% endif %}">
+              {% if action.lifted_at %}Lifted by {{ action.lifted_by.username|default:"—" }} {{ action.lifted_at|date:"m/d/Y g:i A" }}
+              {% elif not action.is_active %}Expired
+              {% elif action.expires_at %}Active until {{ action.expires_at|date:"m/d/Y g:i A" }}
+              {% else %}Active (permanent){% endif %}
+            </span>
+          </div>
+          <div class="report-reason">{{ action.reason|safe }}</div>
+          {% if action.is_active %}
+          <div class="report-actions">
+            <button type="button" class="report-action-btn js-lift-action" data-action="{{ action.id }}">[ LIFT / UNBAN ]</button>
+          </div>
+          {% endif %}
+        </div>
+        {% empty %}
+        <div class="empty-feed">No moderation actions{% if history_query %} matching "{{ history_query }}"{% endif %} yet.</div>
+        {% endfor %}
+      </div>
+      <script>
+        (function () {
+          function getCookie(name) {
+            var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+            return match ? decodeURIComponent(match.pop()) : '';
+          }
+          document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.js-lift-action');
+            if (!btn) return;
+            if (!confirm('Lift this action now?')) return;
+            var actionId = btn.getAttribute('data-action');
+            var urlTemplate = "{% url 'mail_moderation_lift' 0 %}";
+            fetch(urlTemplate.replace('/0/', '/' + actionId + '/'), {
+              method: 'POST',
+              headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            }).then(function (r) { if (r.ok) location.reload(); });
+          });
+        })();
+      </script>
+      {% else %}
       <div class="reports-list">
         {% for report in reports %}
         <div class="report-item">
@@ -428,9 +517,10 @@
           </div>
         </div>
         {% empty %}
-        <div class="empty-feed">No resolved or dismissed reports yet.</div>
+        <div class="empty-feed">No resolved or dismissed reports{% if history_query %} matching "{{ history_query }}"{% endif %} yet.</div>
         {% endfor %}
       </div>
+      {% endif %}
     {% else %}
       {% for message in messages_list %}
         {% if message.conversation.category == 'social' %}<a href="{% url 'mail_social_thread' message.conversation_id %}" class="thread-list-item">

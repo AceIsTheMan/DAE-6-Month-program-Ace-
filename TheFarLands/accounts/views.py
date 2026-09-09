@@ -183,10 +183,22 @@ def profile_view(request, username=None):
         and not user.is_guest
     )
 
+    # "Moderation" in the 3-dot menu (see _dots_menu.html) - real Mute/
+    # Ban/Perm Ban power (mail.models.ModerationAction), not the
+    # self-service Friend/Mute/Block above. Director is never a valid
+    # target, mirroring mail.views.mail_moderation_new's own check.
+    can_moderate_them = (
+        not is_own_profile
+        and request.user.is_authenticated
+        and request.user.is_moderator
+        and not user.is_director
+    )
+
     return render(request, 'profile.html', {
         'profile_user': user,
         'edit_form': edit_form,
         'can_use_mail_with_them': can_use_mail_with_them,
+        'can_moderate_them': can_moderate_them,
     })
 
 

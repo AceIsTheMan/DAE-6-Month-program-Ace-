@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Conversation, Message, Report, UserRelationship
+from .models import Conversation, Message, ModerationAction, Report, UserRelationship
 
 
 @admin.register(Conversation)
@@ -45,3 +45,15 @@ class UserRelationshipAdmin(admin.ModelAdmin):
     list_display = ('id', 'from_user', 'to_user', 'kind', 'created_at')
     list_filter = ('kind',)
     readonly_fields = ('created_at',)
+
+
+@admin.register(ModerationAction)
+class ModerationActionAdmin(admin.ModelAdmin):
+    list_display = ('id', 'kind', 'target', 'moderator', 'created_at', 'expires_at', 'is_active_display')
+    list_filter = ('kind',)
+    search_fields = ('target__username', 'moderator__username')
+    readonly_fields = ('created_at',)
+
+    @admin.display(boolean=True, description='Active')
+    def is_active_display(self, obj):
+        return obj.is_active

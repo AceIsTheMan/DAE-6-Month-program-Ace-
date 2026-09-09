@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}ACCESS DENIED // F.R.E.D.{% endblock %}
+
+{% block extra_head %}
+<style>
+  .fred-block { text-align: center; padding: 3rem 1rem; }
+  .fred-skull {
+    font-size: 8rem;
+    color: var(--red-bright);
+    text-shadow: 0 0 20px var(--red), 0 0 40px var(--red-dim);
+    line-height: 1;
+    margin-bottom: 1rem;
+    animation: fred-pulse 2s infinite;
+  }
+  @keyframes fred-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+  .fred-title {
+    font-family: 'VT323', monospace;
+    font-size: 2.6rem;
+    color: var(--red-bright);
+    letter-spacing: 6px;
+    text-shadow: 0 0 10px var(--red);
+    margin-bottom: 0.4rem;
+  }
+  .fred-subtitle { color: var(--dim-white); font-size: 0.82rem; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 2rem; }
+  .fred-card {
+    max-width: 480px;
+    margin: 0 auto;
+    text-align: left;
+    border: 2px solid var(--red);
+    background: linear-gradient(180deg, #0d0000, #000);
+    padding: 1.5rem;
+    box-shadow: 0 0 20px rgba(204,0,0,0.3);
+  }
+  .fred-field { display: flex; justify-content: space-between; padding: 0.4rem 0; border-bottom: 1px dashed var(--red-dim); font-size: 0.85rem; }
+  .fred-field .k { color: var(--dim-white); text-transform: uppercase; letter-spacing: 1px; }
+  .fred-field .v { color: var(--white); }
+  .fred-reason { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--red-dim); color: var(--silver); font-size: 0.85rem; line-height: 1.6; }
+  .fred-home-link { display: inline-block; margin-top: 2rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="fred-block">
+  <div class="fred-skull">&#9760;</div>
+  <div class="fred-title">ACCESS DENIED</div>
+  <div class="fred-subtitle">F.R.E.D. &mdash; Forum Restriction &amp; Enforcement Daemon</div>
+
+  <div class="fred-card">
+    <div class="fred-field"><span class="k">Status</span><span class="v">{{ ban.get_kind_display }}</span></div>
+    <div class="fred-field"><span class="k">Issued by</span><span class="v">{{ ban.moderator.username }}</span></div>
+    <div class="fred-field"><span class="k">Issued</span><span class="v">{{ ban.created_at|date:"m/d/Y g:i A" }}</span></div>
+    <div class="fred-field"><span class="k">Expires</span><span class="v">{% if ban.expires_at %}{{ ban.expires_at|date:"m/d/Y g:i A" }}{% else %}Never (permanent){% endif %}</span></div>
+    <div class="fred-reason">{{ ban.reason|safe }}</div>
+  </div>
+
+  <a href="{% url 'home' %}" class="donate-btn fred-home-link">[ RETURN TO HOME ]</a>
+</div>
+{% endblock %}

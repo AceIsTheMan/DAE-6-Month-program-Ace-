@@ -237,7 +237,7 @@
           {% if can_use_mail_with_them %}
           <a href="{% url 'mail_social_dm_start' profile_user.username %}" class="donate-btn" style="font-size: 0.85rem;">[ MESSAGE ]</a>
           {% endif %}
-          {% include "_dots_menu.html" with target_type="user" target_id=profile_user.id target_username=profile_user.username show_report=user.is_authenticated show_friend=can_use_mail_with_them show_mute=can_use_mail_with_them show_block=can_use_mail_with_them %}
+          {% include "_dots_menu.html" with target_type="user" target_id=profile_user.id target_username=profile_user.username show_report=user.is_authenticated show_friend=can_use_mail_with_them show_mute=can_use_mail_with_them show_block=can_use_mail_with_them show_moderation=can_moderate_them %}
         </div>
         {% endif %}
 

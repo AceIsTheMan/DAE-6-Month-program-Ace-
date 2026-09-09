@@ -1,10 +1,12 @@
+from datetime import timedelta
+
 from django import forms
 from django.db.models import Q
 
 from accounts.models import CustomUser
 from forum.sanitize import sanitize_post_html
 
-from .models import Message, Report, UserRelationship
+from .models import Message, ModerationAction, Report, UserRelationship
 
 MAX_MEDIA_BYTES = 25 * 1024 * 1024  # 25MB - same cap as forum.forms.PostForm
 MAX_BODY_LEN = 800
@@ -12,6 +14,16 @@ MAX_REPORT_LEN = 1500
 GROUP_MAX_MEMBERS = 10  # host + up to 9 invitees
 REPORT_LIMIT = 3
 REPORT_COOLDOWN_HOURS = 48
+
+# Duration units accepted per ModerationAction kind - Mute is fine-grained
+# (minutes up to months), Ban is coarse (weeks/months/years); Perm Ban
+# takes no duration at all. Approximated as fixed day-counts (a "month"
+# is 30 days, a "year" 365) rather than calendar-accurate - good enough
+# for a moderation cooldown, and avoids adding a dateutil dependency for
+# calendar math the project has never needed before.
+MUTE_UNITS = {'minutes': timedelta(minutes=1), 'days': timedelta(days=1), 'weeks': timedelta(weeks=1), 'months': timedelta(days=30)}
+BAN_UNITS = {'weeks': timedelta(weeks=1), 'months': timedelta(days=30), 'years': timedelta(days=365)}
+MAX_MODERATION_REASON_LEN = 1500
 
 
 def _is_blocked_pair(user_a, user_b):
@@ -179,3 +191,40 @@ class ReportForm(forms.ModelForm):
         if media and getattr(media, 'size', 0) > MAX_MEDIA_BYTES:
             raise forms.ValidationError('That file is too large (25MB max).')
         return media
+
+
+class ModerationActionForm(forms.Form):
+    """Backs mail.views.mail_moderation_new - a moderator muting/banning
+    an account. `kind` decides which duration units are even valid (see
+    MUTE_UNITS/BAN_UNITS) - Perm Ban ignores duration entirely, it's
+    indefinite until lifted by hand (see mail.views.mail_moderation_lift).
+    A reason is required no matter which kind this is."""
+    kind = forms.ChoiceField(choices=ModerationAction.KIND_CHOICES)
+    duration_amount = forms.IntegerField(required=False, min_value=1)
+    duration_unit = forms.CharField(required=False)
+    reason = forms.CharField(widget=forms.Textarea(attrs={'maxlength': MAX_MODERATION_REASON_LEN, 'rows': 5}))
+
+    def clean_reason(self):
+        raw = self.cleaned_data.get('reason', '')
+        if not raw.strip():
+            raise forms.ValidationError('A reason is required for every moderation action.')
+        if len(raw) > MAX_MODERATION_REASON_LEN:
+            raise forms.ValidationError(f'Reasons are capped at {MAX_MODERATION_REASON_LEN} characters.')
+        return sanitize_post_html(raw, apply_markers=False)
+
+    def clean(self):
+        cleaned = super().clean()
+        kind = cleaned.get('kind')
+        if kind == ModerationAction.PERM_BAN:
+            cleaned['duration'] = None
+            return cleaned
+
+        units = MUTE_UNITS if kind == ModerationAction.MUTE else BAN_UNITS
+        amount = cleaned.get('duration_amount')
+        unit = cleaned.get('duration_unit')
+        if not amount:
+            raise forms.ValidationError('Pick a duration.')
+        if unit not in units:
+            raise forms.ValidationError(f'Duration must be one of: {", ".join(units)}.')
+        cleaned['duration'] = units[unit] * amount
+        return cleaned

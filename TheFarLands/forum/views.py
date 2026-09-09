@@ -8,6 +8,8 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.utils.http import url_has_allowed_host_and_scheme
 
+from mail.models import ModerationAction
+
 from .forms import CommentForm, PostForm
 from .models import Comment, Post, PostReaction
 from .sanitize import sanitize_post_html
@@ -20,6 +22,29 @@ def _can_comment(user):
     accounts - see accounts.models.CustomUser.is_guest. Unlike reactions,
     which are open to any signed-in user."""
     return user.is_authenticated and not user.is_guest
+
+
+def _active_ban(user):
+    """The active Ban/Perm Ban against `user`, or None - see mail.
+    models.ModerationAction. A ban blocks the forum entirely (see
+    forum_index_view's F.R.E.D. block screen and every other view here);
+    it never touches Home, Mail, or Profile."""
+    if not user.is_authenticated:
+        return None
+    return ModerationAction.active_for(user, [ModerationAction.BAN, ModerationAction.PERM_BAN])
+
+
+def _require_not_muted_by_moderator(user):
+    """A real moderator Mute (mail.models.ModerationAction, not the
+    self-service mail.models.UserRelationship.MUTE) blocks posting a
+    forum comment - see forum_add_comment_view. Reading/reacting is
+    never affected."""
+    action = ModerationAction.active_for(user, [ModerationAction.MUTE])
+    if action:
+        raise PermissionDenied(
+            f'This account is muted until '
+            f'{action.expires_at.strftime("%m/%d/%Y %I:%M %p") if action.expires_at else "further notice"}.'
+        )
 
 
 def forum_index_view(request):
@@ -37,6 +62,10 @@ def forum_index_view(request):
     `date_from`/`date_to` narrow by when a post was made, and `sort`
     flips the feed between newest-first (default) and oldest-first.
     """
+    ban = _active_ban(request.user)
+    if ban:
+        return render(request, 'forum/fred_blocked.html', {'ban': ban}, status=403)
+
     can_post = request.user.is_authenticated and request.user.is_director
     can_comment = _can_comment(request.user)
     form = None
@@ -130,6 +159,8 @@ def forum_react_view(request, post_id):
     """
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
+    if _active_ban(request.user):
+        raise PermissionDenied('This account is banned from the forum.')
 
     post = get_object_or_404(Post, pk=post_id)
     value = request.POST.get('value')
@@ -178,6 +209,8 @@ def forum_comments_view(request, post_id):
     """
     if not _can_comment(request.user):
         raise PermissionDenied('Comments are not available on this account.')
+    if _active_ban(request.user):
+        raise PermissionDenied('This account is banned from the forum.')
 
     post = get_object_or_404(Post, pk=post_id)
     try:
@@ -216,6 +249,9 @@ def forum_add_comment_view(request, post_id):
         return HttpResponseNotAllowed(['POST'])
     if not _can_comment(request.user):
         raise PermissionDenied('Comments are not available on this account.')
+    if _active_ban(request.user):
+        raise PermissionDenied('This account is banned from the forum.')
+    _require_not_muted_by_moderator(request.user)
 
     post = get_object_or_404(Post, pk=post_id)
     form = CommentForm(request.POST)

@@ -11,9 +11,16 @@ query params so that page arrives pre-filled.
 Include with whichever of these context vars apply:
   target_type      - 'user', 'message', or 'post'
   target_id        - the CustomUser/Message/Post pk
-  target_username  - only needed when show_friend/show_message/show_block/show_mute
-  show_report / show_friend / show_message / show_block / show_mute / show_share
+  target_username  - only needed when show_friend/show_message/show_block/show_mute/show_moderation
+  show_report / show_friend / show_message / show_block / show_mute / show_share / show_moderation
   is_friend / is_muted / is_blocked - initial toggle state, if known
+
+  show_mute is the self-service, purely-cosmetic notification mute
+  (mail.models.UserRelationship.MUTE). show_moderation is a completely
+  different, much stronger thing - Admin/Director only, links to
+  mail.views.mail_moderation_new (a real Mute/Ban/Perm Ban, see mail.
+  models.ModerationAction) - the two are never mutually exclusive, but
+  never confuse one for the other.
 {% endcomment %}
 <div class="dots-menu">
   <button type="button" class="dots-menu-trigger" aria-label="More actions">&#8942;</button>
@@ -35,6 +42,9 @@ Include with whichever of these context vars apply:
     {% endif %}
     {% if show_report %}
     <a href="{% url 'mail_report_new' %}?target_type={{ target_type }}&amp;target_id={{ target_id }}" class="dropdown-item">Report</a>
+    {% endif %}
+    {% if show_moderation %}
+    <a href="{% url 'mail_moderation_new' target_username %}" class="dropdown-item" style="color: var(--red-bright);">Moderation</a>
     {% endif %}
   </div>
 </div>

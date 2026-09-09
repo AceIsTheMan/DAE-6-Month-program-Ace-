@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.db.models import CheckConstraint, Q, UniqueConstraint
+from django.utils import timezone
 
 from forum.models import MEDIA_EXTENSIONS, VIDEO_EXTENSIONS, Post
 
@@ -289,3 +290,93 @@ class UserRelationship(models.Model):
 
     def __str__(self):
         return f'{self.from_user} {self.kind}s {self.to_user}'
+
+
+class ModerationAction(models.Model):
+    """
+    A real, moderator-imposed Mute/Ban/Perm-ban - not to be confused with
+    UserRelationship.MUTE (a regular account's own, purely cosmetic
+    notification-badge mute). This is enforced site-wide:
+
+      - MUTE blocks the target from posting forum comments and from
+        sending anything in Mail/Social (DMs, group messages) - see
+        forum.views._require_not_muted_by_moderator and
+        mail.views._require_not_muted_by_moderator. It never blocks
+        reading.
+      - BAN and PERM_BAN block the target from the forum entirely (see
+        forum.views._require_not_banned) - the F.R.E.D. block screen
+        renders instead of the forum feed. Nothing else on the site is
+        restricted by a ban - Home, Mail, and Profile all still work.
+
+    Only Director/Admin accounts can create these (see accounts.models.
+    CustomUser.is_moderator), and the Director can never be targeted -
+    see mail.forms.ModerationActionForm.
+
+    A target can accumulate a history of these (repeat offenders), so
+    "is this account currently muted/banned" is always "is there an
+    unlifted, unexpired row of that kind" (see active_for), not a flag
+    on CustomUser itself.
+    """
+    MUTE = 'mute'
+    BAN = 'ban'
+    PERM_BAN = 'perm_ban'
+    KIND_CHOICES = [
+        (MUTE, 'Mute'),
+        (BAN, 'Ban'),
+        (PERM_BAN, 'Permanent Ban'),
+    ]
+
+    moderator = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='moderation_actions_taken'
+    )
+    target = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='moderation_actions_received'
+    )
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    reason = models.TextField(max_length=1500)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    # Null for PERM_BAN (indefinite, lifted only by hand) and never null
+    # for MUTE/BAN, which always have a duration - see mail.forms.
+    # ModerationActionForm.
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    # Set when a moderator manually lifts this early (or ends a perm
+    # ban) - see mail.views.mail_moderation_lift. A lifted row is never
+    # active again even if expires_at hasn't passed yet.
+    lifted_at = models.DateTimeField(null=True, blank=True)
+    lifted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='moderation_actions_lifted',
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['target', 'kind', 'lifted_at', 'expires_at'])]
+
+    def __str__(self):
+        return f'{self.get_kind_display()} on {self.target} by {self.moderator}'
+
+    @property
+    def is_active(self):
+        if self.lifted_at:
+            return False
+        if self.expires_at is None:
+            return True
+        return timezone.now() < self.expires_at
+
+    @classmethod
+    def active_for(cls, target, kinds):
+        """The most recent still-active row of any of `kinds` against
+        `target`, or None - the single query every enforcement check
+        (forum views, mail views) runs against."""
+        now = timezone.now()
+        return (
+            cls.objects.filter(target=target, kind__in=kinds, lifted_at__isnull=True)
+            .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+            .order_by('-created_at')
+            .first()
+        )
