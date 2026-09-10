@@ -314,6 +314,10 @@ img[alt^="Project "] {
   margin-bottom: 1rem;
 }
 
+.project-media--compact {
+  max-width: 380px;
+}
+
 .project-video {
   padding: 0;
   overflow: hidden;

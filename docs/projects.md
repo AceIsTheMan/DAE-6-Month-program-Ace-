@@ -25,7 +25,7 @@ The Far Lands Project or TFL Project Testing, Is a media page of my own that I c
 
 ## David the Digital Dog
 
-![Digital Dog David]({{ '/assets/images/DavidPaw.png' | relative_url }}){: .project-media }
+![Digital Dog David]({{ '/assets/images/DavidPaw.png' | relative_url }}){: .project-media .project-media--compact }
 
 A Python-based interactive virtual pet that lives in your terminal. It features a complex state-management system called "Awareness Mode," an interactive tutorial, and randomized digital facts. This project showcases logic handling, user input validation, and creative storytelling through code.
 
