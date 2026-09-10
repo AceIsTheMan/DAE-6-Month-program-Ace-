@@ -40,7 +40,6 @@ A Python-based interactive virtual pet that lives in your terminal. It features 
 
 A data extraction tool built in Python designed to crawl websites and collect specific information efficiently. This project focuses on handling HTTP requests and parsing structured data from HTML content.
 
-- **Repository:** [https://github.com/AceIsTheMan/DAE-6-Month-program-Ace-/blob/main/python_1/Web_Scraper.py](https://github.com/AceIsTheMan/DAE-6-Month-program-Ace-/blob/main/python_1/Web_Scraper.py)
-- **Live demo:** [View Scraper Code](https://github.com/AceIsTheMan/DAE-6-Month-program-Ace-/blob/main/python_1/Web_Scraper.py)
-- **What I contributed:** Development of data extraction scripts, parsing logic, and request handling.
-- **Tools/technologies:** [Python](https://www.python.org/)
+- **Repository:** [https://github.com/AceIsTheMan/DAE-6-Month-program-Ace-/commit/b65ab81922a0859b5f7dd70e5b479d085330dd3c](https://github.com/AceIsTheMan/DAE-6-Month-program-Ace-/commit/b65ab81922a0859b5f7dd70e5b479d085330dd3c)
+- **What I contributed:** API functions, an open mind, a solid platform, database, media features, moderation, forums, featured content.
+- **Tools/technologies:** [Django](https://www.djangoproject.com/), [Python](https://www.python.org/), [HTML](https://developer.mozilla.org/en-US/docs/Web/HTML), [CSS](https://developer.mozilla.org/en-US/docs/Web/CSS), [JavaScript](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
