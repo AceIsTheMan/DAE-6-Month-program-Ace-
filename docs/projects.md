@@ -34,9 +34,9 @@ A Python-based interactive virtual pet that lives in your terminal. It features 
 - **What I contributed:** Entire logic design, interactive state-management, CLI menu system, and creative dialogue writing.
 - **Tools/technologies:** [Python](https://www.python.org/)
 
-## Python Web Scraper
+## The Far Lands Project _Vol2
 
-![Web Scraper]({{ '/assets/images/project-placeholder.svg' | relative_url }}){: .project-media }
+![The Far Lands Project Vol2]({{ '/assets/images/farlands-vol2.jpg' | relative_url }}){: .project-media }
 
 A data extraction tool built in Python designed to crawl websites and collect specific information efficiently. This project focuses on handling HTTP requests and parsing structured data from HTML content.
 
