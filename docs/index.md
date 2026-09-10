@@ -35,29 +35,29 @@ A Backend Developer/Web designer that spends his time improving his skill with c
 
 ## Featured Projects
 
-### [PROJECT 1 NAME]
+### The Far Lands Project (Test Phase)
 
-![Project 1 image placeholder]({{ '/assets/images/project-placeholder.svg' | relative_url }})
+![The Far Lands Project]({{ '/assets/images/image.png' | relative_url }}){: .project-media }
 
-[PROJECT 1 DESCRIPTION]
+The Far Lands Project or TFL Project Testing, Is a media page of my own that I control with basic and minimuim features that it requires, this webpage is designed for my upcoming game idea on a roblox game for practice of the REAL game that'll be available in the far future, The far lands is a RPG online game where players can socialize and fight, a game that features depth with customization, friendship, and boss fights, the media page main goal is to keep track of what sneak peaks and available content that may or may not be of interest to the crowd.
 
-[Project repository or live demo](#)
+[See full project details]({{ '/projects.html' | relative_url }})
 
-### [PROJECT 2 NAME]
+### David the Digital Dog
 
-![Project 2 image placeholder]({{ '/assets/images/project-placeholder.svg' | relative_url }})
+![Digital Dog David]({{ '/assets/images/DavidPaw.png' | relative_url }}){: .project-media .project-media--compact }
 
-[PROJECT 2 DESCRIPTION]
+A Python-based interactive virtual pet that lives in your terminal. It features a complex state-management system called "Awareness Mode," an interactive tutorial, and randomized digital facts. This project showcases logic handling, user input validation, and creative storytelling through code.
 
-[Project repository or live demo](#)
+[See full project details]({{ '/projects.html' | relative_url }})
 
-### [PROJECT 3 NAME]
+### The Far Lands Project _Vol2
 
-![Project 3 image placeholder]({{ '/assets/images/project-placeholder.svg' | relative_url }})
+![The Far Lands Project Vol2]({{ '/assets/images/TFL_Vol2image.png' | relative_url }}){: .project-media }
 
-[PROJECT 3 DESCRIPTION]
+A data extraction tool built in Python designed to crawl websites and collect specific information efficiently. This project focuses on handling HTTP requests and parsing structured data from HTML content.
 
-[Project repository or live demo](#)
+[See full project details]({{ '/projects.html' | relative_url }})
 
 ## Contact
 
