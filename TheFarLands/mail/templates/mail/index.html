@@ -465,13 +465,17 @@
           <div class="report-meta">
             <span>Filed by <a href="{% url 'user_profile' report.reporter.username %}">{{ report.reporter.username }}</a> &middot; {{ report.created_at|date:"m/d/Y g:i A" }} &middot; <strong>{{ report.get_category_display }}</strong></span>
             <span>
-              {% if report.reported_user %}Target: <a href="{% url 'user_profile' report.reported_user.username %}">{{ report.reported_user.username }}</a>{% endif %}
+              {% if report.reported_user and not report.reported_comment %}Target: <a href="{% url 'user_profile' report.reported_user.username %}">{{ report.reported_user.username }}</a>{% endif %}
               {% if report.reported_message %}Message #{{ report.reported_message.id }} from <a href="{% url 'user_profile' report.reported_message.sender.username %}">{{ report.reported_message.sender.username }}</a>{% endif %}
+              {% if report.reported_comment %}Comment from <a href="{% url 'user_profile' report.reported_user.username %}">{{ report.reported_user.username }}</a>{% endif %}
             </span>
           </div>
           <div class="report-reason">{{ report.reason|safe }}</div>
           {% if report.reported_message %}
           <div class="report-reason" style="color: var(--dim-white);">Reported content: {{ report.reported_message.body|safe|default:"(no text)" }}</div>
+          {% endif %}
+          {% if report.reported_comment %}
+          <div class="report-reason" style="color: var(--dim-white);">Reported content: {{ report.reported_comment.body|safe|default:"(no text)" }}</div>
           {% endif %}
           {% if report.media %}
           <div class="report-reason"><a href="{{ report.media.url }}" target="_blank" rel="noopener noreferrer">[ VIEW ATTACHMENT ]</a></div>
@@ -576,13 +580,17 @@
           <div class="report-meta">
             <span>Filed by <a href="{% url 'user_profile' report.reporter.username %}">{{ report.reporter.username }}</a> &middot; {{ report.created_at|date:"m/d/Y g:i A" }} &middot; <strong>{{ report.get_category_display }}</strong></span>
             <span>
-              {% if report.reported_user %}Target: <a href="{% url 'user_profile' report.reported_user.username %}">{{ report.reported_user.username }}</a>{% endif %}
+              {% if report.reported_user and not report.reported_comment %}Target: <a href="{% url 'user_profile' report.reported_user.username %}">{{ report.reported_user.username }}</a>{% endif %}
               {% if report.reported_message %}Message #{{ report.reported_message.id }} from <a href="{% url 'user_profile' report.reported_message.sender.username %}">{{ report.reported_message.sender.username }}</a>{% endif %}
+              {% if report.reported_comment %}Comment from <a href="{% url 'user_profile' report.reported_user.username %}">{{ report.reported_user.username }}</a>{% endif %}
             </span>
           </div>
           <div class="report-reason">{{ report.reason|safe }}</div>
           {% if report.reported_message %}
           <div class="report-reason" style="color: var(--dim-white);">Reported content: {{ report.reported_message.body|safe|default:"(no text)" }}</div>
+          {% endif %}
+          {% if report.reported_comment %}
+          <div class="report-reason" style="color: var(--dim-white);">Reported content: {{ report.reported_comment.body|safe|default:"(no text)" }}</div>
           {% endif %}
           {% if report.media %}
           <div class="report-reason"><a href="{{ report.media.url }}" target="_blank" rel="noopener noreferrer">[ VIEW ATTACHMENT ]</a></div>
