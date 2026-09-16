@@ -126,5 +126,29 @@
         }, 1200);
       });
     });
+
+    // Comment Share's own [ SEND ] button - same "no surrounding <form>"
+    // situation as Forum Share/Forward above.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-comment-share-submit');
+      if (!btn) return;
+      var picker = btn.closest('.recipient-picker');
+      var commentId = picker.getAttribute('data-share-comment-id');
+      var usernames = picker.querySelector('.recipient-usernames-field').value;
+      if (!usernames || !commentId) return;
+      var urlTemplate = "{% url 'mail_comment_share' 0 %}";
+      fetch(urlTemplate.replace('/0/', '/' + commentId + '/'), {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'usernames=' + encodeURIComponent(usernames),
+      }).then(function (r) {
+        if (!r.ok) return;
+        btn.textContent = 'Sent!';
+        setTimeout(function () {
+          var panel = picker.closest('.dropdown-panel');
+          if (panel) panel.classList.remove('open');
+        }, 1200);
+      });
+    });
   })();
 </script>

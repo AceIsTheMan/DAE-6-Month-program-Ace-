@@ -4,7 +4,7 @@ from django.db import models
 from django.db.models import CheckConstraint, Q, UniqueConstraint
 from django.utils import timezone
 
-from forum.models import MEDIA_EXTENSIONS, VIDEO_EXTENSIONS, Post
+from forum.models import MEDIA_EXTENSIONS, VIDEO_EXTENSIONS, Comment, Post
 
 
 class Conversation(models.Model):
@@ -162,6 +162,15 @@ class Message(models.Model):
         Post, on_delete=models.SET_NULL, null=True, blank=True, related_name='mail_shares'
     )
 
+    # Same idea as shared_post, but for a single forum Comment shared via
+    # the comment section's own dots-menu (see mail.views.
+    # mail_comment_share) - a separate field rather than overloading
+    # shared_post, since a Comment isn't a Post and the embed needs to
+    # show the comment's author/body, not the post's.
+    shared_comment = models.ForeignKey(
+        Comment, on_delete=models.SET_NULL, null=True, blank=True, related_name='mail_shares'
+    )
+
     # Set when this message is a Forward of another (see mail.views.
     # mail_message_forward) - sender is whoever forwarded it, not the
     # original sender, and the template embeds the original alongside a
@@ -214,9 +223,10 @@ class Report(models.Model):
     (see accounts.models.CustomUser.is_moderator and
     mail.views.mail_reports).
 
-    Targets either a specific Message or a user in general (from their
-    profile page) - at least one of the two is required, enforced both at
-    the DB layer (CheckConstraint below) and in mail.forms.ReportForm.
+    Targets a specific Message, a forum Comment, or a user in general
+    (from their profile page) - at least one of the three is required,
+    enforced both at the DB layer (CheckConstraint below) and in
+    mail.views.mail_report_new.
 
     Filing is rate-limited (see mail.views._report_cooldown_remaining):
     3 reports filed by the same reporter within a rolling 48 hours locks
@@ -249,6 +259,9 @@ class Report(models.Model):
     reported_message = models.ForeignKey(
         Message, on_delete=models.SET_NULL, null=True, blank=True, related_name='reports'
     )
+    reported_comment = models.ForeignKey(
+        Comment, on_delete=models.SET_NULL, null=True, blank=True, related_name='reports'
+    )
     # Default only matters for the migration itself (this table has never
     # held real data) - every report going forward always sets one
     # explicitly via mail.forms.ReportForm, which has no blank choice.
@@ -278,7 +291,11 @@ class Report(models.Model):
         indexes = [models.Index(fields=['status', 'created_at'])]
         constraints = [
             CheckConstraint(
-                condition=Q(reported_user__isnull=False) | Q(reported_message__isnull=False),
+                condition=(
+                    Q(reported_user__isnull=False)
+                    | Q(reported_message__isnull=False)
+                    | Q(reported_comment__isnull=False)
+                ),
                 name='report_has_a_target',
             ),
         ]

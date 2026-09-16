@@ -328,6 +328,16 @@
               <div class="shared-post-embed unavailable">This post is no longer available.</div>
               {% endif %}
             {% endif %}
+            {% if message.shared_comment_id %}
+              {% if message.shared_comment %}
+              <div class="shared-post-embed">
+                <div class="shared-post-author">// {{ message.shared_comment.author.username }} commented</div>
+                <div>{{ message.shared_comment.body|safe|truncatewords_html:40 }}</div>
+              </div>
+              {% else %}
+              <div class="shared-post-embed unavailable">This comment is no longer available.</div>
+              {% endif %}
+            {% endif %}
             {% if message.body %}<div class="message-body">{{ message|render_body:user }}</div>{% endif %}
             {% if message.media %}
               {% if message|admin_only_media_blocked:user %}
@@ -624,7 +634,7 @@
                 {% if message.conversation.is_admin_only %} &#128274;{% endif %}
               </span>
               <span class="thread-snippet">
-                {% if message.forwarded_from_id %}[Forwarded by {{ message.sender.username }}] {% endif %}{% if message.shared_post_id %}[Shared post] {% endif %}{% if message.gif_url %}[GIF] {% endif %}{% if message.media %}[Attachment] {% endif %}{% if message|admin_only_media_blocked:user %}[ CONFIDENTIAL ]{% else %}{{ message|render_body:user|striptags|truncatechars:100 }}{% endif %}
+                {% if message.forwarded_from_id %}[Forwarded by {{ message.sender.username }}] {% endif %}{% if message.shared_post_id %}[Shared post] {% endif %}{% if message.shared_comment_id %}[Shared comment] {% endif %}{% if message.gif_url %}[GIF] {% endif %}{% if message.media %}[Attachment] {% endif %}{% if message|admin_only_media_blocked:user %}[ CONFIDENTIAL ]{% else %}{{ message|render_body:user|striptags|truncatechars:100 }}{% endif %}
               </span>
             </div>
             <span class="thread-date">{{ message.created_at|date:"m/d/Y g:i A" }}</span>

@@ -9,8 +9,9 @@
      Forum Share context - renders its own [ SEND ] button that posts
      straight to mail_forum_share, since that context has no surrounding
      <form> of its own. `forward_message_id`: same idea, for Forward (see
-     mail.views.mail_message_forward). -->
-<div class="recipient-picker" data-mode="{{ recipient_mode|default:'social' }}" data-max="{{ max_recipients|default:'' }}"{% if share_post_id %} data-share-post-id="{{ share_post_id }}"{% endif %}{% if forward_message_id %} data-forward-message-id="{{ forward_message_id }}"{% endif %}>
+     mail.views.mail_message_forward). `share_comment_id`: same idea, for
+     sharing a forum Comment (see mail.views.mail_comment_share). -->
+<div class="recipient-picker" data-mode="{{ recipient_mode|default:'social' }}" data-max="{{ max_recipients|default:'' }}"{% if share_post_id %} data-share-post-id="{{ share_post_id }}"{% endif %}{% if forward_message_id %} data-forward-message-id="{{ forward_message_id }}"{% endif %}{% if share_comment_id %} data-share-comment-id="{{ share_comment_id }}"{% endif %}>
   {% if picker_title %}<div class="recipient-picker-title">{{ picker_title }}</div>{% endif %}
   <input type="text" class="recipient-search-input" placeholder="Search username...">
   <div class="recipient-results"></div>
@@ -23,5 +24,8 @@
   {% endif %}
   {% if forward_message_id %}
   <button type="button" class="comment-submit-btn js-forward-submit">[ FORWARD ]</button>
+  {% endif %}
+  {% if share_comment_id %}
+  <button type="button" class="comment-submit-btn js-comment-share-submit">[ SEND ]</button>
   {% endif %}
 </div>

@@ -12,7 +12,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 
 from accounts.models import CustomUser
-from forum.models import Post
+from forum.models import Comment, Post
 
 from .forms import (
     DURATION_UNITS,
@@ -956,6 +956,30 @@ def mail_forum_share(request, post_id):
     form = ForumShareForm(sender=request.user)
     return render(request, 'mail/_recipient_picker.html', {
         'form': form, 'share_post_id': post.id, 'picker_title': 'Share this post',
+    })
+
+
+@login_required
+def mail_comment_share(request, comment_id):
+    """Share a forum Comment into one or more Social DMs - identical
+    shape to mail_forum_share above, just for Message.shared_comment
+    instead of shared_post."""
+    _require_mail_access(request.user)
+    comment = get_object_or_404(Comment, pk=comment_id)
+    if request.method == 'POST':
+        _require_not_muted_by_moderator(request.user)
+        form = ForumShareForm(request.POST, sender=request.user)
+        if form.is_valid():
+            for target in form.cleaned_data['usernames']:
+                conversation = _get_or_create_dm(request.user, target)
+                Message.objects.create(conversation=conversation, sender=request.user, shared_comment=comment)
+                conversation.last_message_at = timezone.now()
+                conversation.save(update_fields=['last_message_at'])
+            return HttpResponse(status=204)
+        return HttpResponse(status=400)
+    form = ForumShareForm(sender=request.user)
+    return render(request, 'mail/_recipient_picker.html', {
+        'form': form, 'share_comment_id': comment.id, 'picker_title': 'Share this comment',
     })
 
 

@@ -330,18 +330,19 @@ def forum_add_comment_view(request, post_id):
 @login_required
 def forum_delete_comment_view(request, comment_id):
     """
-    Delete a comment - Director-only, and unlike everything else the
-    Director can moderate, this covers every comment including their own
-    (see _can_comment for who may add one in the first place). AJAX-only:
+    Delete a comment - either its own author (see the comment's dots-menu
+    in forum/templates/forum/_comments_page.html), or the Director, whose
+    moderation power covers every comment including someone else's (see
+    _can_comment for who may add one in the first place). AJAX-only:
     comments are loaded into the page without a full reload, so deleting
     one removes it from the DOM in place instead of redirecting - see the
     script in templates/forum/index.html.
     """
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
-    if not request.user.is_director:
-        raise PermissionDenied('Only the Director can delete comments.')
-
     comment = get_object_or_404(Comment, pk=comment_id)
+    if comment.author_id != request.user.pk and not request.user.is_director:
+        raise PermissionDenied('You can only delete your own comments.')
+
     comment.delete()
     return HttpResponse(status=204)

@@ -9,14 +9,23 @@ mail_report_new), not a modal - it round-trips target_type/target_id as
 query params so that page arrives pre-filled.
 
 Include with whichever of these context vars apply:
-  target_type      - 'user', 'message', or 'post'
-  target_id        - the CustomUser/Message/Post pk
+  target_type      - 'user', 'message', 'post', or 'comment'
+  target_id        - the CustomUser/Message/Post/Comment pk
   target_username  - only needed when show_friend/show_message/show_block/show_mute/show_moderation
   show_report / show_friend / show_message / show_block / show_mute / show_share / show_moderation / show_fan_letter
   show_forward / show_mark_read / show_save - message-row-only actions (target_type="message", target_id=message.id)
+  show_delete_comment / show_share_comment / show_copy - comment-row-only actions (target_type="comment", target_id=c.id)
+  post_id - only needed alongside show_delete_comment, so the deleted comment's on-page count can be decremented
   is_muted / is_blocked / is_saved - initial toggle state, if known
   friend_state - 'friends' / 'pending_sent' / 'pending_received' / 'none' (see mail.models.FriendRequest.state_between)
   pending_request_from_them - the FriendRequest row, only needed when friend_state == 'pending_received'
+
+  A comment's dots-menu (see forum/templates/forum/_comments_page.html)
+  always offers Share and Copy; Delete is shown for the comment's own
+  author OR the Director (their existing moderate-anything power, see
+  forum.views.forum_delete_comment_view), Report is shown for anyone
+  else - reusing the same generic show_report flag/link every other
+  target_type already uses, just with target_type="comment".
 
   show_mute is the self-service, purely-cosmetic notification mute
   (mail.models.UserRelationship.MUTE). show_moderation is a completely
@@ -34,6 +43,15 @@ Include with whichever of these context vars apply:
   <div class="dropdown-panel">
     {% if show_share %}
     <button type="button" class="dropdown-item js-share-open" data-post-id="{{ target_id }}">Share</button>
+    {% endif %}
+    {% if show_delete_comment %}
+    <button type="button" class="dropdown-item js-comment-delete" data-comment="{{ target_id }}" data-post="{{ post_id }}" style="color: var(--red-bright);">Delete</button>
+    {% endif %}
+    {% if show_share_comment %}
+    <button type="button" class="dropdown-item js-comment-share-open" data-comment-id="{{ target_id }}">Share</button>
+    {% endif %}
+    {% if show_copy %}
+    <button type="button" class="dropdown-item js-comment-copy" data-comment-id="{{ target_id }}">Copy</button>
     {% endif %}
     {% if show_forward %}
     <button type="button" class="dropdown-item js-forward-open" data-message-id="{{ target_id }}">Forward</button>
