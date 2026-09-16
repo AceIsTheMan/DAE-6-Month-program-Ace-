@@ -10,9 +10,7 @@
     </a>
     <a href="{% url 'user_profile' c.author.username %}" class="comment-author">{{ c.author.username }}</a>
     <span class="comment-date">{{ c.created_at|date:"m/d/Y g:i A" }}</span>
-    {% if can_delete_comments %}
-      <button type="button" class="comment-delete-btn" data-comment="{{ c.id }}" data-post="{{ post_id }}" title="Delete comment">[ DELETE ]</button>
-    {% endif %}
+    {% include "_dots_menu.html" with target_type="comment" target_id=c.id post_id=post_id show_delete_comment=c.author_id|eq:user.id|or_:can_delete_comments show_report=c.author_id|ne:user.id show_share_comment=True show_copy=True %}
   </div>
   <div class="comment-body">{{ c.body|redact_for_viewer:can_delete_comments|linkify_mentions|safe }}</div>
 </div>

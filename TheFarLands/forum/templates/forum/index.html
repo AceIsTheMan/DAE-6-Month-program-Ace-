@@ -213,6 +213,7 @@
   .comment-list { display: flex; flex-direction: column; gap: 0.7rem; }
   .comment-item { padding: 0.6rem 0.8rem; border-left: 2px solid var(--red-dim); background: rgba(204,0,0,0.05); }
   .comment-meta { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.3rem; }
+  .comment-meta .dots-menu { margin-left: auto; }
   .comment-avatar {
     width: 24px;
     height: 24px;
@@ -224,19 +225,6 @@
   .comment-author { color: var(--red-bright); font-size: 0.85rem; letter-spacing: 1px; text-decoration: none; }
   .comment-author:hover { text-decoration: underline; }
   .comment-date { color: var(--dim-white); font-size: 0.68rem; letter-spacing: 1px; }
-  .comment-delete-btn {
-    margin-left: auto;
-    font-family: 'Share Tech Mono', monospace;
-    background: none;
-    border: none;
-    color: var(--dim-white);
-    font-size: 0.68rem;
-    letter-spacing: 1px;
-    cursor: pointer;
-    padding: 0;
-    flex-shrink: 0;
-  }
-  .comment-delete-btn:hover { color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
   .comment-body { color: var(--silver); font-size: 0.85rem; line-height: 1.5; overflow-wrap: anywhere; }
   .comment-empty { color: var(--dim-white); font-size: 0.8rem; letter-spacing: 1px; }
   .comment-load-more {
@@ -449,12 +437,13 @@
       loadComments(postId, offset, list);
     });
 
-    // Director-only [DELETE] on each comment (see can_delete_comments in
-    // forum.views.forum_comments_view) - also delegated, same reason.
-    // Removes the comment in place and decrements the visible count,
-    // no page reload.
+    // Delete on a comment's own dots-menu (see _dots_menu.html's
+    // show_delete_comment - the comment's own author, or the Director's
+    // existing moderate-anything power) - delegated, same reason as
+    // above. Removes the comment in place and decrements the visible
+    // count, no page reload.
     document.addEventListener('click', function (e) {
-      var btn = e.target.closest('.comment-delete-btn');
+      var btn = e.target.closest('.js-comment-delete');
       if (!btn) return;
       if (!confirm('Delete this comment? This can\'t be undone.')) return;
 
@@ -476,10 +465,55 @@
         }
       });
     });
+
+    // Copy a comment's own text to the clipboard - reads straight from
+    // the live .comment-body DOM (innerText turns its <br>s into real
+    // newlines) rather than baking the text into a data attribute.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-comment-copy');
+      if (!btn) return;
+      var commentId = btn.getAttribute('data-comment-id');
+      var body = document.querySelector('#comment-' + commentId + ' .comment-body');
+      if (!body || !navigator.clipboard) return;
+      navigator.clipboard.writeText(body.innerText).then(function () {
+        var original = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(function () { btn.textContent = original; }, 1200);
+      });
+    });
   })();
 </script>
 
 {% include "mail/_recipient_picker_scripts.html" %}
+<script>
+  // Comment Share - identical lazy-load pattern to Forum Share below,
+  // just against mail_comment_share/data-comment-id instead of
+  // mail_forum_share/data-post-id.
+  (function () {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-comment-share-open');
+      if (!btn) return;
+      var panel = btn.closest('.dropdown-panel');
+      var trigger = panel && panel.previousElementSibling;
+      if (!panel) return;
+      if (panel.querySelector('.recipient-picker')) {
+        panel.classList.add('open');
+        if (trigger) trigger.classList.add('open');
+        return;
+      }
+      var commentId = btn.getAttribute('data-comment-id');
+      var urlTemplate = "{% url 'mail_comment_share' 0 %}";
+      fetch(urlTemplate.replace('/0/', '/' + commentId + '/'))
+        .then(function (r) { return r.text(); })
+        .then(function (html) {
+          btn.remove();
+          panel.insertAdjacentHTML('beforeend', html);
+          panel.classList.add('share-picker-panel', 'open');
+          if (trigger) trigger.classList.add('open');
+        });
+    });
+  })();
+</script>
 <script>
   // Forum's Share action (see the .dots-menu in .post-meta above) -
   // lazy-loads the recipient picker fragment from mail.views.

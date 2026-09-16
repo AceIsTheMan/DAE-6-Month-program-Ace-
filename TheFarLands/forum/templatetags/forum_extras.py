@@ -18,6 +18,30 @@ def linkify_mentions(html_text):
 
 
 @register.filter
+def eq(a, b):
+    """`a == b` as a filter - {% include %}'s `with` clause only accepts
+    variables/filter expressions, not inline comparisons/booleans, so
+    this (and `or_` below) is how a boolean built from a comparison gets
+    passed through an include - see forum/_comments_page.html's dots-menu
+    include, which needs "is this my own comment, or am I the Director"
+    as a single boolean."""
+    return a == b
+
+
+@register.filter
+def ne(a, b):
+    """`a != b` as a filter - see `eq` above."""
+    return a != b
+
+
+@register.filter
+def or_(a, b):
+    """See `eq` above - lets an include chain `x|eq:y|or_:z` instead of
+    needing a view-computed boolean for every comment in the list."""
+    return bool(a) or bool(b)
+
+
+@register.filter
 def dict_get(mapping, key):
     """Look up `key` in a dict from the template - Django's `.` lookup
     can't take a variable as the key, so `my_reactions|dict_get:post.id`

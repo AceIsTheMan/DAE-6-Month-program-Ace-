@@ -82,6 +82,16 @@
   .report-char-counter.warn { color: var(--red-bright); }
   .report-char-counter.limit { color: var(--red-bright); font-weight: bold; text-shadow: 0 0 6px var(--red); }
 
+  .report-quoted-comment {
+    border-left: 2px solid var(--red-dim);
+    background: rgba(204,0,0,0.05);
+    padding: 0.6rem 0.9rem;
+    margin-bottom: 1rem;
+    color: var(--silver);
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+
   .report-cooldown-note {
     color: var(--red-bright);
     border: 1px solid var(--red);
@@ -110,7 +120,7 @@
     <input type="hidden" name="target_type" id="report-target-type" value="{{ target_type }}">
     <input type="hidden" name="target_id" id="report-target-id" value="{{ target_id }}">
 
-    <div id="report-target-box" class="report-target-box"{% if not reported_user and not reported_message %} hidden{% endif %}>
+    <div id="report-target-box" class="report-target-box"{% if not reported_user and not reported_message and not reported_comment %} hidden{% endif %}>
       {% if reported_user %}
         {% if reported_user.profile_picture %}
           <img src="{{ reported_user.profile_picture.url }}" class="report-target-avatar" alt="">
@@ -131,15 +141,30 @@
           <div class="report-target-name">{{ reported_message.sender.username }}</div>
           <div class="report-target-context">Reporting a message from this account</div>
         </div>
+      {% elif reported_comment %}
+        {% if reported_comment.author.profile_picture %}
+          <img src="{{ reported_comment.author.profile_picture.url }}" class="report-target-avatar" alt="">
+        {% else %}
+          <span class="report-target-avatar report-target-avatar-blank">?</span>
+        {% endif %}
+        <div>
+          <div class="report-target-name">{{ reported_comment.author.username }}</div>
+          <div class="report-target-context">Reporting a comment from this account</div>
+        </div>
       {% endif %}
       <button type="button" class="report-target-change" id="report-target-change">[ CHANGE ]</button>
     </div>
 
-    <div id="report-username-search" class="report-username-search"{% if reported_user or reported_message %} hidden{% endif %}>
+    <div id="report-username-search" class="report-username-search"{% if reported_user or reported_message or reported_comment %} hidden{% endif %}>
       <label for="report-username-input">Username</label>
       <input type="text" id="report-username-input" placeholder="Search the account you're reporting...">
       <div class="report-search-results" id="report-search-results"></div>
     </div>
+
+    {% if reported_comment %}
+    <label>Reported Comment</label>
+    <div class="report-quoted-comment">{{ reported_comment.body|safe }}</div>
+    {% endif %}
 
     <label for="{{ form.category.id_for_label }}">Reason</label>
     {{ form.category }}

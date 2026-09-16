@@ -831,22 +831,30 @@ def mail_report_new(request):
     mail.models.Report's docstring), it's the one mail-adjacent action
     that isn't a "Mail" privilege.
 
-    Target is resolved from `target_type`('user'/'message') + `target_id`
-    - as GET query params when arriving from a Report link (see
-    _dots_menu.html, prefilled from a profile page or a Social message),
-    or as POST fields once the on-page username search (see
-    mail/_recipient_picker_scripts.html's single-select mode) has picked
-    someone with no message/profile context at hand.
+    Target is resolved from `target_type`('user'/'message'/'comment') +
+    `target_id` - as GET query params when arriving from a Report link
+    (see _dots_menu.html, prefilled from a profile page, a Social
+    message, or a forum comment), or as POST fields once the on-page
+    username search (see mail/_recipient_picker_scripts.html's
+    single-select mode) has picked someone with no message/profile
+    context at hand.
+
+    A reported comment is quoted in full on the page, right above the
+    Reason field (see mail/templates/mail/report_new.html) - unlike a
+    reported message, which only shows who sent it, not its text.
     """
     target_type = request.POST.get('target_type') or request.GET.get('target_type', '')
     target_id = request.POST.get('target_id') or request.GET.get('target_id', '')
 
     reported_user = None
     reported_message = None
+    reported_comment = None
     if target_type == 'user' and target_id:
         reported_user = CustomUser.objects.filter(pk=target_id).first()
     elif target_type == 'message' and target_id:
         reported_message = Message.objects.select_related('sender').filter(pk=target_id).first()
+    elif target_type == 'comment' and target_id:
+        reported_comment = Comment.objects.select_related('author').filter(pk=target_id).first()
 
     cooldown = _report_cooldown_remaining(request.user)
     cooldown_hours_left = int(cooldown.total_seconds() // 3600) + 1 if cooldown else None
@@ -859,13 +867,22 @@ def mail_report_new(request):
                 f'You\'ve filed {REPORT_LIMIT} reports in the last {REPORT_COOLDOWN_HOURS} hours - '
                 f'try again in about {cooldown_hours_left} hour(s).',
             )
-        elif not reported_user and not reported_message:
+        elif not reported_user and not reported_message and not reported_comment:
             flash.error(request, 'Pick who or what you\'re reporting first.')
         elif form.is_valid():
             report = form.save(commit=False)
             report.reporter = request.user
-            report.reported_user = reported_user
+            # A comment-report also pins reported_user to the comment's
+            # author - deleting a comment is a real, live action here
+            # (see forum.views.forum_delete_comment_view), unlike a
+            # Message, which nothing in this app ever deletes. Without
+            # this, a comment getting deleted after being reported would
+            # SET_NULL reported_comment down to nothing, tripping the
+            # report_has_a_target CHECK constraint below with every
+            # target column NULL at once.
+            report.reported_user = reported_user or (reported_comment.author if reported_comment else None)
             report.reported_message = reported_message
+            report.reported_comment = reported_comment
             report.save()
             flash.success(request, 'Report filed - a moderator will review it.')
             return redirect('mail_inbox' if not request.user.is_guest else 'home')
@@ -878,6 +895,7 @@ def mail_report_new(request):
         'target_id': target_id,
         'reported_user': reported_user,
         'reported_message': reported_message,
+        'reported_comment': reported_comment,
         'cooldown_hours_left': cooldown_hours_left,
         'report_limit': REPORT_LIMIT,
         'report_cooldown_hours': REPORT_COOLDOWN_HOURS,
