@@ -3,7 +3,18 @@ import re
 from django import template
 from django.utils.safestring import mark_safe
 
+from forum.sanitize import linkify_mentions as _linkify_mentions
+
 register = template.Library()
+
+
+@register.filter
+def linkify_mentions(html_text):
+    """Template-filter wrapper around forum.sanitize.linkify_mentions -
+    see that function for the actual @mention-linking logic (shared with
+    mail.templatetags.mail_extras.render_body so there's exactly one
+    implementation)."""
+    return mark_safe(_linkify_mentions(html_text))
 
 
 @register.filter

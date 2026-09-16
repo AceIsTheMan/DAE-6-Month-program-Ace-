@@ -3,12 +3,14 @@
      via AJAX from mail.views.mail_forum_share into a .dropdown-panel on
      each post - see forum/templates/forum/index.html).
 
-     `recipient_mode`: 'social' (default, block-filtered) or 'directive'
-     (Director-only, reaches anyone). `max_recipients`: optional cap.
-     `share_post_id`: only set for the Forum Share context - renders its
-     own [ SEND ] button that posts straight to mail_forum_share, since
-     that context has no surrounding <form> of its own. -->
-<div class="recipient-picker" data-mode="{{ recipient_mode|default:'social' }}" data-max="{{ max_recipients|default:'' }}"{% if share_post_id %} data-share-post-id="{{ share_post_id }}"{% endif %}>
+     `recipient_mode`: 'social' (default, block-filtered), 'directive',
+     or 'admin_mail' (both Director-only, reach anyone/Admins only).
+     `max_recipients`: optional cap. `share_post_id`: only set for the
+     Forum Share context - renders its own [ SEND ] button that posts
+     straight to mail_forum_share, since that context has no surrounding
+     <form> of its own. `forward_message_id`: same idea, for Forward (see
+     mail.views.mail_message_forward). -->
+<div class="recipient-picker" data-mode="{{ recipient_mode|default:'social' }}" data-max="{{ max_recipients|default:'' }}"{% if share_post_id %} data-share-post-id="{{ share_post_id }}"{% endif %}{% if forward_message_id %} data-forward-message-id="{{ forward_message_id }}"{% endif %}>
   {% if picker_title %}<div class="recipient-picker-title">{{ picker_title }}</div>{% endif %}
   <input type="text" class="recipient-search-input" placeholder="Search username...">
   <div class="recipient-results"></div>
@@ -18,5 +20,8 @@
   {% if form.usernames.errors %}{% for error in form.usernames.errors %}<div class="field-error">{{ error }}</div>{% endfor %}{% endif %}
   {% if share_post_id %}
   <button type="button" class="comment-submit-btn js-share-submit">[ SEND ]</button>
+  {% endif %}
+  {% if forward_message_id %}
+  <button type="button" class="comment-submit-btn js-forward-submit">[ FORWARD ]</button>
   {% endif %}
 </div>

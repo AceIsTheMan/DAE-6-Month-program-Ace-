@@ -305,6 +305,10 @@
      div, no href, no click listener at all), not just visually dimmed. */
   .dropdown-item.inert { cursor: default; color: var(--dim-white); }
   .dropdown-item.inert:hover { background: none; color: var(--dim-white); }
+  /* A Friend request already sent - awaiting the other account's Accept/
+     Decline, so the button itself is inert until they answer. */
+  .dropdown-item:disabled { cursor: default; color: var(--dim-white); opacity: 0.6; }
+  .dropdown-item:disabled:hover { background: none; color: var(--dim-white); }
   .dropdown-badge { color: var(--red-bright); margin-left: auto; text-shadow: 0 0 4px var(--red); }
 
   /* 3-dot menu trigger (see _dots_menu.html) - same anchored-panel recipe
@@ -334,6 +338,32 @@
     padding: 1px 6px;
     text-shadow: 0 0 4px var(--red);
     text-transform: uppercase;
+  }
+
+  /* @mention linking - shared by mail and forum bodies (see
+     forum.sanitize.linkify_mentions) - "glows red" only ever applies to
+     a mention that resolved to a real account; anything else stays plain
+     text with no styling at all. */
+  .mention-valid { color: var(--red-bright); text-shadow: 0 0 4px var(--red); text-decoration: none; }
+  .mention-valid:hover { text-decoration: underline; }
+
+  /* Confidential Director<->Admin mail (see mail.models.Conversation.
+     is_admin_only) redacted for an unauthorized viewer - word-shaped
+     blackout bars, media blocked outright. */
+  .admin-only-media-blocked {
+    width: 220px;
+    max-width: 100%;
+    height: 140px;
+    background: #000;
+    border: 1px solid var(--red-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--dim-white);
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 0.4rem;
   }
 
 </style>
@@ -417,24 +447,22 @@
       }
     });
 
-    // Friend/Mute/Block toggles - instant, no request/accept step (see
-    // mail.models.UserRelationship's docstring).
+    // Mute/Block toggles - instant, plain boolean (see mail.models.
+    // UserRelationship's docstring). Friend is handled separately below -
+    // it's a 3-state request/accept flow now, not a boolean toggle.
     var relationshipUrls = {
-      friend: "{% url 'mail_relationship_friend' 'PLACEHOLDER' %}",
       mute: "{% url 'mail_relationship_mute' 'PLACEHOLDER' %}",
       block: "{% url 'mail_relationship_block' 'PLACEHOLDER' %}",
     };
     var relationshipLabels = {
-      friend: ['Friend', 'Unfriend'],
       mute: ['Mute', 'Unmute'],
       block: ['Block', 'Unblock'],
     };
-    var relationshipResponseKey = { friend: 'friended', mute: 'muted', block: 'blocked' };
+    var relationshipResponseKey = { mute: 'muted', block: 'blocked' };
     document.addEventListener('click', function (e) {
-      var btn = e.target.closest('.js-friend-toggle, .js-mute-toggle, .js-block-toggle');
+      var btn = e.target.closest('.js-mute-toggle, .js-block-toggle');
       if (!btn) return;
-      var kind = btn.classList.contains('js-friend-toggle') ? 'friend'
-        : btn.classList.contains('js-mute-toggle') ? 'mute' : 'block';
+      var kind = btn.classList.contains('js-mute-toggle') ? 'mute' : 'block';
       var username = btn.getAttribute('data-username');
       fetch(relationshipUrls[kind].replace('PLACEHOLDER', encodeURIComponent(username)), {
         method: 'POST',
@@ -447,6 +475,161 @@
           btn.textContent = active ? relationshipLabels[kind][1] : relationshipLabels[kind][0];
         });
     });
+
+    // Friend - files/cancels a request (see mail.models.FriendRequest);
+    // the response carries a 'state' string, not a boolean, since a click
+    // can land on 'friends', 'pending_sent', or 'none'.
+    var friendUrl = "{% url 'mail_relationship_friend' 'PLACEHOLDER' %}";
+    var friendLabels = { friends: 'Unfriend', pending_sent: 'Pending', none: 'Friend' };
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-friend-toggle');
+      if (!btn || btn.disabled) return;
+      var username = btn.getAttribute('data-username');
+      fetch(friendUrl.replace('PLACEHOLDER', encodeURIComponent(username)), {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data) return;
+          btn.classList.toggle('active-state', data.state === 'friends');
+          btn.textContent = friendLabels[data.state] || 'Friend';
+          btn.disabled = data.state === 'pending_sent';
+        });
+    });
+
+    // Accept/Decline a request someone else sent - replaces the three
+    // "wants to be friends"/Accept/Decline dropdown-items with a plain
+    // confirmation line once answered.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-friend-respond');
+      if (!btn) return;
+      var requestId = btn.getAttribute('data-request-id');
+      var action = btn.getAttribute('data-action');
+      var panelGroup = btn.parentElement;
+      fetch(
+        "{% url 'mail_friend_request_respond' 0 %}".replace('/0/', '/' + requestId + '/'),
+        { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') }, body: new URLSearchParams({ action: action }) }
+      ).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data || !panelGroup) return;
+          panelGroup.querySelectorAll('.js-friend-respond, .dropdown-item.inert').forEach(function (el) { el.remove(); });
+        });
+    });
+  })();
+</script>
+<style>
+  /* @mention autocomplete dropdown - one shared, body-appended element
+     (see the script below) repositioned under whichever textarea.
+     mention-aware is currently being typed into, since a forum page can
+     have many comment boxes at once but only one can be active. */
+  .mention-dropdown {
+    position: absolute;
+    display: none;
+    z-index: 3000;
+    background: rgba(0,0,0,0.95);
+    border: 1px solid var(--red);
+    box-shadow: 0 0 20px rgba(204,0,0,0.4);
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .mention-dropdown-row {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.8rem;
+    background: none;
+    border: none;
+    border-bottom: 1px dashed var(--red-dim);
+    color: var(--silver);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .mention-dropdown-row:last-child { border-bottom: none; }
+  .mention-dropdown-row:hover { background: rgba(204,0,0,0.15); color: var(--red-bright); }
+</style>
+<script>
+  // @mention autocomplete - any textarea.mention-aware anywhere on the
+  // site (mail compose, forum posts/comments) gets this for free, no
+  // per-page wiring needed. Fuzzy substring match (see mail.views.
+  // mail_recipient_search's mode=mention) - "@th" matches "th" anywhere
+  // in a username, not just as a prefix.
+  (function () {
+    var dropdown = document.createElement('div');
+    dropdown.className = 'mention-dropdown';
+    document.body.appendChild(dropdown);
+    var activeTextarea = null;
+    var activeAt = null;
+    var activeQuery = '';
+    var searchTimer = null;
+
+    function hide() {
+      dropdown.style.display = 'none';
+      activeTextarea = null;
+      activeAt = null;
+    }
+
+    function position(el) {
+      var rect = el.getBoundingClientRect();
+      dropdown.style.left = (rect.left + window.scrollX) + 'px';
+      dropdown.style.top = (rect.bottom + window.scrollY + 2) + 'px';
+      dropdown.style.width = Math.min(Math.max(rect.width, 180), 280) + 'px';
+    }
+
+    document.addEventListener('input', function (e) {
+      var el = e.target;
+      if (!el.classList || !el.classList.contains('mention-aware')) return;
+      var caret = el.selectionStart;
+      var before = el.value.slice(0, caret);
+      var match = before.match(/(?:^|\s)@(\w*)$/);
+      if (!match) { hide(); return; }
+      activeTextarea = el;
+      activeAt = caret - match[1].length - 1;
+      activeQuery = match[1];
+      clearTimeout(searchTimer);
+      if (!activeQuery) { hide(); return; }
+      searchTimer = setTimeout(function () {
+        fetch("{% url 'mail_recipient_search' %}?mode=mention&q=" + encodeURIComponent(activeQuery))
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (activeTextarea !== el) return;
+            var results = data.results || [];
+            if (!results.length) { hide(); return; }
+            dropdown.innerHTML = '';
+            results.forEach(function (u) {
+              var row = document.createElement('button');
+              row.type = 'button';
+              row.className = 'mention-dropdown-row';
+              row.textContent = u.username;
+              row.addEventListener('mousedown', function (ev) {
+                ev.preventDefault();
+                var value = el.value;
+                var end = activeAt + 1 + activeQuery.length;
+                el.value = value.slice(0, activeAt) + '@' + u.username + ' ' + value.slice(end);
+                var newPos = activeAt + u.username.length + 2;
+                el.selectionStart = el.selectionEnd = newPos;
+                el.focus();
+                hide();
+              });
+              dropdown.appendChild(row);
+            });
+            position(el);
+            dropdown.style.display = 'block';
+          });
+      }, 200);
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') hide();
+    });
+    document.addEventListener('click', function (e) {
+      if (dropdown.contains(e.target)) return;
+      if (e.target.classList && e.target.classList.contains('mention-aware')) return;
+      hide();
+    });
+    window.addEventListener('scroll', function () {
+      if (activeTextarea) position(activeTextarea);
+    }, true);
   })();
 </script>
 </body>

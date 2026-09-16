@@ -1,3 +1,5 @@
+import re
+
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
@@ -8,13 +10,66 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.utils.http import url_has_allowed_host_and_scheme
 
-from mail.models import ModerationAction
+from accounts.models import CustomUser
+from mail.models import Conversation, ConversationParticipant, Message, ModerationAction
 
 from .forms import CommentForm, PostForm
 from .models import Comment, Post, PostReaction
 from .sanitize import sanitize_post_html
 
 COMMENTS_PAGE_SIZE = 5
+
+# @mention token - same shape forum.sanitize.linkify_mentions matches for
+# rendering, kept separate here since this one needs its own capture
+# group semantics (see _notify_mentioned_users).
+_MENTION_TOKEN_RE = re.compile(r'@(\w+)')
+
+# The reserved "everyone" broadcast token (see _broadcast_all_mention) -
+# \b after "all" so "@allison" never matches this, only "@all"/"@All"
+# exactly (optionally followed by punctuation/whitespace/end of string).
+_ALL_MENTION_RE = re.compile(r'@all\b', re.IGNORECASE)
+
+
+def _notify_mentioned_users(comment, raw_body):
+    """A real @mention in a comment gets its target a mail notice - see
+    mail.models.Conversation's MENTION category. Deliberately scans the
+    RAW pre-sanitize text (not comment.body) so the mention regex only
+    ever sees plain text, never markup from the **bold**-style markers a
+    Director's own comment might contain. Mail mentions (compose/display)
+    are link-only with no notification side effect - this is the one
+    place @mentioning someone actually alerts them, per forum being
+    "somewhere they can converse or talk to others"."""
+    tokens = set(_MENTION_TOKEN_RE.findall(raw_body))
+    if not tokens:
+        return
+    mentioned = CustomUser.objects.filter(username__in=tokens).exclude(pk=comment.author_id)
+    for target in mentioned:
+        conversation = Conversation.objects.create(category=Conversation.MENTION, created_by=comment.author)
+        ConversationParticipant.objects.create(conversation=conversation, user=target)
+        Message.objects.create(
+            conversation=conversation, sender=comment.author, shared_post=comment.post,
+            body=f'{comment.author.username} mentioned you in a comment.',
+        )
+
+
+def _broadcast_all_mention(post):
+    """A Director post containing the literal @All token broadcasts it
+    into every non-guest account's Inbox - reuses the exact Update
+    machinery (mail.views.mail_update_new's recipient set) via a
+    shared_post embed, just triggered here instead of a manual Mail
+    compose. This hook only ever runs from forum_index_view's already
+    Director-gated post branch, so a regular account typing @All in a
+    comment can never trigger a broadcast - it just renders as an
+    unresolved, inert mention there (there's no real account named
+    "all", so forum.sanitize.linkify_mentions never links it either)."""
+    if not _ALL_MENTION_RE.search(post.body):
+        return
+    conversation = Conversation.objects.create(category=Conversation.UPDATE, created_by=post.author)
+    recipients = CustomUser.objects.filter(is_guest=False).exclude(pk=post.author.pk)
+    ConversationParticipant.objects.bulk_create([
+        ConversationParticipant(conversation=conversation, user=u) for u in recipients
+    ])
+    Message.objects.create(conversation=conversation, sender=post.author, shared_post=post)
 
 
 def _can_comment(user):
@@ -78,6 +133,7 @@ def forum_index_view(request):
             post = form.save(commit=False)
             post.author = request.user
             post.save()
+            _broadcast_all_mention(post)
             return redirect('forum')
     elif can_post:
         form = PostForm()
@@ -261,6 +317,7 @@ def forum_add_comment_view(request, post_id):
         comment.author = request.user
         comment.body = sanitize_post_html(form.cleaned_data['body'], apply_markers=request.user.is_director)
         comment.save()
+        _notify_mentioned_users(comment, form.cleaned_data['body'])
 
     next_url = request.POST.get('next')
     if next_url and url_has_allowed_host_and_scheme(

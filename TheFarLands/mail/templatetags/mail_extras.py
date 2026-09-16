@@ -1,6 +1,65 @@
+import re
+
 from django import template
+from django.utils.safestring import mark_safe
+
+from forum.sanitize import linkify_mentions
 
 register = template.Library()
+
+_WORD_RE = re.compile(r'\S+')
+
+
+def _redact_html(html_text):
+    """Word-shaped blackout bars in place of real text, whitespace/<br>
+    breaks preserved - "spaces where words are supposed to be" (see
+    Conversation.is_admin_only's docstring). Message bodies are already-
+    sanitized plain text with only <br> tags in them (see forum.sanitize.
+    sanitize_post_html), so a plain split on <br> is enough - there's
+    nothing else to walk around."""
+    if not html_text:
+        return ''
+    parts = html_text.split('<br>')
+    return '<br>'.join(_WORD_RE.sub(lambda m: '█' * len(m.group(0)), part) for part in parts)
+
+
+@register.filter
+def render_body(message, viewer):
+    """The message body actually safe to render for `viewer` - real
+    content (with @mentions linkified) if this isn't confidential Director
+    <->Admin mail or `viewer` is authorized to see it (see
+    accounts.models.CustomUser.is_moderator), a word-shaped blackout
+    otherwise. Redaction happens BEFORE any linkifying could apply, not
+    after, so there's no risk of a mention link's own <a> markup getting
+    chewed up by the blackout substitution."""
+    if message.is_admin_only and not (viewer.is_authenticated and viewer.is_moderator):
+        return mark_safe(_redact_html(message.body))
+    return mark_safe(linkify_mentions(message.body))
+
+
+@register.filter
+def ne(a, b):
+    """`a != b` as a filter - {% include %}'s `with` clause only accepts
+    variables/filter expressions, not inline comparisons, so this (and
+    `eq` below) is how a boolean built from a comparison gets passed
+    through an include, e.g. show_friend=message.sender_id|ne:user.id."""
+    return a != b
+
+
+@register.filter
+def eq(a, b):
+    """See `ne` above - the same need, the other direction."""
+    return a == b
+
+
+@register.filter
+def admin_only_media_blocked(message, viewer):
+    """Whether `viewer` must see a solid blackout box instead of this
+    message's real image/video - see mail.views.mail_message_media for
+    why the underlying file is ALSO gated at the serving layer, not just
+    hidden here (a template-only block is cosmetic; the raw MEDIA_URL
+    would still work if guessed)."""
+    return bool(message.is_admin_only and not (viewer.is_authenticated and viewer.is_moderator))
 
 
 @register.filter

@@ -133,7 +133,7 @@ class DirectiveForm(_RecipientPickerForm):
     """Sends a Directive - Director-only (enforced in the view, not
     here), no upper cap on recipient count."""
     enforce_block_filter = False
-    body = forms.CharField(widget=forms.Textarea(attrs={'maxlength': MAX_BODY_LEN, 'rows': 4}))
+    body = forms.CharField(widget=forms.Textarea(attrs={'maxlength': MAX_BODY_LEN, 'rows': 4, 'class': 'mention-aware'}))
 
     def clean_body(self):
         raw = self.cleaned_data.get('body', '')
@@ -150,12 +150,18 @@ class ForumShareForm(_RecipientPickerForm):
     max_recipients = None
 
 
+class ForwardForm(_RecipientPickerForm):
+    """Forwards a Message into one or more Social DMs - see
+    mail.views.mail_message_forward."""
+    max_recipients = None
+
+
 class UpdateForm(forms.Form):
     """Broadcasts an Update to every current non-guest account - see
     mail.views.mail_update_new. Unlike Directive, there's no recipient
     picker: "Updates are announced updates the Director has sent
     personally" reads as a broadcast, not a targeted send."""
-    body = forms.CharField(widget=forms.Textarea(attrs={'maxlength': MAX_BODY_LEN, 'rows': 4}))
+    body = forms.CharField(widget=forms.Textarea(attrs={'maxlength': MAX_BODY_LEN, 'rows': 4, 'class': 'mention-aware'}))
 
     def clean_body(self):
         raw = self.cleaned_data.get('body', '')
@@ -164,6 +170,39 @@ class UpdateForm(forms.Form):
         if len(raw) > MAX_BODY_LEN:
             raise forms.ValidationError(f'Updates are capped at {MAX_BODY_LEN} characters.')
         return sanitize_post_html(raw, apply_markers=True)
+
+
+class FanLetterForm(forms.Form):
+    """A non-guest account writing directly to the Director - see
+    mail.views.mail_fan_letter_new. Same shape as UpdateForm (no
+    recipient picker - there's exactly one Director, so nothing to pick),
+    just the reverse direction."""
+    body = forms.CharField(widget=forms.Textarea(attrs={'maxlength': MAX_BODY_LEN, 'rows': 4, 'class': 'mention-aware'}))
+
+    def clean_body(self):
+        raw = self.cleaned_data.get('body', '')
+        if not raw.strip():
+            raise forms.ValidationError('A Fan Letter needs a message.')
+        if len(raw) > MAX_BODY_LEN:
+            raise forms.ValidationError(f'Fan Letters are capped at {MAX_BODY_LEN} characters.')
+        return sanitize_post_html(raw, apply_markers=False)
+
+
+class AdminMailForm(_RecipientPickerForm):
+    """Director-only confidential send to one or more Admins - see
+    mail.views.mail_admin_mail_new. enforce_block_filter is off for the
+    same reason DirectiveForm turns it off: the Director must always be
+    able to reach an Admin regardless of any Block between them."""
+    body = forms.CharField(widget=forms.Textarea(attrs={'maxlength': MAX_BODY_LEN, 'rows': 4, 'class': 'mention-aware'}))
+    enforce_block_filter = False
+
+    def clean_body(self):
+        raw = self.cleaned_data.get('body', '')
+        if not raw.strip():
+            raise forms.ValidationError('This mail needs a message.')
+        if len(raw) > MAX_BODY_LEN:
+            raise forms.ValidationError(f'Capped at {MAX_BODY_LEN} characters.')
+        return sanitize_post_html(raw, apply_markers=False)
 
 
 class ReportForm(forms.ModelForm):

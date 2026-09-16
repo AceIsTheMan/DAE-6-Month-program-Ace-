@@ -14,7 +14,7 @@
       <button type="button" class="comment-delete-btn" data-comment="{{ c.id }}" data-post="{{ post_id }}" title="Delete comment">[ DELETE ]</button>
     {% endif %}
   </div>
-  <div class="comment-body">{{ c.body|redact_for_viewer:can_delete_comments|safe }}</div>
+  <div class="comment-body">{{ c.body|redact_for_viewer:can_delete_comments|linkify_mentions|safe }}</div>
 </div>
 {% endfor %}
 {% if has_more %}

@@ -19,7 +19,7 @@ class PostForm(forms.ModelForm):
             # Plain textarea - the poster types the formatting markers
             # directly (see forum.sanitize), no rich-text editing surface.
             'body': forms.Textarea(attrs={
-                'class': 'composer-body',
+                'class': 'composer-body mention-aware',
                 'placeholder': 'Write a transmission... **bold** __underline__ ~~crossed~~ ||redacted|| ==highlight==',
                 'rows': 5,
             }),

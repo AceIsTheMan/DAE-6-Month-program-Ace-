@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
-from mail.models import ModerationAction
+from mail.models import FriendRequest, ModerationAction
 
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
 from .models import CustomUser
@@ -203,12 +203,28 @@ def profile_view(request, username=None):
         user, [ModerationAction.MUTE, ModerationAction.BAN, ModerationAction.PERM_BAN]
     )
 
+    # See FriendRequest.state_between - drives which of Friend/Pending/
+    # Unfriend/Accept+Decline the dots-menu shows for this pair.
+    friend_state = FriendRequest.state_between(request.user, user) if can_use_mail_with_them else 'none'
+    pending_request_from_them = None
+    if friend_state == 'pending_received':
+        pending_request_from_them = FriendRequest.objects.filter(
+            from_user=user, to_user=request.user, status=FriendRequest.PENDING
+        ).first()
+
+    # Fan Letter only ever targets the Director, and only from someone
+    # else's non-guest account - see mail.views.mail_fan_letter_new.
+    show_fan_letter = not is_own_profile and not request.user.is_guest and user.is_director
+
     return render(request, 'profile.html', {
         'profile_user': user,
         'edit_form': edit_form,
         'can_use_mail_with_them': can_use_mail_with_them,
         'can_moderate_them': can_moderate_them,
         'active_moderation': active_moderation,
+        'friend_state': friend_state,
+        'pending_request_from_them': pending_request_from_them,
+        'show_fan_letter': show_fan_letter,
     })
 
 

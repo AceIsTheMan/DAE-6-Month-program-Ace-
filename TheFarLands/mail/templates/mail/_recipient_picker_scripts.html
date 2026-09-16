@@ -102,5 +102,29 @@
         }, 1200);
       });
     });
+
+    // Forward's own [ FORWARD ] button - same "no surrounding <form>"
+    // situation as Forum Share above.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-forward-submit');
+      if (!btn) return;
+      var picker = btn.closest('.recipient-picker');
+      var messageId = picker.getAttribute('data-forward-message-id');
+      var usernames = picker.querySelector('.recipient-usernames-field').value;
+      if (!usernames || !messageId) return;
+      var urlTemplate = "{% url 'mail_message_forward' 0 %}";
+      fetch(urlTemplate.replace('/0/', '/' + messageId + '/'), {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'usernames=' + encodeURIComponent(usernames),
+      }).then(function (r) {
+        if (!r.ok) return;
+        btn.textContent = 'Sent!';
+        setTimeout(function () {
+          var panel = picker.closest('.dropdown-panel');
+          if (panel) panel.classList.remove('open');
+        }, 1200);
+      });
+    });
   })();
 </script>

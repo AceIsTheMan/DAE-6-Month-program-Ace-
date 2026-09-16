@@ -29,17 +29,34 @@ class Conversation(models.Model):
       exists, and unlike everything else in this model, there is also no
       delete/dismiss endpoint anywhere for it. That absence is the entire
       mechanism behind "cannot be replied, cannot be ignored either."
+    - A FAN_LETTER conversation is the reverse of UPDATE: any non-guest
+      account to the Director (see mail.views.mail_fan_letter_new), one-way,
+      no reply endpoint.
+    - A MENTION conversation is a system-generated, one-way notice created
+      when a real username is @mentioned in a forum comment (see
+      forum.views.forum_add_comment_view) - single recipient, no reply.
     """
     SOCIAL = 'social'
     UPDATE = 'update'
     DIRECTIVE = 'directive'
+    FAN_LETTER = 'fan_letter'
+    MENTION = 'mention'
     CATEGORY_CHOICES = [
         (SOCIAL, 'Social'),
         (UPDATE, 'Update'),
         (DIRECTIVE, 'Directive'),
+        (FAN_LETTER, 'Fan Letter'),
+        (MENTION, 'Mention'),
     ]
 
-    category = models.CharField(max_length=10, choices=CATEGORY_CHOICES)
+    category = models.CharField(max_length=12, choices=CATEGORY_CHOICES)
+
+    # Set only when a Director opens a confidential Director<->Admin thread
+    # (see mail.views.mail_admin_mail_new) - every Message saved into a
+    # flagged conversation gets its own is_admin_only stamped True at save
+    # time (see mail.views.mail_social_thread), so replies inherit the
+    # protection automatically without needing to re-flag each one by hand.
+    is_admin_only = models.BooleanField(default=False)
 
     # True only for a Social conversation actually created as a group
     # (see mail.views.mail_group_new) - never set for a 1:1 DM (see
@@ -145,6 +162,33 @@ class Message(models.Model):
         Post, on_delete=models.SET_NULL, null=True, blank=True, related_name='mail_shares'
     )
 
+    # Set when this message is a Forward of another (see mail.views.
+    # mail_message_forward) - sender is whoever forwarded it, not the
+    # original sender, and the template embeds the original alongside a
+    # "Forwarded by {sender}" label, same spirit as shared_post's embed.
+    # SET_NULL so deleting the original doesn't take the forward down too.
+    forwarded_from = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True, related_name='forwards'
+    )
+
+    # Frozen per-message flag - True if this message's content is
+    # confidential Director<->Admin mail (see Conversation.is_admin_only).
+    # Copied from the conversation at normal send time, or from the source
+    # message at forward time - deliberately NOT derived from
+    # `conversation.is_admin_only` on the fly, since a forward can land in
+    # a perfectly ordinary conversation with an outsider and must still
+    # redact there (see mail.views.mail_message_forward and
+    # mail.templatetags.mail_extras).
+    is_admin_only = models.BooleanField(default=False)
+
+    # Set only on the system-authored message delivering a friend request
+    # (see mail.views.mail_relationship_friend) - lets the template render
+    # Accept/Decline directly under this specific message while
+    # FriendRequest.status is still PENDING.
+    friend_request = models.OneToOneField(
+        'FriendRequest', on_delete=models.CASCADE, null=True, blank=True, related_name='message'
+    )
+
     class Meta:
         ordering = ['created_at']
         indexes = [models.Index(fields=['conversation', 'created_at'])]
@@ -245,9 +289,16 @@ class Report(models.Model):
 
 class UserRelationship(models.Model):
     """
-    Minimum-viable Friend/Block/Mute between two accounts - deliberately
-    no request/accept step (instant friend) since nothing else in this
-    project has a pending-request notification pattern to extend.
+    Minimum-viable Friend/Block/Mute between two accounts.
+
+    FRIEND rows are only ever created in pairs (both directions at once),
+    and only as the result of an accepted FriendRequest (see that model,
+    and mail.views.mail_friend_request_respond) - a plain "Friend" click no
+    longer friends someone instantly, it files a FriendRequest instead.
+    Once accepted, both directions exist here and this model's own
+    queries (mail_friends, mail_relationship_friend's "already friends"
+    check) don't need to know anything about the request/accept step that
+    produced them.
 
     Block is treated as bidirectional at the permission-check layer (see
     mail.forms._is_blocked_pair) even though the row itself only records
@@ -398,3 +449,83 @@ class ModerationAction(models.Model):
             .order_by('-created_at')
             .first()
         )
+
+
+class FriendRequest(models.Model):
+    """
+    A pending/accepted/declined Friend request between two accounts - see
+    UserRelationship's docstring for how this replaces the old instant-
+    friend behavior. The delivery mechanism is a normal Message (see
+    Message.friend_request) in the pair's DM, so the request shows up in
+    Mail exactly like anything else; this row is just the state machine
+    behind that message's Accept/Decline buttons.
+    """
+    PENDING = 'pending'
+    ACCEPTED = 'accepted'
+    DECLINED = 'declined'
+    STATUS_CHOICES = [
+        (PENDING, 'Pending'),
+        (ACCEPTED, 'Accepted'),
+        (DECLINED, 'Declined'),
+    ]
+
+    from_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='friend_requests_sent'
+    )
+    to_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='friend_requests_received'
+    )
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=PENDING)
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            # Only one outstanding ask per direction at a time - a fresh
+            # request can be filed again after a Decline (that row is no
+            # longer 'pending', so it doesn't count against this).
+            UniqueConstraint(
+                fields=['from_user', 'to_user'], condition=Q(status='pending'), name='one_pending_request_per_pair'
+            ),
+            CheckConstraint(condition=~Q(from_user=models.F('to_user')), name='no_self_friend_request'),
+        ]
+
+    def __str__(self):
+        return f'{self.from_user} -> {self.to_user} ({self.get_status_display()})'
+
+    @classmethod
+    def state_between(cls, user, target):
+        """One of 'friends' / 'pending_sent' / 'pending_received' / 'none'
+        - the single source of truth both mail.views.mail_relationship_
+        friend (to decide what a click does) and accounts.views.
+        profile_view (to render the right dots-menu button) call, so the
+        button shown and the action a click actually takes can never
+        disagree."""
+        if UserRelationship.objects.filter(from_user=user, to_user=target, kind=UserRelationship.FRIEND).exists():
+            return 'friends'
+        if cls.objects.filter(from_user=user, to_user=target, status=cls.PENDING).exists():
+            return 'pending_sent'
+        if cls.objects.filter(from_user=target, to_user=user, status=cls.PENDING).exists():
+            return 'pending_received'
+        return 'none'
+
+
+class SavedMessage(models.Model):
+    """
+    A user's own bookmark of a Message into their Saved tab (see
+    mail.views.mail_saved) - purely personal, doesn't affect the message
+    for anyone else and carries no read/unread meaning of its own.
+    """
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='saved_messages')
+    message = models.ForeignKey(Message, on_delete=models.CASCADE, related_name='saved_by')
+    saved_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-saved_at']
+        constraints = [
+            UniqueConstraint(fields=['user', 'message'], name='one_save_per_user_per_message'),
+        ]
+
+    def __str__(self):
+        return f'{self.user} saved message #{self.message_id}'

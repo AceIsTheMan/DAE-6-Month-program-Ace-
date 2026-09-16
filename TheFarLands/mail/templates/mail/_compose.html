@@ -10,7 +10,7 @@
      they end up anchored to the document root instead of the toolbar. -->
 <form method="post" enctype="multipart/form-data" novalidate class="mail-compose-form" id="mail-compose-form">
   {% csrf_token %}
-  <textarea name="body" id="mail-compose-body" class="composer-body mail-compose-body" rows="3" maxlength="800" placeholder="Write a message...">{{ form.body.value|default:'' }}</textarea>
+  <textarea name="body" id="mail-compose-body" class="composer-body mail-compose-body mention-aware" rows="3" maxlength="800" placeholder="Write a message...">{{ form.body.value|default:'' }}</textarea>
   {% for error in form.body.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
 
   <div class="compose-row">

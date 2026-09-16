@@ -1,0 +1,17 @@
+{% load mail_extras %}
+{% for message in messages_list %}
+<div class="thread-list-item">
+  <div class="thread-list-link">
+    <div class="thread-list-main">
+      <span class="thread-sender">{{ message.sender.username }}</span>
+      <span class="thread-snippet">{{ message|render_body:user|striptags|truncatechars:100 }}</span>
+    </div>
+    <span class="thread-date">{{ message.created_at|date:"m/d/Y g:i A" }}</span>
+  </div>
+</div>
+{% empty %}
+<div class="empty-feed">No more fan letters.</div>
+{% endfor %}
+{% if messages_list|length == page_size %}
+<button type="button" class="js-fan-letters-more" data-next-offset="{{ next_offset }}">[ LOAD 5 MORE ]</button>
+{% endif %}

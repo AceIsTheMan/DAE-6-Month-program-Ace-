@@ -12,8 +12,11 @@ Include with whichever of these context vars apply:
   target_type      - 'user', 'message', or 'post'
   target_id        - the CustomUser/Message/Post pk
   target_username  - only needed when show_friend/show_message/show_block/show_mute/show_moderation
-  show_report / show_friend / show_message / show_block / show_mute / show_share / show_moderation
-  is_friend / is_muted / is_blocked - initial toggle state, if known
+  show_report / show_friend / show_message / show_block / show_mute / show_share / show_moderation / show_fan_letter
+  show_forward / show_mark_read / show_save - message-row-only actions (target_type="message", target_id=message.id)
+  is_muted / is_blocked / is_saved - initial toggle state, if known
+  friend_state - 'friends' / 'pending_sent' / 'pending_received' / 'none' (see mail.models.FriendRequest.state_between)
+  pending_request_from_them - the FriendRequest row, only needed when friend_state == 'pending_received'
 
   show_mute is the self-service, purely-cosmetic notification mute
   (mail.models.UserRelationship.MUTE). show_moderation is a completely
@@ -21,6 +24,10 @@ Include with whichever of these context vars apply:
   mail.views.mail_moderation_new (a real Mute/Ban/Perm Ban, see mail.
   models.ModerationAction) - the two are never mutually exclusive, but
   never confuse one for the other.
+
+  show_fan_letter only ever applies to the Director's own profile (see
+  accounts.views.profile_view) - a plain link to mail.views.
+  mail_fan_letter_new, same style as show_message.
 {% endcomment %}
 <div class="dots-menu">
   <button type="button" class="dots-menu-trigger" aria-label="More actions">&#8942;</button>
@@ -28,11 +35,31 @@ Include with whichever of these context vars apply:
     {% if show_share %}
     <button type="button" class="dropdown-item js-share-open" data-post-id="{{ target_id }}">Share</button>
     {% endif %}
+    {% if show_forward %}
+    <button type="button" class="dropdown-item js-forward-open" data-message-id="{{ target_id }}">Forward</button>
+    {% endif %}
+    {% if show_save %}
+    <button type="button" class="dropdown-item js-save-toggle" data-message-id="{{ target_id }}">{% if is_saved %}Unsave{% else %}Save{% endif %}</button>
+    {% endif %}
+    {% if show_mark_read %}
+    <button type="button" class="dropdown-item js-mark-read" data-message-id="{{ target_id }}">Mark as Read</button>
+    {% endif %}
     {% if show_message %}
     <a href="{% url 'mail_social_dm_start' target_username %}" class="dropdown-item">Message</a>
     {% endif %}
     {% if show_friend %}
-    <button type="button" class="dropdown-item js-friend-toggle" data-username="{{ target_username }}">{% if is_friend %}Unfriend{% else %}Friend{% endif %}</button>
+      {% if friend_state == 'pending_received' %}
+      <div class="dropdown-item inert">Wants to be friends</div>
+      <button type="button" class="dropdown-item js-friend-respond" data-request-id="{{ pending_request_from_them.id }}" data-action="accept">Accept</button>
+      <button type="button" class="dropdown-item js-friend-respond" data-request-id="{{ pending_request_from_them.id }}" data-action="decline">Decline</button>
+      {% else %}
+      <button type="button" class="dropdown-item js-friend-toggle" data-username="{{ target_username }}" {% if friend_state == 'pending_sent' %}disabled{% endif %}>
+        {% if friend_state == 'friends' %}Unfriend{% elif friend_state == 'pending_sent' %}Pending{% else %}Friend{% endif %}
+      </button>
+      {% endif %}
+    {% endif %}
+    {% if show_fan_letter %}
+    <a href="{% url 'mail_fan_letter_new' %}" class="dropdown-item">Fan Letter</a>
     {% endif %}
     {% if show_mute %}
     <button type="button" class="dropdown-item js-mute-toggle" data-username="{{ target_username }}">{% if is_muted %}Unmute{% else %}Mute{% endif %}</button>

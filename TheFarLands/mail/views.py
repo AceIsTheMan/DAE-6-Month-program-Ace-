@@ -6,9 +6,10 @@ from django.contrib import messages as flash
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
 from django.db.models import Count, Q
-from django.http import HttpResponse, HttpResponseNotAllowed, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from accounts.models import CustomUser
 from forum.models import Post
@@ -18,8 +19,11 @@ from .forms import (
     GROUP_MAX_MEMBERS,
     REPORT_COOLDOWN_HOURS,
     REPORT_LIMIT,
+    AdminMailForm,
     DirectiveForm,
+    FanLetterForm,
     ForumShareForm,
+    ForwardForm,
     GroupCreateForm,
     MessageComposeForm,
     ModerationActionForm,
@@ -27,7 +31,16 @@ from .forms import (
     UpdateForm,
     _is_blocked_pair,
 )
-from .models import Conversation, ConversationParticipant, Message, ModerationAction, Report, UserRelationship
+from .models import (
+    Conversation,
+    ConversationParticipant,
+    FriendRequest,
+    Message,
+    ModerationAction,
+    Report,
+    SavedMessage,
+    UserRelationship,
+)
 
 
 def _require_mail_access(user):
@@ -38,6 +51,16 @@ def _require_mail_access(user):
     request from a guest account."""
     if not user.is_authenticated or user.is_guest:
         raise PermissionDenied('Mail is not available on this account.')
+
+
+def _get_visible_message(user, message_id):
+    """A Message `user` may see and act on (Save/Forward/Mark as Read) -
+    either they're a participant in its conversation, or they sent it.
+    The second half matters for a broadcast-shaped send (Update/
+    Directive/Fan Letter) where the sender is deliberately never added as
+    a ConversationParticipant (see mail_fan_letter_new/mail_update_new) -
+    without it, acting on your own Sent item 404s."""
+    return get_object_or_404(Message, Q(conversation__participants=user) | Q(sender=user), pk=message_id)
 
 
 def _sidebar_context(user, active):
@@ -144,23 +167,147 @@ def _get_or_create_dm(user_a, user_b):
     return conversation
 
 
+FAN_LETTER_COMPRESS_THRESHOLD = 5
+FAN_LETTER_PAGE_SIZE = 5
+
+
+def _apply_inbox_search(messages_list, request):
+    """The 'Categories' search panel in Inbox - a plain GET-filtered query,
+    no AJAX needed (same pattern as mail_report_history's `q` search).
+    Every field is optional and they all AND together."""
+    q_user = request.GET.get('q_user', '').strip()
+    q_keyword = request.GET.get('q_keyword', '').strip()
+    q_date = request.GET.get('q_date', '').strip()
+    q_mentioned = request.GET.get('q_mentioned', '').strip()
+
+    if q_user:
+        messages_list = messages_list.filter(
+            Q(sender__username__icontains=q_user) | Q(conversation__participants__username__icontains=q_user)
+        ).distinct()
+    if q_keyword:
+        messages_list = messages_list.filter(body__icontains=q_keyword)
+    if q_date:
+        parsed = parse_date(q_date)
+        if parsed:
+            messages_list = messages_list.filter(created_at__date=parsed)
+    if q_mentioned:
+        messages_list = messages_list.filter(body__icontains=f'@{q_mentioned}')
+    return messages_list
+
+
 @login_required
 def mail_inbox(request):
     """Aggregated feed: every category this user participates in,
     generalized into one list - the "director-only inbox" the requirements
     initially named turned out to mean the Reports category being
-    Director/Admin-only (see mail_reports below), not a second inbox."""
+    Director/Admin-only (see mail_reports below), not a second inbox.
+
+    Fan Letters compress into a single "Fan Letters (N)" row once there are
+    more than FAN_LETTER_COMPRESS_THRESHOLD of them in this feed (only ever
+    matters for the Director, since only the Director receives them) - see
+    mail_fan_letters_page for the "load 5 more" panel behind that row.
+    """
     _require_mail_access(request.user)
     messages_list = (
         Message.objects.filter(conversation__participants=request.user)
         .exclude(sender=request.user)
         .select_related('conversation', 'sender', 'shared_post')
-        .order_by('-created_at')[:100]
+        .order_by('-created_at')
     )
+    messages_list = _apply_inbox_search(messages_list, request)
+    messages_list = list(messages_list[:100])
+
+    fan_letter_total_count = 0
+    if not any([request.GET.get(k) for k in ('q_user', 'q_keyword', 'q_date', 'q_mentioned')]):
+        fan_letters = [m for m in messages_list if m.conversation.category == Conversation.FAN_LETTER]
+        if len(fan_letters) > FAN_LETTER_COMPRESS_THRESHOLD:
+            fan_letter_total_count = Message.objects.filter(
+                conversation__participants=request.user, conversation__category=Conversation.FAN_LETTER
+            ).exclude(sender=request.user).count()
+            messages_list = [m for m in messages_list if m.conversation.category != Conversation.FAN_LETTER]
+
     return render(request, 'mail/index.html', {
         **_sidebar_context(request.user, 'inbox'),
         'messages_list': messages_list,
+        'fan_letter_total_count': fan_letter_total_count,
+        'search_values': {
+            'q_user': request.GET.get('q_user', ''),
+            'q_keyword': request.GET.get('q_keyword', ''),
+            'q_date': request.GET.get('q_date', ''),
+            'q_mentioned': request.GET.get('q_mentioned', ''),
+        },
     })
+
+
+@login_required
+def mail_fan_letters_page(request):
+    """Incremental 'load 5 more' behind the Inbox's compressed Fan Letters
+    row (see mail_inbox) - only ever meaningful for the Director, but not
+    gated to it specifically since the underlying query is just "fan
+    letters in conversations I participate in", same as everything else
+    in Inbox."""
+    _require_mail_access(request.user)
+    offset = int(request.GET.get('offset', 0) or 0)
+    messages_list = (
+        Message.objects.filter(
+            conversation__participants=request.user, conversation__category=Conversation.FAN_LETTER
+        )
+        .exclude(sender=request.user)
+        .select_related('conversation', 'sender')
+        .order_by('-created_at')[offset:offset + FAN_LETTER_PAGE_SIZE]
+    )
+    return render(request, 'mail/_fan_letters_page.html', {
+        'messages_list': messages_list,
+        'next_offset': offset + FAN_LETTER_PAGE_SIZE,
+        'page_size': FAN_LETTER_PAGE_SIZE,
+    })
+
+
+@login_required
+def mail_fan_letters(request):
+    """Sidebar 'Fan Letter' tab - a non-Director sees their own sent fan
+    letters (mirrors mail_sent, scoped to this one category); the Director
+    sees every fan letter they've received, uncompressed (the >5
+    compression in mail_inbox is an Inbox-specific convenience, not a
+    limit on this dedicated view)."""
+    _require_mail_access(request.user)
+    if request.user.is_director:
+        messages_list = (
+            Message.objects.filter(conversation__participants=request.user, conversation__category=Conversation.FAN_LETTER)
+            .exclude(sender=request.user)
+            .select_related('conversation', 'sender')
+            .order_by('-created_at')[:200]
+        )
+    else:
+        messages_list = (
+            Message.objects.filter(sender=request.user, conversation__category=Conversation.FAN_LETTER)
+            .select_related('conversation')
+            .order_by('-created_at')[:200]
+        )
+    return render(request, 'mail/index.html', {
+        **_sidebar_context(request.user, 'fan_letters'),
+        'messages_list': messages_list,
+    })
+
+
+@login_required
+def mail_fan_letter_new(request):
+    """Any non-guest account writing directly to the Director - see
+    mail.forms.FanLetterForm. There's exactly one Director account."""
+    _require_mail_access(request.user)
+    director = CustomUser.objects.filter(role=CustomUser.ROLE_DIRECTOR).first()
+    if not director:
+        raise PermissionDenied('There is no Director account to send a Fan Letter to.')
+    if request.method == 'POST':
+        form = FanLetterForm(request.POST)
+        if form.is_valid():
+            conversation = Conversation.objects.create(category=Conversation.FAN_LETTER, created_by=request.user)
+            ConversationParticipant.objects.create(conversation=conversation, user=director)
+            Message.objects.create(conversation=conversation, sender=request.user, body=form.cleaned_data['body'])
+            return redirect('mail_fan_letters')
+    else:
+        form = FanLetterForm()
+    return render(request, 'mail/broadcast_new.html', {'form': form, 'kind': 'Fan Letter'})
 
 
 @login_required
@@ -260,6 +407,42 @@ def mail_directive_new(request):
 
 
 @login_required
+def mail_admin_mail_new(request):
+    """Director-only confidential send to one or more Admins - a real,
+    replyable DM (mail_social_thread handles the thread itself), just
+    flagged confidential via Conversation.is_admin_only. Reuses
+    _get_or_create_dm so a second send to the same Admin lands in the same
+    thread rather than starting a new one."""
+    if not request.user.is_director:
+        raise PermissionDenied('Only the Director can send Admin Mail.')
+    if request.method == 'POST':
+        form = AdminMailForm(request.POST, sender=request.user)
+        if form.is_valid():
+            recipients = form.cleaned_data['usernames']
+            non_admins = [u.username for u in recipients if u.role != CustomUser.ROLE_ADMIN]
+            if non_admins:
+                form.add_error(None, f'Not an Admin: {", ".join(non_admins)}.')
+            else:
+                for admin in recipients:
+                    conversation = _get_or_create_dm(request.user, admin)
+                    if not conversation.is_admin_only:
+                        conversation.is_admin_only = True
+                        conversation.save(update_fields=['is_admin_only'])
+                    Message.objects.create(
+                        conversation=conversation, sender=request.user, body=form.cleaned_data['body'],
+                        is_admin_only=True,
+                    )
+                    conversation.last_message_at = timezone.now()
+                    conversation.save(update_fields=['last_message_at'])
+                return redirect('mail_social')
+    else:
+        form = AdminMailForm(sender=request.user)
+    return render(request, 'mail/broadcast_new.html', {
+        'form': form, 'kind': 'Admin Mail', 'recipient_mode': 'admin_mail',
+    })
+
+
+@login_required
 def mail_social(request):
     _require_mail_access(request.user)
     conversations = (
@@ -296,6 +479,10 @@ def mail_social_thread(request, conversation_id):
             message = form.save(commit=False)
             message.conversation = conversation
             message.sender = request.user
+            # Every message into a confidential Director<->Admin thread
+            # inherits the protection, not just the first one - see
+            # Conversation.is_admin_only's docstring.
+            message.is_admin_only = conversation.is_admin_only
             message.save()
             conversation.last_message_at = timezone.now()
             conversation.save(update_fields=['last_message_at'])
@@ -367,9 +554,10 @@ def mail_group_new(request):
 
 @login_required
 def mail_friends(request):
-    """List of accounts this user has friended - see mail.models.
-    UserRelationship's docstring (instant friend, no accept step, so this
-    is simply "everyone I've friended," not a mutual-friends concept)."""
+    """List of accounts this user is mutually friends with - see
+    mail.models.FriendRequest/UserRelationship's docstrings (a request has
+    to be Accepted first; both directions exist once it is, so this query
+    itself didn't need to change)."""
     _require_mail_access(request.user)
     friends = (
         UserRelationship.objects.filter(from_user=request.user, kind=UserRelationship.FRIEND)
@@ -380,6 +568,130 @@ def mail_friends(request):
         **_sidebar_context(request.user, 'friends'),
         'friends': friends,
     })
+
+
+@login_required
+def mail_saved(request):
+    """A user's own bookmarked messages - see mail.models.SavedMessage.
+    Purely personal storage, no participancy check needed beyond "you
+    saved it" (you could only ever have saved a message you could already
+    see). Unpacked into plain Message objects (ordered by save time, not
+    message time) so this reuses the same generic list rendering every
+    other flat mail tab (Inbox/Sent/Updates/...) already uses."""
+    _require_mail_access(request.user)
+    saved = (
+        SavedMessage.objects.filter(user=request.user)
+        .select_related('message', 'message__conversation', 'message__sender', 'message__shared_post')
+        .order_by('-saved_at')
+    )
+    messages_list = [s.message for s in saved]
+    return render(request, 'mail/index.html', {
+        **_sidebar_context(request.user, 'saved'),
+        'messages_list': messages_list,
+    })
+
+
+@login_required
+def mail_message_save(request, message_id):
+    """Toggle bookmarking a message into Saved - see mail.models.
+    SavedMessage. Any message the user can see (participant in its
+    conversation) may be saved, not just ones they received."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    _require_mail_access(request.user)
+    message = _get_visible_message(request.user, message_id)
+    existing = SavedMessage.objects.filter(user=request.user, message=message).first()
+    if existing:
+        existing.delete()
+        saved = False
+    else:
+        SavedMessage.objects.create(user=request.user, message=message)
+        saved = True
+    return JsonResponse({'saved': saved})
+
+
+@login_required
+def mail_message_mark_read(request, message_id):
+    """Dismiss the unread badge for one specific message without opening
+    its whole thread - bumps last_read_at only as far as this message's
+    own timestamp (never backwards), reusing the exact read-tracking
+    notification_counts already checks rather than adding a per-message
+    read flag."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    _require_mail_access(request.user)
+    message = _get_visible_message(request.user, message_id)
+    membership = get_object_or_404(ConversationParticipant, conversation=message.conversation, user=request.user)
+    if not membership.last_read_at or membership.last_read_at < message.created_at:
+        membership.last_read_at = message.created_at
+        membership.save(update_fields=['last_read_at'])
+    return HttpResponse(status=204)
+
+
+def _notify_director_of_forward_leak(forwarder, target, source_message):
+    """Confidential Director<->Admin mail (see Conversation.is_admin_only)
+    getting forwarded anywhere fires this alert regardless of who the
+    forward lands on - forwarding privileged mail at all is worth
+    flagging, not just when it reaches a non-Admin. Same DM-to-every-
+    current-Director delivery as _notify_director_of_moderation_action."""
+    directors = CustomUser.objects.filter(role=CustomUser.ROLE_DIRECTOR).exclude(pk=forwarder.pk)
+    body = f'{forwarder.username} forwarded a confidential mail to {target.username}.'
+    for director in directors:
+        conversation = _get_or_create_dm(forwarder, director)
+        Message.objects.create(conversation=conversation, sender=forwarder, body=body)
+        conversation.last_message_at = timezone.now()
+        conversation.save(update_fields=['last_message_at'])
+
+
+@login_required
+def mail_message_forward(request, message_id):
+    """Forward a message into one or more Social DMs - GET lazy-loads the
+    recipient-picker fragment (same pattern as mail_forum_share), POST
+    creates the forwarded copies. If the source was confidential (see
+    Message.is_admin_only), the forward copies that flag forward too
+    (protection travels with the content, not the thread it started in)
+    and the Director gets alerted regardless of who it landed on."""
+    _require_mail_access(request.user)
+    source = _get_visible_message(request.user, message_id)
+    if request.method == 'POST':
+        _require_not_muted_by_moderator(request.user)
+        form = ForwardForm(request.POST, sender=request.user)
+        if form.is_valid():
+            for target in form.cleaned_data['usernames']:
+                conversation = _get_or_create_dm(request.user, target)
+                Message.objects.create(
+                    conversation=conversation,
+                    sender=request.user,
+                    body=source.body,
+                    forwarded_from=source,
+                    is_admin_only=source.is_admin_only,
+                )
+                conversation.last_message_at = timezone.now()
+                conversation.save(update_fields=['last_message_at'])
+                if source.is_admin_only:
+                    _notify_director_of_forward_leak(request.user, target, source)
+            return HttpResponse(status=204)
+        return HttpResponse(status=400)
+    form = ForwardForm(sender=request.user)
+    return render(request, 'mail/_recipient_picker.html', {
+        'form': form, 'forward_message_id': source.id, 'picker_title': 'Forward this message',
+    })
+
+
+@login_required
+def mail_message_media(request, message_id):
+    """Gated file serving for a message's attachment - the one piece of
+    real infrastructure "unviewable no matter what" needs (see
+    Message.is_admin_only's docstring): a raw MEDIA_URL bypasses Django
+    entirely if guessed, so confidential attachments are only ever linked
+    through this view, which actually checks who's asking before
+    streaming the file."""
+    message = _get_visible_message(request.user, message_id)
+    if not message.media:
+        raise Http404('No attachment on this message.')
+    if message.is_admin_only and not request.user.is_moderator:
+        raise PermissionDenied('This attachment is confidential.')
+    return FileResponse(message.media.open('rb'), filename=message.media.name.rsplit('/', 1)[-1])
 
 
 @login_required
@@ -584,21 +896,31 @@ def mail_recipient_search(request):
     block-filter (blocking someone shouldn't hide them from being
     reported) - just "who is this account," which is also why it's the
     only mode that doesn't require _require_mail_access (reporting is
-    open to guests too, see mail.models.Report's docstring)."""
+    open to guests too, see mail.models.Report's docstring).
+    `mode=admin_mail` (Director only) restricts results to Admin-role
+    accounts - see mail.views.mail_admin_mail_new.
+    `mode=mention` backs @mention autocomplete (mail compose, forum posts/
+    comments) - lightly gated (just signed in), no guest-exclusion or
+    block-filter, since mentioning someone is harmless (see forum.
+    sanitize.linkify_mentions - it never grants visibility on its own)."""
     query = request.GET.get('q', '').strip()
     mode = request.GET.get('mode', 'social')
-    if mode == 'report':
+    if mode in ('report', 'mention'):
         if not request.user.is_authenticated:
             raise PermissionDenied('You must be signed in to search.')
     else:
         _require_mail_access(request.user)
     if mode == 'directive' and not request.user.is_director:
         raise PermissionDenied('Only the Director can search recipients in Directive mode.')
+    if mode == 'admin_mail' and not request.user.is_director:
+        raise PermissionDenied('Only the Director can search recipients in Admin Mail mode.')
 
     users = CustomUser.objects.exclude(pk=request.user.pk)
     if query:
         users = users.filter(username__icontains=query)
-    if mode not in ('directive', 'report'):
+    if mode == 'admin_mail':
+        users = users.filter(role=CustomUser.ROLE_ADMIN)
+    elif mode not in ('directive', 'report', 'mention'):
         users = users.filter(is_guest=False)
         blocked_pairs = UserRelationship.objects.filter(kind=UserRelationship.BLOCK).filter(
             Q(from_user=request.user) | Q(to_user=request.user)
@@ -673,21 +995,78 @@ def mail_gif_search(request):
 
 @login_required
 def mail_relationship_friend(request, username):
+    """No longer an instant toggle - see UserRelationship's docstring.
+    A fresh 'Friend' click files a FriendRequest and delivers a message
+    carrying Accept/Decline (see mail_friend_request_respond) instead of
+    creating the relationship outright. Already-friends is still a plain,
+    immediate Unfriend (removes both directions) - there's no "ask to
+    unfriend" concept, only befriending goes through a request."""
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
     target = get_object_or_404(CustomUser, username=username)
     if target == request.user:
         raise PermissionDenied('You cannot friend yourself.')
-    existing = UserRelationship.objects.filter(
-        from_user=request.user, to_user=target, kind=UserRelationship.FRIEND
-    ).first()
-    if existing:
-        existing.delete()
-        friended = False
+
+    state = FriendRequest.state_between(request.user, target)
+    if state == 'friends':
+        UserRelationship.objects.filter(
+            Q(from_user=request.user, to_user=target) | Q(from_user=target, to_user=request.user),
+            kind=UserRelationship.FRIEND,
+        ).delete()
+        state = 'none'
+    elif state == 'none':
+        friend_request = FriendRequest.objects.create(from_user=request.user, to_user=target)
+        conversation = _get_or_create_dm(request.user, target)
+        Message.objects.create(
+            conversation=conversation,
+            sender=request.user,
+            body=f'{request.user.username} wants to befriend you.',
+            friend_request=friend_request,
+        )
+        conversation.last_message_at = timezone.now()
+        conversation.save(update_fields=['last_message_at'])
+        state = 'pending_sent'
+    # 'pending_sent'/'pending_received' clicked again is a no-op - the
+    # button is disabled client-side for pending_sent, and pending_received
+    # is answered via Accept/Decline, never this endpoint.
+    return JsonResponse({'state': state})
+
+
+@login_required
+def mail_friend_request_respond(request, request_id):
+    """Accept or Decline a pending FriendRequest - only the recipient may
+    respond, and only while it's still PENDING. Either outcome sends a
+    plain confirmation Message back into the same DM (see FriendRequest's
+    docstring on why the request itself travels as a Message)."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    friend_request = get_object_or_404(FriendRequest, pk=request_id, to_user=request.user)
+    if friend_request.status != FriendRequest.PENDING:
+        raise PermissionDenied('This request has already been answered.')
+    action = request.POST.get('action')
+    if action not in ('accept', 'decline'):
+        return HttpResponse(status=400)
+
+    conversation = _get_or_create_dm(friend_request.from_user, friend_request.to_user)
+    if action == 'accept':
+        friend_request.status = FriendRequest.ACCEPTED
+        UserRelationship.objects.get_or_create(
+            from_user=friend_request.from_user, to_user=friend_request.to_user, kind=UserRelationship.FRIEND
+        )
+        UserRelationship.objects.get_or_create(
+            from_user=friend_request.to_user, to_user=friend_request.from_user, kind=UserRelationship.FRIEND
+        )
+        body = f'{request.user.username} has Accepted your request!'
     else:
-        UserRelationship.objects.create(from_user=request.user, to_user=target, kind=UserRelationship.FRIEND)
-        friended = True
-    return JsonResponse({'friended': friended})
+        friend_request.status = FriendRequest.DECLINED
+        body = f'{request.user.username} has Declined your request.'
+    friend_request.responded_at = timezone.now()
+    friend_request.save(update_fields=['status', 'responded_at'])
+
+    Message.objects.create(conversation=conversation, sender=request.user, body=body)
+    conversation.last_message_at = timezone.now()
+    conversation.save(update_fields=['last_message_at'])
+    return JsonResponse({'status': friend_request.status})
 
 
 @login_required

@@ -85,18 +85,25 @@ convention (see forum/templates/forum/index.html:154-155's comment on
   }
   .nav-icon-badge {
     position: absolute;
-    top: 2px;
-    right: 2px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
+    top: -4px;
+    right: -6px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 2px;
+    border-radius: 8px;
     background: var(--red-bright);
     box-shadow: 0 0 6px var(--red);
+    color: #000;
+    font-size: 0.65rem;
+    line-height: 15px;
+    text-align: center;
+    font-family: 'Share Tech Mono', monospace;
   }
 </style>
 <li class="nav-auth-link nav-icon-wrap">
   <button type="button" class="nav-icon-btn" id="mail-nav-trigger" aria-label="Mail">
-    &#9993;{% if unread_mail_count %}<span class="nav-icon-badge"></span>{% endif %}
+    {# More than 10 unread just shows "!" instead of a growing number - see mail.context_processors.notification_counts. #}
+    &#9993;{% if unread_mail_count %}<span class="nav-icon-badge">{% if unread_mail_count > 10 %}!{% else %}{{ unread_mail_count }}{% endif %}</span>{% endif %}
   </button>
   <div class="dropdown-panel" id="mail-nav-dropdown">
     <a href="{% url 'mail_inbox' %}" class="dropdown-item">&#9993; Mail</a>

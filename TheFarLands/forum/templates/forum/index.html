@@ -320,7 +320,7 @@
       </div>
     </div>
 
-    {% if post.body %}<div class="post-body">{{ post.body|redact_for_viewer:can_post|highlight:search_query|safe }}</div>{% endif %}
+    {% if post.body %}<div class="post-body">{{ post.body|redact_for_viewer:can_post|linkify_mentions|highlight:search_query|safe }}</div>{% endif %}
 
     {% if post.media or post.link_url %}
     <div class="post-media">
@@ -370,7 +370,7 @@
       <form method="post" action="{% url 'forum_add_comment' post.id %}" class="comment-form">
         {% csrf_token %}
         <input type="hidden" name="next" value="{{ request.get_full_path }}#post-{{ post.id }}">
-        <textarea name="body" class="composer-body comment-input" rows="2" maxlength="2000" placeholder="Write a comment..." required></textarea>
+        <textarea name="body" class="composer-body comment-input mention-aware" rows="2" maxlength="2000" placeholder="Write a comment..." required></textarea>
         <button type="submit" class="comment-submit-btn">[ POST COMMENT ]</button>
       </form>
       <div class="comment-list" id="comment-list-{{ post.id }}"></div>
