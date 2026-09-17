@@ -73,6 +73,78 @@ immediately.
 See [CHANGELOG.md](CHANGELOG.md) for the pass-by-pass history of what's
 been built.
 
+## Recent updates (most recent first)
+
+- Report comments: a comment thread on moderation Reports, with a
+  "3 dots" per-comment options menu.
+- Mail search: search box in `/mail/` to find conversations/messages.
+- Mentioning `@all` and individual users in mail/forum text.
+- Friend requests added to mail.
+- Featured projects section (forum) reviewed/restyled twice.
+- Moderation: mutes, bans, moderation history, and a full Reports +
+  punishment-record system (Director/Admin only).
+- Direct messages, forum comment section with styling.
+- Profile status field.
+
+Full pass-by-pass detail lives in [CHANGELOG.md](CHANGELOG.md).
+
+## Managing the project — commands you'll actually use
+
+```
+cd TheFarLands                        # always run manage.py from here
+pip3 install -r requirements.txt      # install/refresh dependencies
+python3 manage.py migrate             # apply pending DB migrations
+python3 manage.py makemigrations      # after changing a models.py — review the file before applying it
+python3 manage.py runserver           # run the dev server at 127.0.0.1:8000
+python3 manage.py createsuperuser     # create an admin login for /admin/
+python3 manage.py shell               # Django shell for one-off DB queries
+```
+
+## ⚠️ Caution — things NOT to touch without care
+
+- **`db.sqlite3`** — the live local database. Don't delete or overwrite it
+  casually; you'll lose every local account, message, report, and forum
+  post. It's tracked in git here, so if you break it, `git checkout --
+  db.sqlite3` can restore the last committed copy — but that also throws
+  away anything you did since the last commit.
+- **`*/migrations/*.py`** — never hand-edit an existing (already-committed)
+  migration file, and never delete one that's already been applied on a
+  shared/committed database. Doing so desyncs the migration history from
+  the actual table schema and can corrupt `db.sqlite3` in a way that's
+  hard to undo. If a model changes, run `makemigrations` to generate a
+  *new* file instead.
+- **`tfl_site/settings.py`** — `SECRET_KEY` is a Django "insecure" dev key
+  and `DEBUG = True`. Fine for local dev, but never ship this file as-is
+  to anything public-facing. `ALLOWED_HOSTS` is locked to
+  `127.0.0.1`/`localhost` on purpose.
+- **`TENOR_API_KEY`** — read from an environment variable, not hardcoded.
+  Don't paste a real key directly into `settings.py` or commit one.
+- **`media/`** — real user-uploaded profile pictures. Don't bulk-delete;
+  broken references show up as missing images on live profiles.
+- **Moderation / Report / ban code (`mail/models.py`,
+  `mail/views.py` moderation views)** — these enforce who can mute/ban/see
+  reports (Director/Admin only). Loosening these checks is a permissions
+  bug, not a style choice — be careful changing them.
+- **The old frontend copy** under
+  `../python_1/The Far Lands_Vol2/View point/` — don't run a server from
+  there or point Live Server at it (see below); it's disconnected from the
+  database entirely and any "login" there is fake.
+
+## Git workflow (do this every time)
+
+```
+git status                    # see what changed before touching anything
+git add .
+git commit -m "description of what changed"
+git push --all
+```
+
+Run `git status` first, always — it's the cheap check that stops you from
+committing something you didn't mean to (like an unexpected file) or
+missing something you did. Since `db.sqlite3` is tracked, `git status`
+after working locally will usually show it as modified — that's normal
+and expected to be committed along with code changes.
+
 ## Not touched
 
 Everything else in `DAE_6_Month_program_ACE` (the folder one level up) —
