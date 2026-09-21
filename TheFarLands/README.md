@@ -36,12 +36,17 @@ python3 manage.py runserver
 - `/` — the main site (public)
 - `/register/` — create a full account (username, email, password) — you'll
   need to click a verification link before you can log in, see below
+  (code: `accounts/views.py`, `accounts/forms.py` 👍)
 - `/guest/` — create a temporary "Hacker" guest account (username + password
   only, no email, no verification step, expires after 7 days)
+  (code: `accounts/views.py` 👍)
 - `/login/` — log in (same form for both account types)
+  (code: `accounts/views.py` 👍)
 - `/profile/` — your profile: photo, rank, alias, bio, with an inline
   "// EDIT PROFILE" section
+  (code: `accounts/views.py`, `accounts/models.py` 👍)
 - `/profile/<username>/` — view someone else's profile (read-only)
+  (code: `accounts/views.py` 👍)
 - `/mail/` — internal site mail: Inbox/Sent/Updates/Social/Reports, reached
   via the envelope icon in the nav (hidden for guest accounts) - this is
   in-site messaging stored in the database, not real email
@@ -61,7 +66,9 @@ immediately.
 
 - `accounts/` — custom user model, auth (register/login/guest/verify),
   profile pages, and the real site's landing page + static assets
-  (`accounts/static/accounts/`, `accounts/templates/`)
+  (`accounts/static/accounts/`, `accounts/templates/`) — all account
+  coding lives here: `models.py` (CustomUser), `views.py`, `forms.py`,
+  `signals.py`, `middleware.py` 👍
 - `forum/` — forum app: Director broadcast posts, reactions, comments
 - `mail/` — internal mail app: DMs, group chats, Director Updates/Directives,
   moderation Reports (Director/Admin only)
