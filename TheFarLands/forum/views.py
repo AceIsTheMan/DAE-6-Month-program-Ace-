@@ -335,18 +335,24 @@ def forum_add_comment_view(request, post_id):
 def forum_delete_comment_view(request, comment_id):
     """
     Delete a comment - either its own author (see the comment's dots-menu
-    in forum/templates/forum/_comments_page.html), or the Director, whose
-    moderation power covers every comment including someone else's (see
-    _can_comment for who may add one in the first place). AJAX-only:
+    in forum/templates/forum/_comments_page.html), or Admin/Director,
+    whose moderation power covers every comment including someone else's
+    (see _can_comment for who may add one in the first place). AJAX-only:
     comments are loaded into the page without a full reload, so deleting
     one removes it from the DOM in place instead of redirecting - see the
     script in templates/forum/index.html.
+
+    Soft delete only - see Comment.is_deleted; the Director can Re-Send
+    or permanently purge it from the Chat Logs dashboard panel.
     """
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
     comment = get_object_or_404(Comment, pk=comment_id)
-    if comment.author_id != request.user.pk and not request.user.is_director:
+    if comment.author_id != request.user.pk and not request.user.is_moderator:
         raise PermissionDenied('You can only delete your own comments.')
 
-    comment.delete()
+    comment.is_deleted = True
+    comment.deleted_at = timezone.now()
+    comment.deleted_by = request.user
+    comment.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by'])
     return HttpResponse(status=204)

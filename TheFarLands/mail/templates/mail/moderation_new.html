@@ -51,6 +51,7 @@
       <button type="button" class="mod-kind-tab" data-kind="mute">Mute</button>
       <button type="button" class="mod-kind-tab" data-kind="ban">Ban</button>
       <button type="button" class="mod-kind-tab" data-kind="perm_ban">Perm Ban</button>
+      <button type="button" class="mod-kind-tab" data-kind="warn">Warn</button>
     </div>
     <input type="hidden" name="kind" id="id_kind" value="{{ form.kind.value|default:'mute' }}">
 
@@ -94,7 +95,7 @@
     function setKind(kind) {
       kindField.value = kind;
       kindTabs.forEach(function (t) { t.classList.toggle('active', t.getAttribute('data-kind') === kind); });
-      durationFields.hidden = kind === 'perm_ban';
+      durationFields.hidden = kind === 'perm_ban' || kind === 'warn';
       permbanNote.hidden = kind !== 'perm_ban';
     }
     function setUnit(unit) {

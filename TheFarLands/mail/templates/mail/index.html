@@ -496,9 +496,22 @@
           {% if report.media %}
           <div class="report-reason"><a href="{{ report.media.url }}" target="_blank" rel="noopener noreferrer">[ VIEW ATTACHMENT ]</a></div>
           {% endif %}
+          {% if report.admin_requested_status %}
+          <div class="report-reason" style="color: var(--red-bright);">(@{{ report.admin_requested_by.username }}) requested {{ report.admin_requested_status|capfirst }} of report</div>
+          {% endif %}
           <div class="report-actions">
+            {% if user.is_director %}
             <button type="button" class="report-action-btn js-resolve-report" data-report="{{ report.id }}" data-status="resolved">[ RESOLVE ]</button>
             <button type="button" class="report-action-btn js-resolve-report" data-report="{{ report.id }}" data-status="dismissed">[ DISMISS ]</button>
+            {% else %}
+            <button type="button" class="report-action-btn js-resolve-report" data-report="{{ report.id }}" data-status="resolved">[ REQUEST RESOLVE ]</button>
+            <button type="button" class="report-action-btn js-resolve-report" data-report="{{ report.id }}" data-status="dismissed">[ REQUEST DISMISS ]</button>
+            {% endif %}
+            <button type="button" class="report-action-btn js-warn-open" data-report="{{ report.id }}" data-username="{% if report.reported_user %}{{ report.reported_user.username }}{% elif report.reported_message %}{{ report.reported_message.sender.username }}{% elif report.reported_comment %}{{ report.reported_comment.author.username }}{% endif %}">[ WARN ]</button>
+          </div>
+          <div class="report-warn-box" id="report-warn-{{ report.id }}" hidden>
+            <textarea class="report-warn-text" maxlength="1500" placeholder="Warning message..."></textarea>
+            <button type="button" class="report-action-btn js-warn-send" data-report="{{ report.id }}">[ SEND WARNING ]</button>
           </div>
         </div>
         {% empty %}
@@ -523,8 +536,41 @@
               body: 'status=' + status,
             }).then(function (r) {
               if (!r.ok) return;
-              var item = document.getElementById('report-' + reportId);
-              if (item) item.remove();
+              if (r.status === 204) {
+                var item = document.getElementById('report-' + reportId);
+                if (item) item.remove();
+                return;
+              }
+              // Admin request - report stays open, just reload to show
+              // the "(@admin) requested ..." banner.
+              location.reload();
+            });
+          });
+
+          document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.js-warn-open');
+            if (!btn) return;
+            var box = document.getElementById('report-warn-' + btn.getAttribute('data-report'));
+            if (box) box.hidden = !box.hidden;
+          });
+
+          document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.js-warn-send');
+            if (!btn) return;
+            var reportId = btn.getAttribute('data-report');
+            var box = document.getElementById('report-warn-' + reportId);
+            var text = box.querySelector('.report-warn-text');
+            if (!text.value.trim()) return;
+            var urlTemplate = "{% url 'mail_report_warn' 0 %}";
+            fetch(urlTemplate.replace('/0/', '/' + reportId + '/'), {
+              method: 'POST',
+              headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: 'message=' + encodeURIComponent(text.value),
+            }).then(function (r) {
+              if (!r.ok) return;
+              text.value = '';
+              box.hidden = true;
+              btn.closest('.report-warn-box').insertAdjacentHTML('beforebegin', '<div class="report-reason" style="color: var(--red-bright);">Warning sent.</div>');
             });
           });
         })();
@@ -654,7 +700,7 @@
               <span class="thread-sender">
                 {% if active_category == 'sent' %}
                   {% if message.conversation.category == 'social' %}{{ message.conversation|conversation_display_name:user }}{% else %}{{ message.conversation.get_category_display }} conversation{% endif %}
-                {% else %}{{ message.sender.username }}{% endif %}
+                {% else %}{{ message|warn_sender_display:user }}{% endif %}
                 {% if message.conversation.is_admin_only %} &#128274;{% endif %}
               </span>
               <span class="thread-snippet">

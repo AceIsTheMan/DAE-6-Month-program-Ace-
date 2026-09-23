@@ -13,6 +13,7 @@ from django.utils.dateparse import parse_date
 
 from accounts.models import CustomUser
 from forum.models import Comment, Post
+from forum.sanitize import sanitize_post_html
 
 from .forms import (
     DURATION_UNITS,
@@ -41,8 +42,10 @@ from .models import (
     Message,
     ModerationAction,
     Report,
+    RoleChangeLog,
     SavedMessage,
     UserRelationship,
+    Warning,
 )
 
 
@@ -131,6 +134,26 @@ def _notify_target_of_moderation_action(action):
         f'Reason: {action.reason}'
     )
     Message.objects.create(conversation=conversation, sender=action.moderator, body=body)
+
+
+def _issue_warning(target, issued_by, message_text, source, report=None):
+    """Creates a Warning and delivers it as an undeletable Directive -
+    same structural guarantee as _notify_target_of_moderation_action
+    (no reply, no delete/dismiss route exists for a Directive anywhere).
+    See mail.models.Warning's docstring: a REPORT-source warning's
+    sender is masked to "Moderation Team" for anyone but the Director
+    (mail.templatetags.mail_extras.warn_sender_display), a PROFILE-
+    source one shows the real sender like any other Directive."""
+    safe_text = sanitize_post_html(message_text, apply_markers=False)
+    conversation = Conversation.objects.create(category=Conversation.DIRECTIVE, created_by=issued_by)
+    ConversationParticipant.objects.create(conversation=conversation, user=target)
+    directive_message = Message.objects.create(
+        conversation=conversation, sender=issued_by, body=f'You have received a warning.<br>{safe_text}',
+    )
+    return Warning.objects.create(
+        target=target, issued_by=issued_by, message=message_text, source=source, report=report,
+        directive_message=directive_message,
+    )
 
 
 def _report_cooldown_remaining(user):
@@ -248,7 +271,7 @@ def mail_inbox(request):
     """
     _require_mail_access(request.user)
     messages_list = (
-        Message.objects.filter(conversation__participants=request.user)
+        Message.objects.filter(conversation__participants=request.user, is_deleted=False)
         .exclude(sender=request.user)
         .select_related('conversation', 'sender', 'shared_post')
         .order_by('-created_at')
@@ -261,7 +284,8 @@ def mail_inbox(request):
         fan_letters = [m for m in messages_list if m.conversation.category == Conversation.FAN_LETTER]
         if len(fan_letters) > FAN_LETTER_COMPRESS_THRESHOLD:
             fan_letter_total_count = Message.objects.filter(
-                conversation__participants=request.user, conversation__category=Conversation.FAN_LETTER
+                conversation__participants=request.user, conversation__category=Conversation.FAN_LETTER,
+                is_deleted=False,
             ).exclude(sender=request.user).count()
             messages_list = [m for m in messages_list if m.conversation.category != Conversation.FAN_LETTER]
 
@@ -289,7 +313,8 @@ def mail_fan_letters_page(request):
     offset = int(request.GET.get('offset', 0) or 0)
     messages_list = (
         Message.objects.filter(
-            conversation__participants=request.user, conversation__category=Conversation.FAN_LETTER
+            conversation__participants=request.user, conversation__category=Conversation.FAN_LETTER,
+            is_deleted=False,
         )
         .exclude(sender=request.user)
         .select_related('conversation', 'sender')
@@ -312,14 +337,17 @@ def mail_fan_letters(request):
     _require_mail_access(request.user)
     if request.user.is_director:
         messages_list = (
-            Message.objects.filter(conversation__participants=request.user, conversation__category=Conversation.FAN_LETTER)
+            Message.objects.filter(
+                conversation__participants=request.user, conversation__category=Conversation.FAN_LETTER,
+                is_deleted=False,
+            )
             .exclude(sender=request.user)
             .select_related('conversation', 'sender')
             .order_by('-created_at')[:200]
         )
     else:
         messages_list = (
-            Message.objects.filter(sender=request.user, conversation__category=Conversation.FAN_LETTER)
+            Message.objects.filter(sender=request.user, conversation__category=Conversation.FAN_LETTER, is_deleted=False)
             .select_related('conversation')
             .order_by('-created_at')[:200]
         )
@@ -402,7 +430,7 @@ def mail_draft_new(request):
 def mail_sent(request):
     _require_mail_access(request.user)
     messages_list = (
-        Message.objects.filter(sender=request.user)
+        Message.objects.filter(sender=request.user, is_deleted=False)
         .select_related('conversation', 'shared_post')
         .order_by('-created_at')[:100]
     )
@@ -418,7 +446,9 @@ def mail_updates(request):
     conversations."""
     _require_mail_access(request.user)
     messages_list = (
-        Message.objects.filter(conversation__category=Conversation.UPDATE, conversation__participants=request.user)
+        Message.objects.filter(
+            conversation__category=Conversation.UPDATE, conversation__participants=request.user, is_deleted=False,
+        )
         .select_related('conversation', 'sender')
         .order_by('-created_at')[:100]
     )
@@ -588,7 +618,9 @@ def mail_social_thread(request, conversation_id):
             category=Conversation.SOCIAL, participants=request.user
         ).order_by('-last_message_at'),
         'open_conversation': conversation,
-        'thread_messages': conversation.messages.select_related('sender', 'shared_post', 'shared_post__author'),
+        'thread_messages': conversation.messages.filter(is_deleted=False).select_related(
+            'sender', 'shared_post', 'shared_post__author'
+        ),
         'members': ConversationParticipant.objects.filter(conversation=conversation).select_related('user'),
         'form': form,
         'member_cap': GROUP_MAX_MEMBERS,
@@ -672,7 +704,7 @@ def mail_saved(request):
         .select_related('message', 'message__conversation', 'message__sender', 'message__shared_post')
         .order_by('-saved_at')
     )
-    messages_list = [s.message for s in saved]
+    messages_list = [s.message for s in saved if not s.message.is_deleted]
     return render(request, 'mail/index.html', {
         **_sidebar_context(request.user, 'saved'),
         'messages_list': messages_list,
@@ -840,6 +872,11 @@ def mail_report_history(request):
 
 @login_required
 def mail_report_resolve(request, report_id):
+    """Director's click resolves/dismisses immediately, same as always.
+    An Admin's click can no longer decide a report outright - it only
+    records a request (Report.admin_requested_status/by/at) so the open
+    queue shows "(@Admin) requested Resolve/Dismiss of report" - the
+    report stays open until a Director actually resolves it."""
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
     if not request.user.is_moderator:
@@ -848,11 +885,48 @@ def mail_report_resolve(request, report_id):
     status = request.POST.get('status', Report.RESOLVED)
     if status not in (Report.RESOLVED, Report.DISMISSED):
         status = Report.RESOLVED
-    report.status = status
-    report.resolved_by = request.user
-    report.resolved_at = timezone.now()
-    report.save(update_fields=['status', 'resolved_by', 'resolved_at'])
-    return HttpResponse(status=204)
+
+    if request.user.is_director:
+        report.status = status
+        report.resolved_by = request.user
+        report.resolved_at = timezone.now()
+        report.save(update_fields=['status', 'resolved_by', 'resolved_at'])
+        return HttpResponse(status=204)
+
+    report.admin_requested_status = status
+    report.admin_requested_by = request.user
+    report.admin_requested_at = timezone.now()
+    report.save(update_fields=['admin_requested_status', 'admin_requested_by', 'admin_requested_at'])
+    return JsonResponse({
+        'requested': True,
+        'status': status,
+        'username': request.user.username,
+    })
+
+
+@login_required
+def mail_report_warn(request, report_id):
+    """Admin or Director issuing a Warning from a Report row (next to
+    Request Resolve/Dismiss) - see mail.views._issue_warning. Anonymous
+    to the target (masked sender on the Directive), but the real
+    `issued_by` is traceable by the Director via Admin Logs."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    if not request.user.is_moderator:
+        raise PermissionDenied('Only Director/Admin accounts can warn an account.')
+    report = get_object_or_404(Report, pk=report_id)
+    target = report.reported_user
+    if not target and report.reported_message:
+        target = report.reported_message.sender
+    if not target and report.reported_comment:
+        target = report.reported_comment.author
+    if not target:
+        return JsonResponse({'error': 'No account to warn on this report.'}, status=400)
+    message_text = request.POST.get('message', '').strip()
+    if not message_text:
+        return JsonResponse({'error': 'A warning needs a message.'}, status=400)
+    _issue_warning(target, request.user, message_text, Warning.REPORT, report=report)
+    return JsonResponse({'ok': True})
 
 
 @login_required
@@ -870,6 +944,8 @@ def mail_moderation_new(request, username):
         raise PermissionDenied('The Director cannot be moderated.')
     if target == request.user:
         raise PermissionDenied('You cannot moderate yourself.')
+    if target.role == CustomUser.ROLE_ADMIN and not request.user.is_director:
+        raise PermissionDenied('Only the Director can moderate an Admin account.')
 
     if request.method == 'POST':
         form = ModerationActionForm(request.POST)
@@ -905,6 +981,8 @@ def mail_moderation_lift(request, action_id):
     if not request.user.is_moderator:
         raise PermissionDenied('Only Director/Admin accounts can lift a moderation action.')
     action = get_object_or_404(ModerationAction, pk=action_id)
+    if action.target.role == CustomUser.ROLE_ADMIN and not request.user.is_director:
+        raise PermissionDenied('Only the Director can lift a moderation action against an Admin.')
     action.lifted_at = timezone.now()
     action.lifted_by = request.user
     action.save(update_fields=['lifted_at', 'lifted_by'])

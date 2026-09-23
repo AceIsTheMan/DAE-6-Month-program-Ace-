@@ -53,6 +53,20 @@ def eq(a, b):
 
 
 @register.filter
+def warn_sender_display(message, viewer):
+    """The sender name to show for this message - masked to "Moderation
+    Team" when it's the undeletable Directive delivering a Report-flow
+    Warning (see mail.models.Warning, source=REPORT) and `viewer` isn't
+    the Director. The real sender is still stored in the DB either way -
+    only the Director can trace who actually sent it (see the Dashboard's
+    Admin Logs panel)."""
+    warning = getattr(message, 'warning', None)
+    if warning and warning.source == 'report' and not (viewer.is_authenticated and viewer.is_director):
+        return 'Moderation Team'
+    return message.sender.username
+
+
+@register.filter
 def admin_only_media_blocked(message, viewer):
     """Whether `viewer` must see a solid blackout box instead of this
     message's real image/video - see mail.views.mail_message_media for
