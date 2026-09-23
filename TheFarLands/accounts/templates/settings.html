@@ -1,9 +1,64 @@
 {% extends "base.html" %}
 {% block title %}Settings // The Far Lands{% endblock %}
+
+{% block extra_head %}
+<style>
+  .settings-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+  .settings-tab {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--silver);
+    text-decoration: none;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--red-dim);
+  }
+  .settings-tab:hover, .settings-tab.active { color: var(--red-bright); border-color: var(--red-bright); background: rgba(204,0,0,0.1); }
+  .dashboard-stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+  .dashboard-stat { border: 1px solid var(--red-dim); padding: 0.8rem 1.2rem; min-width: 140px; }
+  .dashboard-stat-value { font-family: 'VT323', monospace; font-size: 1.8rem; color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
+  .dashboard-stat-label { font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase; color: var(--dim-white); }
+  .dashboard-links { display: flex; gap: 0.7rem; flex-wrap: wrap; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="section-label">// SETTINGS</div>
 <div class="section-divider"></div>
+
+<div class="settings-tabs">
+  <a href="{% url 'settings_page' %}?tab=settings" class="settings-tab{% if active_tab == 'settings' %} active{% endif %}">Settings</a>
+  {% if user.is_moderator %}
+  <a href="{% url 'settings_page' %}?tab=dashboard" class="settings-tab{% if active_tab == 'dashboard' %} active{% endif %}">Dashboard</a>
+  {% endif %}
+</div>
+
+{% if active_tab == 'dashboard' %}
+<div class="card">
+  <div class="dashboard-stats">
+    <div class="dashboard-stat">
+      <div class="dashboard-stat-value">{{ total_accounts }}</div>
+      <div class="dashboard-stat-label">Total Accounts</div>
+    </div>
+    <div class="dashboard-stat">
+      <div class="dashboard-stat-value">{{ guest_accounts }}</div>
+      <div class="dashboard-stat-label">Guest Accounts</div>
+    </div>
+    <div class="dashboard-stat">
+      <div class="dashboard-stat-value">{{ open_reports }}</div>
+      <div class="dashboard-stat-label">Open Reports</div>
+    </div>
+  </div>
+  <div class="dashboard-links">
+    <a href="{% url 'mail_reports' %}" class="donate-btn" style="font-size: 0.85rem;">[ REPORTS ]</a>
+    <a href="{% url 'mail_report_history' %}" class="donate-btn" style="font-size: 0.85rem;">[ REPORT HISTORY ]</a>
+    <a href="/admin/" class="donate-btn" style="font-size: 0.85rem;">[ DJANGO ADMIN ]</a>
+  </div>
+</div>
+{% else %}
 <div class="card">
   <p>Nothing configurable here yet - the gear icon is a stub for now, same as the Digit balance in the notification dropdown.</p>
 </div>
+{% endif %}
 {% endblock %}

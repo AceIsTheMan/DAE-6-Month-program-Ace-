@@ -9,7 +9,7 @@ from django.urls import reverse
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
-from mail.models import FriendRequest, ModerationAction
+from mail.models import FriendRequest, ModerationAction, Report
 
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
 from .models import CustomUser
@@ -250,11 +250,25 @@ def toggle_status(request):
 @login_required
 def settings_view(request):
     """
-    Placeholder for the gear/settings nav icon (see _nav_mail_icons.html)
-    - no actual settings exist yet, same "does nothing yet" stub status
-    as the Currency/"Digit" balance in the notification dropdown.
+    Gear/settings nav icon (see _nav_mail_icons.html) - two tabs: Settings
+    (still a stub, "does nothing yet" same as the Currency/"Digit" balance
+    in the notification dropdown) and Dashboard, an Admin/Director-only
+    entry point into moderator tools. Dashboard is gated server-side, not
+    just hidden by the tab UI - same convention as every other
+    moderator-only view (see accounts.models.CustomUser.is_moderator).
     """
-    return render(request, 'settings.html', {})
+    active_tab = request.GET.get('tab', 'settings')
+    if active_tab == 'dashboard' and not request.user.is_moderator:
+        active_tab = 'settings'
+
+    context = {'active_tab': active_tab}
+    if active_tab == 'dashboard':
+        context.update({
+            'total_accounts': CustomUser.objects.count(),
+            'guest_accounts': CustomUser.objects.filter(is_guest=True).count(),
+            'open_reports': Report.objects.filter(status=Report.OPEN).count(),
+        })
+    return render(request, 'settings.html', context)
 
 
 @login_required
