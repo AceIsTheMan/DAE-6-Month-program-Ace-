@@ -242,6 +242,8 @@
   .report-meta a:hover { text-decoration: underline; }
   .report-reason { color: var(--silver); font-size: 0.85rem; margin-bottom: 0.6rem; }
   .report-actions { display: flex; gap: 0.5rem; }
+  .report-warn-box { margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.4rem; }
+  .report-warn-text { width: 100%; min-height: 60px; }
   .report-action-btn {
     font-family: 'Share Tech Mono', monospace;
     background: var(--black);
@@ -321,7 +323,7 @@
             <div class="message-bubble-meta">
               <span class="message-sender">{{ message.sender.username }}</span>
               <span>{{ message.created_at|date:"m/d/Y g:i A" }}</span>
-              {% include "_dots_menu.html" with target_type="message" target_id=message.id target_username=message.sender.username show_report=message.sender_id|ne:user.id show_friend=message.sender_id|ne:user.id show_mute=message.sender_id|ne:user.id show_message=False show_block=message.sender_id|ne:user.id show_forward=True show_save=True is_saved=active_category|eq:'saved' %}
+              {% include "_dots_menu.html" with target_type="message" target_id=message.id target_username=message.sender.username show_report=message.sender_id|ne:user.id show_friend=message.sender_id|ne:user.id show_mute=message.sender_id|ne:user.id show_message=False show_block=message.sender_id|ne:user.id show_forward=True show_save=True is_saved=active_category|eq:'saved' show_delete_message=message|can_delete_message:user %}
             </div>
             {% if message.forwarded_from_id %}<div class="forwarded-label">&#8618; Forwarded by {{ message.sender.username }}</div>{% endif %}
             {% with embedded=message.forwarded_from %}
@@ -709,7 +711,7 @@
             </div>
             <span class="thread-date">{{ message.created_at|date:"m/d/Y g:i A" }}</span>
           {% if message.conversation.category == 'social' %}</a>{% else %}</div>{% endif %}
-          {% include "_dots_menu.html" with target_type="message" target_id=message.id target_username=message.sender.username show_report=message.sender_id|ne:user.id show_forward=True show_save=True show_mark_read=message.sender_id|ne:user.id is_saved=active_category|eq:'saved' %}
+          {% include "_dots_menu.html" with target_type="message" target_id=message.id target_username=message.sender.username show_report=message.sender_id|ne:user.id show_forward=True show_save=True show_mark_read=message.sender_id|ne:user.id is_saved=active_category|eq:'saved' show_delete_message=message|can_delete_message:user %}
         </div>
       {% empty %}
       <div class="empty-feed">Nothing here yet.</div>
@@ -793,6 +795,24 @@
           if (!data) return;
           btn.textContent = data.saved ? 'Unsave' : 'Save';
         });
+    });
+
+    // Delete message - soft delete (see mail.views.mail_message_delete),
+    // just removes it from the DOM here; it survives for the
+    // Director-only Chat Logs panel.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-message-delete');
+      if (!btn) return;
+      if (!confirm('Delete this message?')) return;
+      var messageId = btn.getAttribute('data-message-id');
+      var urlTemplate = "{% url 'mail_message_delete' 0 %}";
+      fetch(urlTemplate.replace('/0/', '/' + messageId + '/'), {
+        method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      }).then(function (r) {
+        if (!r.ok) return;
+        var bubble = btn.closest('.message-bubble') || btn.closest('.thread-list-item');
+        if (bubble) bubble.remove();
+      });
     });
 
     // Mark as Read - one-shot, no further state to reflect beyond

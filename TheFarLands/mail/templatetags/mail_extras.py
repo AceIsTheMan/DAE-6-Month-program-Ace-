@@ -67,6 +67,16 @@ def warn_sender_display(message, viewer):
 
 
 @register.filter
+def can_delete_message(message, viewer):
+    """Whether `viewer` may soft-delete this message - see
+    mail.views.mail_message_delete. Never true for a DIRECTIVE (no
+    delete route exists for that category anywhere, on purpose)."""
+    if not viewer.is_authenticated or message.conversation.category == 'directive':
+        return False
+    return message.sender_id == viewer.pk or viewer.is_moderator
+
+
+@register.filter
 def admin_only_media_blocked(message, viewer):
     """Whether `viewer` must see a solid blackout box instead of this
     message's real image/video - see mail.views.mail_message_media for

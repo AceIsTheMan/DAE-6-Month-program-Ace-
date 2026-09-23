@@ -712,6 +712,30 @@ def mail_saved(request):
 
 
 @login_required
+def mail_message_delete(request, message_id):
+    """Soft-delete a message - see Message.is_deleted. The sender can
+    delete their own; Admin/Director can delete anyone's (moderation).
+    Never allowed on a DIRECTIVE-category message - that category has
+    no delete route anywhere, on purpose (see Conversation's
+    docstring), so this always denies one regardless of who's asking.
+    The row survives for the Director-only Chat Logs panel to Re-Send
+    or permanently purge - nothing is ever truly gone from here."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    _require_mail_access(request.user)
+    message = _get_visible_message(request.user, message_id)
+    if message.conversation.category == Conversation.DIRECTIVE:
+        raise PermissionDenied('A Directive cannot be deleted.')
+    if message.sender_id != request.user.pk and not request.user.is_moderator:
+        raise PermissionDenied('You can only delete your own messages.')
+    message.is_deleted = True
+    message.deleted_at = timezone.now()
+    message.deleted_by = request.user
+    message.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by'])
+    return HttpResponse(status=204)
+
+
+@login_required
 def mail_message_save(request, message_id):
     """Toggle bookmarking a message into Saved - see mail.models.
     SavedMessage. Any message the user can see (participant in its
@@ -946,6 +970,20 @@ def mail_moderation_new(request, username):
         raise PermissionDenied('You cannot moderate yourself.')
     if target.role == CustomUser.ROLE_ADMIN and not request.user.is_director:
         raise PermissionDenied('Only the Director can moderate an Admin account.')
+
+    if request.method == 'POST' and request.POST.get('kind') == 'warn':
+        # Warn isn't a ModerationAction kind at all - see mail.models.
+        # Warning (source=PROFILE, not anonymous, unlike the Report-flow
+        # Warn). No duration, just a required message.
+        message_text = request.POST.get('reason', '').strip()
+        if not message_text:
+            flash.error(request, 'A warning needs a message.')
+            return render(request, 'mail/moderation_new.html', {
+                'form': ModerationActionForm(), 'target': target, 'duration_units': list(DURATION_UNITS),
+            })
+        _issue_warning(target, request.user, message_text, Warning.PROFILE)
+        flash.success(request, f'Warning sent to {target.username}.')
+        return redirect('user_profile', username=target.username)
 
     if request.method == 'POST':
         form = ModerationActionForm(request.POST)

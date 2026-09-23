@@ -62,6 +62,9 @@ Include with whichever of these context vars apply:
     {% if show_mark_read %}
     <button type="button" class="dropdown-item js-mark-read" data-message-id="{{ target_id }}">Mark as Read</button>
     {% endif %}
+    {% if show_delete_message %}
+    <button type="button" class="dropdown-item js-message-delete" data-message-id="{{ target_id }}" style="color: var(--red-bright);">Delete</button>
+    {% endif %}
     {% if show_message %}
     <a href="{% url 'mail_social_dm_start' target_username %}" class="dropdown-item">Message</a>
     {% endif %}
