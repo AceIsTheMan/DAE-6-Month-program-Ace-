@@ -115,7 +115,7 @@
   </div>
   {% endif %}
 
-  <form method="post" enctype="multipart/form-data" id="report-form" novalidate>
+  <form method="post" enctype="multipart/form-data" id="report-form" novalidate onsubmit="return confirm('⚠️ Are you sure you want to send this Report? You will be put on cooldown to prevent any annoyance towards moderation.⚠️');">
     {% csrf_token %}
     <input type="hidden" name="target_type" id="report-target-type" value="{{ target_type }}">
     <input type="hidden" name="target_id" id="report-target-id" value="{{ target_id }}">

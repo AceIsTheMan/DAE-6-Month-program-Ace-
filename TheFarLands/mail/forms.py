@@ -13,7 +13,9 @@ MAX_BODY_LEN = 800
 MAX_REPORT_LEN = 1500
 GROUP_MAX_MEMBERS = 10  # host + up to 9 invitees
 REPORT_LIMIT = 3
-REPORT_COOLDOWN_HOURS = 48
+REPORT_COOLDOWN_HOURS = 18
+FAN_LETTER_LIMIT = 1
+FAN_LETTER_COOLDOWN_HOURS = 18
 
 # One unified set of duration units - same choices for Mute and Ban
 # alike (Perm Ban takes no duration at all). Order matters here: it's
@@ -185,6 +187,27 @@ class FanLetterForm(forms.Form):
             raise forms.ValidationError('A Fan Letter needs a message.')
         if len(raw) > MAX_BODY_LEN:
             raise forms.ValidationError(f'Fan Letters are capped at {MAX_BODY_LEN} characters.')
+        return sanitize_post_html(raw, apply_markers=False)
+
+
+class DraftForm(forms.Form):
+    """A one-off text-only mail to a single recipient chosen via the
+    Draft tab's own @username search - see mail.views.mail_draft_new.
+    The recipient is resolved from a raw `target_id` POST field, not a
+    form field here (same reason mail.views.mail_report_new resolves its
+    target outside ReportForm), so a Block denial can be reported without
+    this form itself ever going invalid. No media/gif field on purpose -
+    Drafts can't carry attachments."""
+    body = forms.CharField(widget=forms.Textarea(attrs={
+        'class': 'mention-aware', 'maxlength': MAX_BODY_LEN, 'rows': 4,
+    }))
+
+    def clean_body(self):
+        raw = self.cleaned_data.get('body', '')
+        if not raw.strip():
+            raise forms.ValidationError('A Draft needs a message.')
+        if len(raw) > MAX_BODY_LEN:
+            raise forms.ValidationError(f'Drafts are capped at {MAX_BODY_LEN} characters.')
         return sanitize_post_html(raw, apply_markers=False)
 
 

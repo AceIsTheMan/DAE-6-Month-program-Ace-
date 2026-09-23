@@ -5,6 +5,7 @@
      the five sidebar rows. Reports is absent from the DOM entirely for
      non-moderators, not just hidden with CSS. -->
 <div class="mail-sidebar">
+  <a href="{% url 'mail_draft_new' %}" class="mail-category{% if active_category == 'draft' %} active{% endif %}">Draft</a>
   <a href="{% url 'mail_inbox' %}" class="mail-category{% if active_category == 'inbox' %} active{% endif %}">Inbox</a>
   <a href="{% url 'mail_sent' %}" class="mail-category{% if active_category == 'sent' %} active{% endif %}">Sent</a>
   <a href="{% url 'mail_updates' %}" class="mail-category{% if active_category == 'updates' %} active{% endif %}">Updates</a>

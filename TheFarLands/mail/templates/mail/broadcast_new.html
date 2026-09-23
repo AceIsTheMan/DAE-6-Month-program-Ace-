@@ -1,10 +1,30 @@
 {% extends "base.html" %}
 {% block title %}New {{ kind }} // Mail{% endblock %}
+{% block extra_head %}
+{% if kind == 'Fan Letter' %}
+<style>
+  .fan-letter-cooldown-note {
+    color: var(--red-bright);
+    border: 1px solid var(--red);
+    background: rgba(204,0,0,0.1);
+    padding: 0.8rem 1rem;
+    margin-bottom: 1.2rem;
+    letter-spacing: 0.5px;
+  }
+</style>
+{% endif %}
+{% endblock %}
 {% block content %}
 <div class="section-label">// NEW {{ kind|upper }}</div>
 <div class="section-divider"></div>
 <div class="card">
-  <form method="post">
+  {% if kind == 'Fan Letter' and cooldown_hours_left %}
+  <div class="fan-letter-cooldown-note">
+    You've sent {{ fan_letter_limit }} Fan Letter{{ fan_letter_limit|pluralize }} in the last {{ fan_letter_cooldown_hours }} hours - to prevent spam,
+    sending is on cooldown for about {{ cooldown_hours_left }} more hour{{ cooldown_hours_left|pluralize }}.
+  </div>
+  {% endif %}
+  <form method="post"{% if kind == 'Fan Letter' %} id="fan-letter-form" onsubmit="return confirm('⚠️ Are you sure you want to send this Fan Letter? You will be put on cooldown to prevent any annoyance towards moderation.⚠️');"{% endif %}>
     {% csrf_token %}
     {% if recipient_mode %}
       <label>Recipients</label>
@@ -19,7 +39,7 @@
     {% for error in form.non_field_errors %}<div class="field-error">{{ error }}</div>{% endfor %}
 
     <div style="margin-top: 1.2rem;">
-      <button type="submit" class="donate-btn">[ SEND {{ kind|upper }} ]</button>
+      <button type="submit" class="donate-btn"{% if kind == 'Fan Letter' and cooldown_hours_left %} disabled{% endif %}>[ SEND {{ kind|upper }} ]</button>
     </div>
   </form>
 </div>

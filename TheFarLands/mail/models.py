@@ -229,8 +229,8 @@ class Report(models.Model):
     mail.views.mail_report_new.
 
     Filing is rate-limited (see mail.views._report_cooldown_remaining):
-    3 reports filed by the same reporter within a rolling 48 hours locks
-    them out of filing more until the oldest of those 3 ages past 48h.
+    3 reports filed by the same reporter within a rolling 18 hours locks
+    them out of filing more until the oldest of those 3 ages past 18h.
     """
     BULLYING = 'bullying'
     NSFW = 'nsfw'

@@ -17,6 +17,20 @@
       counter.classList.toggle('warn', len >= MAX_LEN * 0.9 && len < MAX_LEN);
       counter.classList.toggle('limit', len >= MAX_LEN);
     }
+
+    // Auto-grow the compose box with its content instead of starting at
+    // the forum-sized 120px min-height (see .mail-compose-body in mail/
+    // index.html) - stays small for a one-line "lol" and only takes up
+    // more room once a message actually needs it, capped by that same
+    // rule's max-height (further growth scrolls inside the box instead
+    // of pushing the rest of the page down indefinitely).
+    function autoGrow() {
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
+    }
+    textarea.addEventListener('input', autoGrow);
+    autoGrow();
+
     textarea.addEventListener('input', updateCounter);
     updateCounter();
 

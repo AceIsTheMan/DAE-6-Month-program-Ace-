@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}New Draft // Mail{% endblock %}
+
+{% block extra_head %}
+{% include "forum/_composer_style.html" %}
+<style>
+  .draft-target-box {
+    border: 1px dashed var(--red-dim);
+    padding: 0.8rem;
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+  }
+  .draft-target-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--red-dim);
+    flex-shrink: 0;
+  }
+  .draft-target-avatar-blank {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a0000;
+    color: var(--red-dim);
+  }
+  .draft-target-name { color: var(--red-bright); font-family: 'VT323', monospace; font-size: 1.1rem; letter-spacing: 1px; }
+  .draft-target-context { color: var(--dim-white); font-size: 0.72rem; }
+  .draft-target-change {
+    margin-left: auto;
+    background: none;
+    border: 1px solid var(--red-dim);
+    color: var(--dim-white);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .draft-target-change:hover { border-color: var(--red-bright); color: var(--red-bright); }
+
+  .draft-username-search input[type="text"] { width: 100%; }
+  .draft-search-results { display: flex; flex-direction: column; gap: 0.3rem; margin-top: 0.5rem; max-height: 220px; overflow-y: auto; }
+  .draft-search-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--silver);
+  }
+  .draft-search-row:hover { border-color: var(--red-bright); color: var(--red-bright); }
+  .draft-search-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--red-dim);
+    flex-shrink: 0;
+  }
+  .draft-search-avatar-blank { display: flex; align-items: center; justify-content: center; background: #1a0000; color: var(--red-dim); font-size: 0.7rem; }
+
+  .draft-sent-note { color: var(--red-bright); font-size: 0.8rem; margin-top: 0.6rem; letter-spacing: 1px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="section-label">// NEW DRAFT</div>
+<div class="section-divider"></div>
+
+<div class="card">
+  <div class="field-help">Write a one-off mail and pick who it goes to - no images, text only.</div>
+
+  <div id="draft-target-box" class="draft-target-box" hidden>
+    <span class="draft-target-avatar draft-target-avatar-blank" id="draft-target-avatar-placeholder">?</span>
+    <div>
+      <div class="draft-target-name" id="draft-target-name"></div>
+      <div class="draft-target-context">Sending to this account</div>
+    </div>
+    <button type="button" class="draft-target-change" id="draft-target-change">[ CHANGE ]</button>
+  </div>
+
+  <div id="draft-username-search" class="draft-username-search">
+    <label for="draft-username-input">To</label>
+    <input type="text" id="draft-username-input" placeholder="Search @username to send to...">
+    <div class="draft-search-results" id="draft-search-results"></div>
+  </div>
+
+  <label for="draft-body">Message</label>
+  <textarea id="draft-body" class="composer-body mention-aware" maxlength="800" rows="4" placeholder="Write your letter...">{{ form.body.value|default:'' }}</textarea>
+  <span class="char-counter" id="draft-char-counter">0/800</span>
+  <div id="draft-error" class="field-error" hidden></div>
+  <div id="draft-sent-note" class="draft-sent-note" hidden>Sent!</div>
+
+  <div style="margin-top: 1.2rem;">
+    <button type="button" class="donate-btn" id="draft-send-btn" disabled>[ SEND DRAFT ]</button>
+  </div>
+</div>
+
+<script>
+  (function () {
+    function getCookie(name) {
+      var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+
+    var searchInput = document.getElementById('draft-username-input');
+    var resultsBox = document.getElementById('draft-search-results');
+    var targetBox = document.getElementById('draft-target-box');
+    var targetName = document.getElementById('draft-target-name');
+    var searchBox = document.getElementById('draft-username-search');
+    var changeBtn = document.getElementById('draft-target-change');
+    var sendBtn = document.getElementById('draft-send-btn');
+    var bodyField = document.getElementById('draft-body');
+    var counter = document.getElementById('draft-char-counter');
+    var errorBox = document.getElementById('draft-error');
+    var sentNote = document.getElementById('draft-sent-note');
+    var targetId = null;
+    var targetUsername = null;
+
+    function updateSendState() {
+      sendBtn.disabled = !targetId || !bodyField.value.trim();
+    }
+
+    if (searchInput && resultsBox) {
+      var timer = null;
+      searchInput.addEventListener('input', function () {
+        clearTimeout(timer);
+        var q = searchInput.value.trim();
+        if (!q) { resultsBox.innerHTML = ''; return; }
+        timer = setTimeout(function () {
+          fetch("{% url 'mail_recipient_search' %}?q=" + encodeURIComponent(q) + '&mode=draft')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+              resultsBox.innerHTML = '';
+              (data.results || []).forEach(function (u) {
+                var row = document.createElement('div');
+                row.className = 'draft-search-row';
+                var rowAvatar = u.profile_picture_url
+                  ? '<img src="' + u.profile_picture_url + '" class="draft-search-avatar" alt="">'
+                  : '<span class="draft-search-avatar draft-search-avatar-blank">?</span>';
+                row.innerHTML = rowAvatar + '<span>' + u.username + '</span>';
+                row.addEventListener('click', function () {
+                  targetId = u.id;
+                  targetUsername = u.username;
+                  targetName.textContent = u.username;
+                  targetBox.hidden = false;
+                  searchBox.hidden = true;
+                  resultsBox.innerHTML = '';
+                  searchInput.value = '';
+                  errorBox.hidden = true;
+                  updateSendState();
+                });
+                resultsBox.appendChild(row);
+              });
+              if (!(data.results || []).length) {
+                resultsBox.innerHTML = '<div class="empty-feed" style="font-size:0.75rem;">No matches.</div>';
+              }
+            });
+        }, 250);
+      });
+    }
+
+    if (changeBtn) {
+      changeBtn.addEventListener('click', function () {
+        targetId = null;
+        targetUsername = null;
+        targetBox.hidden = true;
+        searchBox.hidden = false;
+        if (searchInput) searchInput.focus();
+        updateSendState();
+      });
+    }
+
+    if (bodyField && counter) {
+      var MAX_LEN = 800;
+      function updateCounter() {
+        var len = bodyField.value.length;
+        counter.textContent = len + '/' + MAX_LEN;
+        counter.classList.toggle('warn', len >= MAX_LEN * 0.9 && len < MAX_LEN);
+        counter.classList.toggle('limit', len >= MAX_LEN);
+        updateSendState();
+      }
+      bodyField.addEventListener('input', updateCounter);
+      updateCounter();
+    }
+
+    if (sendBtn) {
+      sendBtn.addEventListener('click', function () {
+        if (!targetId || !bodyField.value.trim()) return;
+        errorBox.hidden = true;
+        sentNote.hidden = true;
+        sendBtn.disabled = true;
+        fetch("{% url 'mail_draft_new' %}", {
+          method: 'POST',
+          headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: 'body=' + encodeURIComponent(bodyField.value) + '&target_id=' + encodeURIComponent(targetId),
+        })
+          .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+          .then(function (result) {
+            var data = result.data;
+            if (data.blocked) {
+              alert('Oh no! turns out @' + data.username + ' has blocked you? unfortunate.');
+              updateSendState();
+              return;
+            }
+            if (!result.ok || data.error) {
+              errorBox.textContent = data.error || 'Something went wrong sending this draft.';
+              errorBox.hidden = false;
+              updateSendState();
+              return;
+            }
+            sentNote.hidden = false;
+            bodyField.value = '';
+            counter.textContent = '0/800';
+            targetId = null;
+            targetUsername = null;
+            targetBox.hidden = true;
+            searchBox.hidden = false;
+            updateSendState();
+          })
+          .catch(function () {
+            errorBox.textContent = 'Something went wrong sending this draft.';
+            errorBox.hidden = false;
+            updateSendState();
+          });
+      });
+    }
+
+    updateSendState();
+  })();
+</script>
+{% endblock %}

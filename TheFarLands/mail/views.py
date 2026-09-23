@@ -16,11 +16,14 @@ from forum.models import Comment, Post
 
 from .forms import (
     DURATION_UNITS,
+    FAN_LETTER_COOLDOWN_HOURS,
+    FAN_LETTER_LIMIT,
     GROUP_MAX_MEMBERS,
     REPORT_COOLDOWN_HOURS,
     REPORT_LIMIT,
     AdminMailForm,
     DirectiveForm,
+    DraftForm,
     FanLetterForm,
     ForumShareForm,
     ForwardForm,
@@ -148,14 +151,50 @@ def _report_cooldown_remaining(user):
     return (oldest_of_the_limit.created_at + timedelta(hours=REPORT_COOLDOWN_HOURS)) - timezone.now()
 
 
+#: Shown verbatim whenever a Report or Fan Letter send is attempted while
+#: that action's own cooldown (see _report_cooldown_remaining /
+#: _fan_letter_cooldown_remaining) is still active - a plain flash.error,
+#: same delivery as every other mail flash message.
+COOLDOWN_DENIAL_MESSAGE = 'Uh oh! seems like you are on cooldown mode. This is to prevent spam, please be patient.'
+
+
+def _fan_letter_cooldown_remaining(user):
+    """None if `user` may send another Fan Letter right now; otherwise the
+    timedelta until they can again. Same rolling-window shape as
+    _report_cooldown_remaining, just against Message rows instead of
+    Report rows - a Fan Letter sender is never added as a
+    ConversationParticipant (see mail_fan_letter_new), so `sender` is the
+    only reliable way to find "Fan Letters this user has sent"."""
+    window_start = timezone.now() - timedelta(hours=FAN_LETTER_COOLDOWN_HOURS)
+    recent = list(
+        Message.objects.filter(
+            sender=user, conversation__category=Conversation.FAN_LETTER, created_at__gte=window_start
+        ).order_by('created_at')
+    )
+    if len(recent) < FAN_LETTER_LIMIT:
+        return None
+    oldest_of_the_limit = recent[len(recent) - FAN_LETTER_LIMIT]
+    return (oldest_of_the_limit.created_at + timedelta(hours=FAN_LETTER_COOLDOWN_HOURS)) - timezone.now()
+
+
 def _get_or_create_dm(user_a, user_b):
     """Get-or-create the 2-participant SOCIAL conversation between these
     two accounts - a DM is just a Conversation shaped that way, see
-    mail.models.Conversation's docstring."""
+    mail.models.Conversation's docstring.
+
+    The `annotate()` has to come BEFORE the two `.filter(participants=...)`
+    calls, not after - Django reuses one of those filters' own joins for
+    a same-relation Count() added afterward instead of giving it a fresh
+    one, which silently makes member_count always 1 (never 2) and this
+    lookup never matches anything. That used to mean every second call
+    for the same pair (Friend Request, Draft, Forward, a Share, ...)
+    created a brand new duplicate DM instead of continuing the one
+    already there - annotating first gives Count its own unfiltered join,
+    so it actually counts every participant in the conversation."""
     existing = (
-        Conversation.objects.filter(category=Conversation.SOCIAL, participants=user_a)
+        Conversation.objects.annotate(member_count=Count('participants', distinct=True))
+        .filter(category=Conversation.SOCIAL, participants=user_a)
         .filter(participants=user_b)
-        .annotate(member_count=Count('participants'))
         .filter(member_count=2)
         .first()
     )
@@ -298,16 +337,65 @@ def mail_fan_letter_new(request):
     director = CustomUser.objects.filter(role=CustomUser.ROLE_DIRECTOR).first()
     if not director:
         raise PermissionDenied('There is no Director account to send a Fan Letter to.')
+    cooldown = _fan_letter_cooldown_remaining(request.user)
+    cooldown_hours_left = int(cooldown.total_seconds() // 3600) + 1 if cooldown else None
     if request.method == 'POST':
         form = FanLetterForm(request.POST)
-        if form.is_valid():
+        if cooldown:
+            flash.error(request, COOLDOWN_DENIAL_MESSAGE)
+        elif form.is_valid():
             conversation = Conversation.objects.create(category=Conversation.FAN_LETTER, created_by=request.user)
             ConversationParticipant.objects.create(conversation=conversation, user=director)
             Message.objects.create(conversation=conversation, sender=request.user, body=form.cleaned_data['body'])
             return redirect('mail_fan_letters')
     else:
         form = FanLetterForm()
-    return render(request, 'mail/broadcast_new.html', {'form': form, 'kind': 'Fan Letter'})
+    return render(request, 'mail/broadcast_new.html', {
+        'form': form,
+        'kind': 'Fan Letter',
+        'cooldown_hours_left': cooldown_hours_left,
+        'fan_letter_limit': FAN_LETTER_LIMIT,
+        'fan_letter_cooldown_hours': FAN_LETTER_COOLDOWN_HOURS,
+    })
+
+
+@login_required
+def mail_draft_new(request):
+    """Draft tab - a compose-first Social DM to a single recipient found
+    via the page's own @username search (see mail/templates/mail/
+    draft_new.html), rather than needing to already have an open thread.
+    Text-only (see mail.forms.DraftForm - no media/gif field at all) and
+    requires a real, resolved recipient before it can send - there is no
+    bare "usernames" text field to type into, only the search result to
+    click.
+
+    Submitted via fetch, not a normal form POST: a Block denial is
+    reported back as JSON (`blocked`/`username`) so the page can show the
+    "has blocked you" popup and leave the composed body and chosen
+    recipient exactly as they were, instead of losing the draft to a full
+    page redisplay."""
+    _require_mail_access(request.user)
+    if request.method != 'POST':
+        return render(request, 'mail/draft_new.html', {'form': DraftForm()})
+
+    _require_not_muted_by_moderator(request.user)
+    form = DraftForm(request.POST)
+    target_id = request.POST.get('target_id', '')
+    target = CustomUser.objects.filter(pk=target_id).first() if target_id else None
+    if not target or target == request.user:
+        return JsonResponse({'error': 'Pick a recipient first.'}, status=400)
+    if target.is_guest:
+        return JsonResponse({'error': 'Guest accounts cannot be messaged.'}, status=400)
+    if not form.is_valid():
+        return JsonResponse({'error': ' '.join(form.errors.get('body', ['A Draft needs a message.']))}, status=400)
+    if _is_blocked_pair(request.user, target):
+        return JsonResponse({'blocked': True, 'username': target.username})
+
+    conversation = _get_or_create_dm(request.user, target)
+    Message.objects.create(conversation=conversation, sender=request.user, body=form.cleaned_data['body'])
+    conversation.last_message_at = timezone.now()
+    conversation.save(update_fields=['last_message_at'])
+    return JsonResponse({'ok': True, 'conversation_id': conversation.id})
 
 
 @login_required
@@ -862,11 +950,7 @@ def mail_report_new(request):
     if request.method == 'POST':
         form = ReportForm(request.POST, request.FILES)
         if cooldown:
-            flash.error(
-                request,
-                f'You\'ve filed {REPORT_LIMIT} reports in the last {REPORT_COOLDOWN_HOURS} hours - '
-                f'try again in about {cooldown_hours_left} hour(s).',
-            )
+            flash.error(request, COOLDOWN_DENIAL_MESSAGE)
         elif not reported_user and not reported_message and not reported_comment:
             flash.error(request, 'Pick who or what you\'re reporting first.')
         elif form.is_valid():
@@ -920,7 +1004,13 @@ def mail_recipient_search(request):
     `mode=mention` backs @mention autocomplete (mail compose, forum posts/
     comments) - lightly gated (just signed in), no guest-exclusion or
     block-filter, since mentioning someone is harmless (see forum.
-    sanitize.linkify_mentions - it never grants visibility on its own)."""
+    sanitize.linkify_mentions - it never grants visibility on its own).
+    `mode=draft` (mail_draft_new) deliberately does NOT exclude blocked
+    accounts from results, unlike the default 'social' mode - the Draft
+    tab needs a blocked account to still be findable so attempting to
+    send to them can surface the "has blocked you" popup, rather than
+    that account silently vanishing from search the way a Social DM
+    start's search already does."""
     query = request.GET.get('q', '').strip()
     mode = request.GET.get('mode', 'social')
     if mode in ('report', 'mention'):
@@ -938,6 +1028,8 @@ def mail_recipient_search(request):
         users = users.filter(username__icontains=query)
     if mode == 'admin_mail':
         users = users.filter(role=CustomUser.ROLE_ADMIN)
+    elif mode == 'draft':
+        users = users.filter(is_guest=False)
     elif mode not in ('directive', 'report', 'mention'):
         users = users.filter(is_guest=False)
         blocked_pairs = UserRelationship.objects.filter(kind=UserRelationship.BLOCK).filter(

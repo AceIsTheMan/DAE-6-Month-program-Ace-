@@ -91,6 +91,22 @@
   .message-bubble { max-width: 75%; padding: 0.6rem 0.8rem; border: 1px solid #333; background: #111; }
   .message-bubble.mine { align-self: flex-end; background: rgba(204,0,0,0.15); border-color: var(--red-dim); }
   .message-bubble-meta { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; font-size: 0.7rem; color: var(--dim-white); letter-spacing: 1px; }
+  /* A "mine" bubble sits flush against the right edge of .mail-main - the
+     shared .dots-menu .dropdown-panel rule (see base.html) opens every
+     dropdown left-aligned to its trigger, which pushes a 230px-wide panel
+     off past the right edge from a trigger that's already almost there.
+     Flip just this one back to right-aligned so it opens INTO the bubble/
+     page instead of off it. */
+  .message-bubble.mine .dots-menu .dropdown-panel { left: auto; right: 0; }
+  /* Compose box for an open thread (see mail/_compose.html) - overrides
+     the shared .composer-body's 120px min-height (meant for the forum
+     post composer), which is a real floor that a smaller value alone
+     doesn't clear - min-height: 0 here plus the textarea's own rows="1"
+     is what actually lets it render single-line-tall by default. Grows
+     only with what you're actually typing (see mail/_compose_scripts.
+     html's autoGrow), capped so one huge paste scrolls inside the box
+     instead of taking over the page. */
+  .mail-compose-body { min-height: 0; max-height: 200px; overflow-y: auto; resize: none; }
   .message-sender { color: var(--red-bright); }
   .message-body { color: var(--silver); font-size: 0.88rem; line-height: 1.5; overflow-wrap: anywhere; }
   .message-bubble img, .message-bubble video { max-width: 100%; margin-top: 0.4rem; border: 1px solid var(--red-dim); display: block; }
