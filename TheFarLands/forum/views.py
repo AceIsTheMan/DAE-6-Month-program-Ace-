@@ -145,7 +145,7 @@ def forum_index_view(request):
     if sort not in ('new', 'old'):
         sort = 'new'
 
-    posts = Post.objects.select_related('author')
+    posts = Post.objects.filter(is_deleted=False).select_related('author')
     if search_query:
         posts = posts.filter(body__icontains=search_query)
     parsed_from = parse_date(date_from) if date_from else None
@@ -244,14 +244,19 @@ def forum_react_view(request, post_id):
 def forum_delete_post_view(request, post_id):
     """Delete a post - Director-only, same gate as posting (see
     forum_index_view), enforced here too in case of a direct POST from
-    anyone else."""
+    anyone else. Soft delete only - see Post.is_deleted; the Director
+    can Re-Send or permanently purge it from the Chat Logs dashboard
+    panel."""
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
     if not request.user.is_director:
         raise PermissionDenied('Only the Director can delete posts.')
 
     post = get_object_or_404(Post, pk=post_id)
-    post.delete()
+    post.is_deleted = True
+    post.deleted_at = timezone.now()
+    post.deleted_by = request.user
+    post.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by'])
     return redirect('forum')
 
 
@@ -274,7 +279,7 @@ def forum_comments_view(request, post_id):
     except ValueError:
         offset = 0
 
-    comments = post.comments.select_related('author')
+    comments = post.comments.filter(is_deleted=False).select_related('author')
     total = comments.count()
     next_offset = offset + COMMENTS_PAGE_SIZE
 
@@ -283,10 +288,9 @@ def forum_comments_view(request, post_id):
         'has_more': next_offset < total,
         'next_offset': next_offset,
         'post_id': post.id,
-        # Also doubles as "is this viewer the Director" for
-        # _comments_page.html's redact_for_viewer filter - both gates are
-        # the exact same check, so one flag covers both.
-        'can_delete_comments': request.user.is_authenticated and request.user.is_director,
+        # Admin can now delete any comment too (not just the Director) -
+        # see forum_delete_comment_view.
+        'can_delete_comments': request.user.is_authenticated and request.user.is_moderator,
     })
 
 

@@ -12,7 +12,7 @@
     <span class="comment-date">{{ c.created_at|date:"m/d/Y g:i A" }}</span>
     {% include "_dots_menu.html" with target_type="comment" target_id=c.id post_id=post_id show_delete_comment=c.author_id|eq:user.id|or_:can_delete_comments show_report=c.author_id|ne:user.id show_share_comment=True show_copy=True %}
   </div>
-  <div class="comment-body">{{ c.body|redact_for_viewer:can_delete_comments|linkify_mentions|safe }}</div>
+  <div class="comment-body">{{ c.body|redact_for_viewer:user.is_director|linkify_mentions|safe }}</div>
 </div>
 {% endfor %}
 {% if has_more %}

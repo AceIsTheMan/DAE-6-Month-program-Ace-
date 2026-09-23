@@ -49,6 +49,17 @@ class Post(models.Model):
     link_url = models.URLField(blank=True)
     link_label = models.CharField(max_length=200, blank=True)
 
+    # Soft delete - see forum.views.forum_delete_post_view. Every normal
+    # feed query excludes is_deleted=True; the Director-only Chat Logs
+    # panel is the only place a "deleted" post is still visible, and the
+    # only place it can be Re-Sent (flip this back False) or permanently
+    # purged (a real .delete()).
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='forum_posts_deleted',
+    )
+
     class Meta:
         ordering = ['-created_at']
 
@@ -110,6 +121,16 @@ class Comment(models.Model):
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='forum_comments')
     body = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # Soft delete - see forum.views.forum_delete_comment_view. Same
+    # Chat-Logs-only-visibility/Re-Send/permanent-purge shape as
+    # Post.is_deleted above.
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='forum_comments_deleted',
+    )
 
     class Meta:
         # Oldest first - the comment section loads forward in time as you

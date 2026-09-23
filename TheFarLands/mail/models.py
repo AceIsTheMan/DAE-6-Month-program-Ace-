@@ -198,6 +198,20 @@ class Message(models.Model):
         'FriendRequest', on_delete=models.CASCADE, null=True, blank=True, related_name='message'
     )
 
+    # Soft delete - see mail.views.mail_message_delete. Never set on a
+    # DIRECTIVE-category message (no delete UI is ever rendered for one,
+    # same absolute rule as Conversation's docstring). A "deleted"
+    # message just disappears from every normal query (which all
+    # exclude is_deleted=True) but survives for the Director-only Chat
+    # Logs panel to Re-Send (flip this back False, nothing ever moved)
+    # or permanently purge (a real .delete()).
+    is_deleted = models.BooleanField(default=False)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='mail_messages_deleted',
+    )
+
     class Meta:
         ordering = ['created_at']
         indexes = [models.Index(fields=['conversation', 'created_at'])]
@@ -285,6 +299,19 @@ class Report(models.Model):
         blank=True,
         related_name='reports_resolved',
     )
+
+    # An Admin's resolve/dismiss click doesn't write `status` directly -
+    # it only sets these, leaving the report open until a Director
+    # confirms it via the real resolve/dismiss (see mail.views.
+    # mail_report_resolve). Director-only accounts don't use these at
+    # all - their click still resolves immediately, same as always.
+    ADMIN_REQUEST_CHOICES = [(RESOLVED, 'Resolve'), (DISMISSED, 'Dismiss')]
+    admin_requested_status = models.CharField(max_length=10, choices=ADMIN_REQUEST_CHOICES, null=True, blank=True)
+    admin_requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='reports_request_resolved',
+    )
+    admin_requested_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -466,6 +493,69 @@ class ModerationAction(models.Model):
             .order_by('-created_at')
             .first()
         )
+
+
+class Warning(models.Model):
+    """
+    A moderator's warning against an account - lighter than
+    ModerationAction (no mute/ban effect at all, just a recorded
+    notice). Two distinct sources, see mail.views.mail_report_warn and
+    mail_moderation_new's 'warn' kind:
+
+    - REPORT: issued from a Report's own "Warn" action (next to Request
+      Dismiss/Resolve). Delivered to the target as an undeletable
+      Directive same as everything else here, but the sender shown on
+      that Directive is masked to a generic label for anyone who isn't
+      the Director (see mail.templatetags.mail_extras) - the target
+      never learns which Admin warned them, though the real `issued_by`
+      is still stored and visible to the Director via Admin Logs.
+    - PROFILE: issued from the "Moderate" page on a profile - NOT
+      anonymous, the real sender shows on the Directive like any other.
+    """
+    REPORT = 'report'
+    PROFILE = 'profile'
+    SOURCE_CHOICES = [(REPORT, 'Report'), (PROFILE, 'Profile')]
+
+    target = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='warnings_received')
+    issued_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='warnings_issued')
+    message = models.TextField(max_length=1500)
+    source = models.CharField(max_length=10, choices=SOURCE_CHOICES)
+    report = models.ForeignKey(Report, on_delete=models.SET_NULL, null=True, blank=True, related_name='warnings')
+
+    # The undeletable Directive Message that actually delivered this -
+    # same "system message with a live pointer back to the state
+    # machine behind it" idea as Message.friend_request.
+    directive_message = models.OneToOneField(
+        'Message', on_delete=models.SET_NULL, null=True, blank=True, related_name='warning'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Warning #{self.pk} against {self.target} by {self.issued_by}'
+
+
+class RoleChangeLog(models.Model):
+    """
+    Audit trail for a Director promoting/demoting an account via the
+    Admin Control dashboard panel (see accounts.views.dashboard_promote/
+    dashboard_demote) - the only place CustomUser.role ever changes
+    after account creation. Feeds the Admin Logs panel so a promoted/
+    demoted Admin's own role history is visible there too.
+    """
+    target = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='role_changes')
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='role_changes_made')
+    old_role = models.CharField(max_length=50)
+    new_role = models.CharField(max_length=50)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.target} {self.old_role} -> {self.new_role} by {self.changed_by}'
 
 
 class FriendRequest(models.Model):
