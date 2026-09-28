@@ -50,7 +50,18 @@ python3 manage.py runserver
 - `/mail/` — internal site mail: Inbox/Sent/Updates/Social/Reports, reached
   via the envelope icon in the nav (hidden for guest accounts) - this is
   in-site messaging stored in the database, not real email
-- `/settings/` — placeholder settings page (gear icon), nothing configurable yet
+- `/settings/` — gear icon page, tabbed:
+  - **Settings** — still a stub, nothing configurable yet (same "does
+    nothing yet" status as the Currency/"Digit" balance in the
+    notification dropdown)
+  - **Dashboard** (Admin/Director only) — account totals, open Report
+    count, a by-username search showing warn/mute/ban counts, and the
+    expired guest-account archive
+  - **Chat Logs**, **Admin Logs**, **All Users** (Director only) —
+    soft-deleted post/comment/message recovery (Re-Send/Purge), an
+    audit trail of Admin-role actions, and a full account table
+  - every gated tab is checked server-side, not just hidden by the tab
+    UI (code: `accounts/views.py::settings_view` 👍)
 - `/admin/` — Django admin (run `python3 manage.py createsuperuser` first)
 
 ## Email verification
@@ -82,6 +93,10 @@ been built.
 
 ## Recent updates (most recent first)
 
+- Dashboard settings tab: Admin/Director-only moderator tools behind
+  `/settings/?tab=dashboard` (and Director-only Chat Logs/Admin Logs/All
+  Users tabs) — account search, expired-guest archive, soft-delete
+  recovery, admin activity audit trail.
 - Report comments: a comment thread on moderation Reports, with a
   "3 dots" per-comment options menu.
 - Mail search: search box in `/mail/` to find conversations/messages.
