@@ -2,17 +2,117 @@ from django.conf import settings
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
+from django.core.exceptions import PermissionDenied
 from django.core.mail import send_mail
-from django.http import HttpResponseNotAllowed, JsonResponse
+from django.db.models import Count, Q
+from django.http import Http404, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
-from mail.models import FriendRequest, ModerationAction, Report
+from forum.models import Comment, Post
+from mail.models import FriendRequest, Message, ModerationAction, Report, RoleChangeLog, Warning
 
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
 from .models import CustomUser
+
+# kind (used in the Chat Logs URLs/template) -> (model, author/sender field name)
+CHAT_LOG_MODELS = {
+    'post': (Post, 'author'),
+    'comment': (Comment, 'author'),
+    'message': (Message, 'sender'),
+}
+
+
+def _annotate_moderation_counts(queryset):
+    """Attach warning_count/mute_count/ban_count/perm_ban_count to a
+    CustomUser queryset - shared by the Dashboard's user search and the
+    Director-only All Users tab, both of which need "how many
+    warns/bans has this account gotten" at a glance."""
+    return queryset.annotate(
+        warning_count=Count('warnings_received', distinct=True),
+        mute_count=Count(
+            'moderation_actions_received',
+            filter=Q(moderation_actions_received__kind=ModerationAction.MUTE), distinct=True,
+        ),
+        ban_count=Count(
+            'moderation_actions_received',
+            filter=Q(moderation_actions_received__kind=ModerationAction.BAN), distinct=True,
+        ),
+        perm_ban_count=Count(
+            'moderation_actions_received',
+            filter=Q(moderation_actions_received__kind=ModerationAction.PERM_BAN), distinct=True,
+        ),
+    )
+
+
+def _report_target(report):
+    if report.reported_user_id:
+        return report.reported_user
+    if report.reported_message_id:
+        return report.reported_message.sender
+    if report.reported_comment_id:
+        return report.reported_comment.author
+    return None
+
+
+def _admin_activity_entries():
+    """Everything an Admin-role account has done that a Director should
+    be able to audit - see the "Admin Logs" panel referenced throughout
+    mail.models (Warning, RoleChangeLog) and mail.views (report resolve/
+    warn). Admins have deliberately reduced authority (can't moderate
+    other admins, report resolves are only a request) - this is how a
+    Director keeps an eye on what they're doing with the authority they
+    do have."""
+    entries = []
+
+    for action in ModerationAction.objects.filter(
+        moderator__role=CustomUser.ROLE_ADMIN
+    ).select_related('moderator', 'target'):
+        entries.append({
+            'type_label': action.get_kind_display(),
+            'actor': action.moderator,
+            'target': action.target,
+            'detail': action.reason,
+            'created_at': action.created_at,
+        })
+
+    for warning in Warning.objects.filter(
+        issued_by__role=CustomUser.ROLE_ADMIN
+    ).select_related('issued_by', 'target'):
+        entries.append({
+            'type_label': f'Warning ({warning.get_source_display()})',
+            'actor': warning.issued_by,
+            'target': warning.target,
+            'detail': warning.message,
+            'created_at': warning.created_at,
+        })
+
+    for report in Report.objects.filter(
+        admin_requested_by__role=CustomUser.ROLE_ADMIN
+    ).select_related('admin_requested_by', 'reported_user', 'reported_message__sender', 'reported_comment__author'):
+        entries.append({
+            'type_label': f'Requested {report.get_admin_requested_status_display()}',
+            'actor': report.admin_requested_by,
+            'target': _report_target(report),
+            'detail': f'Report #{report.pk}: {report.reason}',
+            'created_at': report.admin_requested_at,
+        })
+
+    for change in RoleChangeLog.objects.filter(
+        Q(old_role=CustomUser.ROLE_ADMIN) | Q(new_role=CustomUser.ROLE_ADMIN)
+    ).select_related('changed_by', 'target'):
+        entries.append({
+            'type_label': f'Role changed ({change.old_role} → {change.new_role})',
+            'actor': change.changed_by,
+            'target': change.target,
+            'detail': '',
+            'created_at': change.created_at,
+        })
+
+    entries.sort(key=lambda e: e['created_at'], reverse=True)
+    return entries
 
 
 def home_view(request):
@@ -250,15 +350,23 @@ def toggle_status(request):
 @login_required
 def settings_view(request):
     """
-    Gear/settings nav icon (see _nav_mail_icons.html) - two tabs: Settings
+    Gear/settings nav icon (see _nav_mail_icons.html) - tabs: Settings
     (still a stub, "does nothing yet" same as the Currency/"Digit" balance
-    in the notification dropdown) and Dashboard, an Admin/Director-only
-    entry point into moderator tools. Dashboard is gated server-side, not
-    just hidden by the tab UI - same convention as every other
-    moderator-only view (see accounts.models.CustomUser.is_moderator).
+    in the notification dropdown), Dashboard (Admin/Director-only entry
+    point into moderator tools, including a by-username account search
+    with warn/mute/ban counts), and three Director-only tabs: Chat Logs
+    (soft-deleted Post/Comment/Message, Re-Send/Purge), Admin Logs (an
+    audit trail of what Admin-role accounts have done - see
+    _admin_activity_entries), and All Users (every account on the site
+    with its full account info). Every gated tab is checked server-side,
+    not just hidden by the tab UI - same convention as every other
+    moderator-only view (see accounts.models.CustomUser.is_moderator/
+    is_director).
     """
     active_tab = request.GET.get('tab', 'settings')
     if active_tab == 'dashboard' and not request.user.is_moderator:
+        active_tab = 'settings'
+    if active_tab in ('logs', 'admin_logs', 'users') and not request.user.is_director:
         active_tab = 'settings'
 
     context = {'active_tab': active_tab}
@@ -268,7 +376,71 @@ def settings_view(request):
             'guest_accounts': CustomUser.objects.filter(is_guest=True).count(),
             'open_reports': Report.objects.filter(status=Report.OPEN).count(),
         })
+        query = request.GET.get('q', '').strip()
+        if query:
+            context['user_search_results'] = _annotate_moderation_counts(
+                CustomUser.objects.filter(username__icontains=query)
+            ).order_by('username')[:25]
+        context['user_search_query'] = query
+    elif active_tab == 'users':
+        context['all_users'] = _annotate_moderation_counts(CustomUser.objects.all()).order_by('-date_joined')
+    elif active_tab == 'logs':
+        entries = []
+        for kind, (model, author_field) in CHAT_LOG_MODELS.items():
+            qs = model.objects.filter(is_deleted=True).select_related(author_field, 'deleted_by')
+            for obj in qs:
+                entries.append({
+                    'kind': kind,
+                    'id': obj.pk,
+                    'author': getattr(obj, author_field),
+                    'body': obj.body,
+                    'deleted_at': obj.deleted_at,
+                    'deleted_by': obj.deleted_by,
+                })
+        entries.sort(key=lambda e: e['deleted_at'], reverse=True)
+        context['log_entries'] = entries
+    elif active_tab == 'admin_logs':
+        context['admin_log_entries'] = _admin_activity_entries()
     return render(request, 'settings.html', context)
+
+
+@login_required
+def chat_log_resend(request, kind, obj_id):
+    """Un-delete a soft-deleted Post/Comment/Message from the Director-only
+    Chat Logs panel - flips is_deleted back to False, nothing else ever
+    moved (see the soft-delete docstrings on each model)."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    if not request.user.is_director:
+        raise PermissionDenied('Only the Director can manage Chat Logs.')
+    entry = CHAT_LOG_MODELS.get(kind)
+    if entry is None:
+        raise Http404
+    model, _ = entry
+    obj = get_object_or_404(model, pk=obj_id, is_deleted=True)
+    obj.is_deleted = False
+    obj.deleted_at = None
+    obj.deleted_by = None
+    obj.save(update_fields=['is_deleted', 'deleted_at', 'deleted_by'])
+    return redirect(f"{reverse('settings_page')}?tab=logs")
+
+
+@login_required
+def chat_log_purge(request, kind, obj_id):
+    """Permanently delete a soft-deleted Post/Comment/Message - a real
+    .delete(), the only way anything ever truly leaves the Chat Logs
+    panel."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    if not request.user.is_director:
+        raise PermissionDenied('Only the Director can manage Chat Logs.')
+    entry = CHAT_LOG_MODELS.get(kind)
+    if entry is None:
+        raise Http404
+    model, _ = entry
+    obj = get_object_or_404(model, pk=obj_id, is_deleted=True)
+    obj.delete()
+    return redirect(f"{reverse('settings_page')}?tab=logs")
 
 
 @login_required

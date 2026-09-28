@@ -20,6 +20,27 @@
   .dashboard-stat-value { font-family: 'VT323', monospace; font-size: 1.8rem; color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
   .dashboard-stat-label { font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase; color: var(--dim-white); }
   .dashboard-links { display: flex; gap: 0.7rem; flex-wrap: wrap; }
+  .log-entry { border: 1px solid var(--red-dim); padding: 0.7rem 1rem; margin-bottom: 0.7rem; }
+  .log-entry-meta { font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase; color: var(--dim-white); margin-bottom: 0.3rem; }
+  .log-entry-kind { color: var(--red-bright); }
+  .log-entry-body { font-size: 0.85rem; color: var(--silver); white-space: pre-wrap; margin-bottom: 0.5rem; }
+  .log-entry-actions { display: flex; gap: 0.5rem; }
+  .log-entry-actions form { display: inline; }
+  .user-search { margin-bottom: 1.2rem; display: flex; gap: 0.5rem; }
+  .user-search input[type="text"] {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--red-dim);
+    color: var(--silver);
+    font-family: 'Share Tech Mono', monospace;
+    padding: 0.4rem 0.6rem;
+  }
+  .user-table-wrap { overflow-x: auto; }
+  .user-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; white-space: nowrap; }
+  .user-table th, .user-table td { border: 1px solid var(--red-dim); padding: 0.5rem 0.7rem; text-align: left; }
+  .user-table th { color: var(--red-bright); text-transform: uppercase; font-size: 0.68rem; letter-spacing: 1px; }
+  .user-table tr:hover { background: rgba(204,0,0,0.06); }
+  .user-table a { color: var(--silver); }
 </style>
 {% endblock %}
 
@@ -31,6 +52,11 @@
   <a href="{% url 'settings_page' %}?tab=settings" class="settings-tab{% if active_tab == 'settings' %} active{% endif %}">Settings</a>
   {% if user.is_moderator %}
   <a href="{% url 'settings_page' %}?tab=dashboard" class="settings-tab{% if active_tab == 'dashboard' %} active{% endif %}">Dashboard</a>
+  {% endif %}
+  {% if user.is_director %}
+  <a href="{% url 'settings_page' %}?tab=logs" class="settings-tab{% if active_tab == 'logs' %} active{% endif %}">Chat Logs</a>
+  <a href="{% url 'settings_page' %}?tab=admin_logs" class="settings-tab{% if active_tab == 'admin_logs' %} active{% endif %}">Admin Logs</a>
+  <a href="{% url 'settings_page' %}?tab=users" class="settings-tab{% if active_tab == 'users' %} active{% endif %}">All Users</a>
   {% endif %}
 </div>
 
@@ -53,8 +79,137 @@
   <div class="dashboard-links">
     <a href="{% url 'mail_reports' %}" class="donate-btn" style="font-size: 0.85rem;">[ REPORTS ]</a>
     <a href="{% url 'mail_report_history' %}" class="donate-btn" style="font-size: 0.85rem;">[ REPORT HISTORY ]</a>
-    <a href="/admin/" class="donate-btn" style="font-size: 0.85rem;">[ DJANGO ADMIN ]</a>
+    {% if user.is_director %}
+    <a href="{% url 'settings_page' %}?tab=logs" class="donate-btn" style="font-size: 0.85rem;">[ CHAT LOGS ]</a>
+    <a href="{% url 'settings_page' %}?tab=admin_logs" class="donate-btn" style="font-size: 0.85rem;">[ ADMIN LOGS ]</a>
+    <a href="{% url 'settings_page' %}?tab=users" class="donate-btn" style="font-size: 0.85rem;">[ ALL USERS ]</a>
+    {% endif %}
   </div>
+
+  <div class="section-divider"></div>
+  <form method="get" action="{% url 'settings_page' %}" class="user-search">
+    <input type="hidden" name="tab" value="dashboard">
+    <input type="text" name="q" placeholder="Search username..." value="{{ user_search_query }}">
+    <button type="submit" class="donate-btn" style="font-size: 0.85rem;">[ SEARCH ]</button>
+  </form>
+
+  {% if user_search_query %}
+  <div class="user-table-wrap">
+    <table class="user-table">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Role</th>
+          <th>Warnings</th>
+          <th>Mutes</th>
+          <th>Bans</th>
+          <th>Perm Bans</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in user_search_results %}
+        <tr>
+          <td><a href="{% url 'user_profile' u.username %}">{{ u.username }}</a></td>
+          <td>{{ u.role }}</td>
+          <td>{{ u.warning_count }}</td>
+          <td>{{ u.mute_count }}</td>
+          <td>{{ u.ban_count }}</td>
+          <td>{{ u.perm_ban_count }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">No accounts match "{{ user_search_query }}".</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+{% elif active_tab == 'users' %}
+<div class="card">
+  <div class="user-table-wrap">
+    <table class="user-table">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Status</th>
+          <th>Guest</th>
+          <th>Verified</th>
+          <th>Digits</th>
+          <th>Warnings</th>
+          <th>Mutes</th>
+          <th>Bans</th>
+          <th>Perm Bans</th>
+          <th>Joined</th>
+          <th>Last Login</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in all_users %}
+        <tr>
+          <td><a href="{% url 'user_profile' u.username %}">{{ u.username }}</a></td>
+          <td>{{ u.email|default:"—" }}</td>
+          <td>{{ u.role }}</td>
+          <td>{{ u.get_status_display }}</td>
+          <td>{% if u.is_guest %}Yes ({{ u.guest_days_left }}d left){% else %}No{% endif %}</td>
+          <td>{% if u.email_verified %}Yes{% else %}No{% endif %}</td>
+          <td>{{ u.currency }}</td>
+          <td>{{ u.warning_count }}</td>
+          <td>{{ u.mute_count }}</td>
+          <td>{{ u.ban_count }}</td>
+          <td>{{ u.perm_ban_count }}</td>
+          <td>{{ u.date_joined }}</td>
+          <td>{{ u.last_login|default:"Never" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="13">No accounts on record.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% elif active_tab == 'logs' %}
+<div class="card">
+  {% if not log_entries %}
+  <p>No deleted posts, comments, or messages on record.</p>
+  {% endif %}
+  {% for entry in log_entries %}
+  <div class="log-entry">
+    <div class="log-entry-meta">
+      <span class="log-entry-kind">{{ entry.kind|upper }}</span>
+      by {{ entry.author }} &middot; deleted {{ entry.deleted_at }} by {{ entry.deleted_by|default:"—" }}
+    </div>
+    <div class="log-entry-body">{{ entry.body|default:"(no text content)" }}</div>
+    <div class="log-entry-actions">
+      <form method="post" action="{% url 'chat_log_resend' entry.kind entry.id %}">
+        {% csrf_token %}
+        <button type="submit" class="donate-btn" style="font-size: 0.75rem;">[ RE-SEND ]</button>
+      </form>
+      <form method="post" action="{% url 'chat_log_purge' entry.kind entry.id %}" onsubmit="return confirm('Permanently purge this? This cannot be undone.');">
+        {% csrf_token %}
+        <button type="submit" class="donate-btn" style="font-size: 0.75rem;">[ PURGE ]</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% elif active_tab == 'admin_logs' %}
+<div class="card">
+  {% if not admin_log_entries %}
+  <p>No Admin-role activity on record.</p>
+  {% endif %}
+  {% for entry in admin_log_entries %}
+  <div class="log-entry">
+    <div class="log-entry-meta">
+      <span class="log-entry-kind">{{ entry.type_label|upper }}</span>
+      {{ entry.actor }}{% if entry.target %} &rarr; {{ entry.target }}{% endif %} &middot; {{ entry.created_at }}
+    </div>
+    {% if entry.detail %}
+    <div class="log-entry-body">{{ entry.detail }}</div>
+    {% endif %}
+  </div>
+  {% endfor %}
 </div>
 {% else %}
 <div class="card">

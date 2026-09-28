@@ -26,6 +26,8 @@ urlpatterns = [
     path('logout/', auth_views.LogoutView.as_view(), name='logout'),
 
     path('settings/', views.settings_view, name='settings_page'),
+    path('settings/logs/<str:kind>/<int:obj_id>/resend/', views.chat_log_resend, name='chat_log_resend'),
+    path('settings/logs/<str:kind>/<int:obj_id>/purge/', views.chat_log_purge, name='chat_log_purge'),
     path('status/toggle/', views.toggle_status, name='toggle_status'),
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.profile_edit_view, name='profile_edit'),
