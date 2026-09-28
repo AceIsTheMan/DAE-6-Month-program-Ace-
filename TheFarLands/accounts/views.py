@@ -15,7 +15,7 @@ from forum.models import Comment, Post
 from mail.models import FriendRequest, Message, ModerationAction, Report, RoleChangeLog, Warning
 
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
-from .models import CustomUser
+from .models import CustomUser, GuestArchive
 
 # kind (used in the Chat Logs URLs/template) -> (model, author/sender field name)
 CHAT_LOG_MODELS = {
@@ -354,7 +354,8 @@ def settings_view(request):
     (still a stub, "does nothing yet" same as the Currency/"Digit" balance
     in the notification dropdown), Dashboard (Admin/Director-only entry
     point into moderator tools, including a by-username account search
-    with warn/mute/ban counts), and three Director-only tabs: Chat Logs
+    with warn/mute/ban counts and the expired-guest archive - see
+    accounts.models.GuestArchive), and three Director-only tabs: Chat Logs
     (soft-deleted Post/Comment/Message, Re-Send/Purge), Admin Logs (an
     audit trail of what Admin-role accounts have done - see
     _admin_activity_entries), and All Users (every account on the site
@@ -375,6 +376,7 @@ def settings_view(request):
             'total_accounts': CustomUser.objects.count(),
             'guest_accounts': CustomUser.objects.filter(is_guest=True).count(),
             'open_reports': Report.objects.filter(status=Report.OPEN).count(),
+            'expired_guests': GuestArchive.objects.all(),
         })
         query = request.GET.get('q', '').strip()
         if query:
