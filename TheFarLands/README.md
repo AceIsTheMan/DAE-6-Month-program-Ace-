@@ -22,12 +22,15 @@ If you already had this project set up before and just pulled new changes,
 re-run `python3 manage.py migrate` — new passes sometimes add fields to the
 user model, and each one needs a migration applied to your local database.
 
-Optional: the Mail app's Social composer can search real GIFs via Tenor.
-Without a key it just shows "no GIFs found" and everything else still
-works fine. Get a free key at https://tenor.com/gifapi, then:
+Optional: the Mail app's Social composer can search real GIFs via GIPHY
+(was Tenor, but Google discontinued the Tenor API on 2026-06-30 - see
+`tfl_site/settings.py`). Without a key it just shows "no GIFs found" and
+everything else still works fine, including plain `.gif` file uploads via
+the same composer's regular attachment field. Get a free key at
+https://developers.giphy.com/, then:
 
 ```
-export TENOR_API_KEY=your-key-here
+export GIPHY_API_KEY=your-key-here
 python3 manage.py runserver
 ```
 
@@ -139,7 +142,7 @@ python3 manage.py shell               # Django shell for one-off DB queries
   and `DEBUG = True`. Fine for local dev, but never ship this file as-is
   to anything public-facing. `ALLOWED_HOSTS` is locked to
   `127.0.0.1`/`localhost` on purpose.
-- **`TENOR_API_KEY`** — read from an environment variable, not hardcoded.
+- **`GIPHY_API_KEY`** — read from an environment variable, not hardcoded.
   Don't paste a real key directly into `settings.py` or commit one.
 - **`media/`** — real user-uploaded profile pictures. Don't bulk-delete;
   broken references show up as missing images on live profiles.

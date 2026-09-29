@@ -149,7 +149,7 @@ class Message(models.Model):
         validators=[FileExtensionValidator(allowed_extensions=MEDIA_EXTENSIONS)],
     )
 
-    # A GIF picked from the Tenor search (see mail.views.mail_gif_search)
+    # A GIF picked from the GIPHY search (see mail.views.mail_gif_search)
     # - only the stable CDN URL is ever stored, never the binary.
     gif_url = models.URLField(blank=True)
 

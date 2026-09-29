@@ -1211,20 +1211,22 @@ def mail_comment_share(request, comment_id):
 
 @login_required
 def mail_gif_search(request):
-    """Server-side Tenor proxy - the API key never reaches the browser,
-    and only a trimmed result list is forwarded, never Tenor's raw
-    response. Returns an empty result list (not an error) if no key is
-    configured or the request fails, so the compose box degrades
-    gracefully instead of breaking."""
+    """Server-side GIPHY proxy - the API key never reaches the browser,
+    and only a trimmed result list is forwarded, never GIPHY's raw
+    response. (Was Tenor until Google discontinued the Tenor API on
+    2026-06-30 - GIPHY is the replacement, same contract.) Returns an
+    empty result list (not an error) if no key is configured or the
+    request fails, so the compose box degrades gracefully instead of
+    breaking."""
     _require_mail_access(request.user)
     query = request.GET.get('q', '').strip()
-    api_key = getattr(settings, 'TENOR_API_KEY', '')
+    api_key = getattr(settings, 'GIPHY_API_KEY', '')
     if not query or not api_key:
         return JsonResponse({'results': []})
     try:
         response = requests.get(
-            'https://tenor.googleapis.com/v2/search',
-            params={'q': query, 'key': api_key, 'limit': 20, 'client_key': 'thefarlands', 'media_filter': 'gif'},
+            'https://api.giphy.com/v1/gifs/search',
+            params={'q': query, 'api_key': api_key, 'limit': 20},
             timeout=3,
         )
         response.raise_for_status()
@@ -1233,12 +1235,12 @@ def mail_gif_search(request):
         return JsonResponse({'results': []})
 
     results = []
-    for item in data.get('results', []):
-        formats = item.get('media_formats', {})
-        gif = formats.get('gif') or formats.get('tinygif')
-        if not gif:
+    for item in data.get('data', []):
+        images = item.get('images', {})
+        gif = images.get('downsized') or images.get('original')
+        if not gif or not gif.get('url'):
             continue
-        preview = formats.get('tinygif') or gif
+        preview = images.get('fixed_width_small') or images.get('preview_gif') or gif
         results.append({'id': item.get('id'), 'url': gif.get('url'), 'preview_url': preview.get('url')})
     return JsonResponse({'results': results})
 

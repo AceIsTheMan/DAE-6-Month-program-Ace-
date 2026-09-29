@@ -74,7 +74,7 @@
     if (emojiPanel) emojiPanel.addEventListener('click', function (e) { e.stopPropagation(); });
     if (gifPanel) gifPanel.addEventListener('click', function (e) { e.stopPropagation(); });
 
-    // GIF search - server-side Tenor proxy (see mail.views.mail_gif_search),
+    // GIF search - server-side GIPHY proxy (see mail.views.mail_gif_search),
     // debounced so every keystroke doesn't fire a request.
     var gifSearchInput = document.getElementById('mail-gif-search');
     var gifResults = document.getElementById('mail-gif-results');
@@ -107,7 +107,7 @@
                 gifResults.appendChild(img);
               });
               if (!(data.results || []).length) {
-                gifResults.innerHTML = '<div class="gif-empty">No GIFs found (or TENOR_API_KEY isn\'t configured).</div>';
+                gifResults.innerHTML = '<div class="gif-empty">No GIFs found (or GIPHY_API_KEY isn\'t configured).</div>';
               }
             });
         }, 300);
