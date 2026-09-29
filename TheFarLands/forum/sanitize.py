@@ -39,6 +39,17 @@ _MARKERS = [
 _MENTION_RE = re.compile(r'@(\w+)')
 _TAG_OR_ENTITY_RE = re.compile(r'(<[^>]+>|&[a-zA-Z0-9#]+;)')
 
+# Bare GIF/image link embedding - mail's composer dropped its Tenor/GIPHY
+# search picker (see mail.forms.MessageComposeForm's docstring), so
+# pasting a link is now the only "search for a GIF elsewhere, bring it
+# here" path. Extensions match forum.models.IMAGE_EXTENSIONS minus static
+# formats that wouldn't be a "GIF" (kept to actual image files, not e.g.
+# .mp4 - a video link isn't an <img>).
+_IMAGE_URL_RE = re.compile(
+    r'https?://[^\s<>"]+\.(?:gif|jpe?g|png|webp)(?:\?[^\s<>"]*)?',
+    re.IGNORECASE,
+)
+
 
 def linkify_mentions(html_text):
     """Turn `@username` into a link to that account's profile, but ONLY
@@ -85,6 +96,43 @@ def linkify_mentions(html_text):
     for i in range(0, len(parts), 2):
         parts[i] = _MENTION_RE.sub(repl, parts[i])
     return ''.join(parts)
+
+
+def embed_image_links(html_text):
+    """Turn a bare GIF/image URL sitting in the message text into an
+    inline <img> preview, in place of the URL itself. Same tag/entity-
+    splitting guard as linkify_mentions above, for the same reason -
+    never touches a URL that's already inside a tag's attribute (e.g. one
+    linkify_mentions just wrapped in an <a href>).
+
+    Must run on already-sanitized HTML (see sanitize_post_html above) -
+    by the time this runs, `html_text` only contains <br>/<b>/<u>/<s>/
+    <span>/<a> tags, so a matched URL is always plain escaped text, safe
+    to drop straight into a new tag's attribute.
+    """
+    if not html_text or 'http' not in html_text:
+        return html_text or ''
+
+    def repl(m):
+        url = m.group(0)
+        return (f'<a href="{url}" target="_blank" rel="noopener noreferrer">'
+                f'<img src="{url}" class="message-embed-img" alt="" loading="lazy"></a>')
+
+    parts = _TAG_OR_ENTITY_RE.split(html_text)
+    for i in range(0, len(parts), 2):
+        parts[i] = _IMAGE_URL_RE.sub(repl, parts[i])
+    return ''.join(parts)
+
+
+def has_image_link(raw_text):
+    """Whether `raw_text` contains a bare GIF/image URL that
+    embed_image_links would turn into an inline preview - used for the
+    "[Image]" marker on a conversation's list-row snippet (see mail/
+    templates/mail/index.html), since that snippet runs render_body
+    through |striptags and a link-only message would otherwise show up
+    blank there (the URL text is gone, replaced by an <img> with no
+    text content, same as any other tag |striptags removes)."""
+    return bool(raw_text) and bool(_IMAGE_URL_RE.search(raw_text))
 
 
 def sanitize_post_html(raw_text, apply_markers=True):

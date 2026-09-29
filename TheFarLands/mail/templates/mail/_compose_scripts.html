@@ -1,9 +1,10 @@
 <!-- Wires up mail/_compose.html: char counter, emoji insert (same
      selection-splice trick as forum's marker toolbar - see forum/
-     templates/forum/_composer_scripts.html), GIF search (debounced fetch
-     to mail_gif_search), and attachment preview (same pattern as forum's,
-     adapted to mail's ids). Only ever included once per page, since only
-     one Social thread can be open at a time. -->
+     templates/forum/_composer_scripts.html), and attachment preview (same
+     pattern as forum's, adapted to mail's ids). No GIF search here - GIFs
+     go through the [ ATTACH ] field or a pasted link (see forum.sanitize.
+     embed_image_links). Only ever included once per page, since only one
+     Social thread can be open at a time. -->
 <script>
   (function () {
     var MAX_LEN = 800;
@@ -48,71 +49,20 @@
       return match ? decodeURIComponent(match.pop()) : '';
     }
 
-    // Emoji picker - reuses the shared dropdown-panel open/close pattern.
+    // Emoji picker - dropdown-panel open/close pattern.
     var emojiToggle = document.getElementById('mail-emoji-toggle');
     var emojiPanel = document.getElementById('mail-emoji-panel');
-    var gifToggle = document.getElementById('mail-gif-toggle');
-    var gifPanel = document.getElementById('mail-gif-panel');
 
-    function togglePanel(panel, trigger) {
-      var willOpen = !panel.classList.contains('open');
-      [emojiPanel, gifPanel].forEach(function (p) { if (p) p.classList.remove('open'); });
-      if (willOpen) panel.classList.add('open');
-    }
     if (emojiToggle && emojiPanel) {
-      emojiToggle.addEventListener('click', function (e) { e.stopPropagation(); togglePanel(emojiPanel); });
+      emojiToggle.addEventListener('click', function (e) { e.stopPropagation(); emojiPanel.classList.toggle('open'); });
       emojiPanel.querySelectorAll('.emoji-pick').forEach(function (btn) {
         btn.addEventListener('click', function () { insertAtCursor(btn.textContent); });
       });
-    }
-    if (gifToggle && gifPanel) {
-      gifToggle.addEventListener('click', function (e) { e.stopPropagation(); togglePanel(gifPanel); });
+      emojiPanel.addEventListener('click', function (e) { e.stopPropagation(); });
     }
     document.addEventListener('click', function () {
-      [emojiPanel, gifPanel].forEach(function (p) { if (p) p.classList.remove('open'); });
+      if (emojiPanel) emojiPanel.classList.remove('open');
     });
-    if (emojiPanel) emojiPanel.addEventListener('click', function (e) { e.stopPropagation(); });
-    if (gifPanel) gifPanel.addEventListener('click', function (e) { e.stopPropagation(); });
-
-    // GIF search - server-side GIPHY proxy (see mail.views.mail_gif_search),
-    // debounced so every keystroke doesn't fire a request.
-    var gifSearchInput = document.getElementById('mail-gif-search');
-    var gifResults = document.getElementById('mail-gif-results');
-    var gifUrlField = document.querySelector('input[name="gif_url"]');
-    var searchTimer = null;
-    if (gifSearchInput && gifResults) {
-      gifSearchInput.addEventListener('input', function () {
-        clearTimeout(searchTimer);
-        var q = gifSearchInput.value.trim();
-        if (!q) { gifResults.innerHTML = ''; return; }
-        searchTimer = setTimeout(function () {
-          fetch("{% url 'mail_gif_search' %}?q=" + encodeURIComponent(q))
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-              gifResults.innerHTML = '';
-              (data.results || []).forEach(function (gif) {
-                var img = document.createElement('img');
-                img.src = gif.preview_url;
-                img.className = 'gif-result-thumb';
-                img.addEventListener('click', function () {
-                  if (gifUrlField) gifUrlField.value = gif.url;
-                  gifResults.innerHTML = '<div class="gif-selected-note">GIF attached - <button type="button" id="mail-gif-clear">remove</button></div>';
-                  gifPanel.classList.remove('open');
-                  var clearBtn = document.getElementById('mail-gif-clear');
-                  if (clearBtn) clearBtn.addEventListener('click', function () {
-                    if (gifUrlField) gifUrlField.value = '';
-                    gifResults.innerHTML = '';
-                  });
-                });
-                gifResults.appendChild(img);
-              });
-              if (!(data.results || []).length) {
-                gifResults.innerHTML = '<div class="gif-empty">No GIFs found (or GIPHY_API_KEY isn\'t configured).</div>';
-              }
-            });
-        }, 300);
-      });
-    }
 
     // Attachment preview - same object-URL pattern as forum's composer.
     var mediaInput = document.querySelector('input[name="media"]');

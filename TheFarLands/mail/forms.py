@@ -50,9 +50,14 @@ def _is_blocked_pair(user_a, user_b):
 
 
 class MessageComposeForm(forms.ModelForm):
+    """No GIF-search field here on purpose - see Message.gif_url's
+    docstring. A GIF is just an attachment (`media`, .gif is in
+    forum.models.MEDIA_EXTENSIONS) or a plain link pasted into `body`
+    (auto-embedded at render time - see forum.sanitize.embed_image_links),
+    not a separate field this form needs to know about."""
     class Meta:
         model = Message
-        fields = ['body', 'media', 'gif_url']
+        fields = ['body', 'media']
         widgets = {
             'body': forms.Textarea(attrs={
                 'class': 'mail-compose-body',
@@ -64,7 +69,6 @@ class MessageComposeForm(forms.ModelForm):
             # `media` field - sending several images means several
             # messages, not a multi-file picker.
             'media': forms.ClearableFileInput(attrs={'accept': 'image/*,video/*'}),
-            'gif_url': forms.HiddenInput(),
         }
 
     def clean_body(self):
@@ -81,8 +85,8 @@ class MessageComposeForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        if not any(cleaned.get(f) for f in ('body', 'media', 'gif_url')):
-            raise forms.ValidationError('A message needs at least some text, an image/video, or a GIF.')
+        if not any(cleaned.get(f) for f in ('body', 'media')):
+            raise forms.ValidationError('A message needs at least some text or an image/video.')
         return cleaned
 
 

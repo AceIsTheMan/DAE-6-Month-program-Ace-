@@ -150,10 +150,10 @@
     line-height: 1;
     cursor: pointer;
     /* Fixed height + internal centering - without this, the emoji glyph
-       and "[GIF]"/"[ ATTACH ]" text render at different natural heights
-       (one's a <button>, one's a <label>, and glyph metrics vary), so
-       the three controls end up visibly different sizes even though
-       .compose-tools centers them on the same line. */
+       and "[ ATTACH ]" text render at different natural heights (one's a
+       <button>, one's a <label>, and glyph metrics vary), so the two
+       controls end up visibly different sizes even though .compose-tools
+       centers them on the same line. */
     height: 2rem;
     display: inline-flex;
     align-items: center;
@@ -163,8 +163,8 @@
     /* The Attach control is a <label> (so clicking it opens the file
        picker) and base.html's global `label { margin-top: 1rem;
        margin-bottom: 0.3rem; }` rule (meant for real form field labels)
-       otherwise leaks into it, pushing it out of line with the emoji/GIF
-       <button>s despite all three computing to the same height. */
+       otherwise leaks into it, pushing it out of line with the emoji
+       <button> despite both computing to the same height. */
     margin: 0;
     text-transform: none;
     letter-spacing: normal;
@@ -172,14 +172,10 @@
   .compose-tool-btn:hover { border-color: var(--red-bright); color: var(--red-bright); }
   .compose-attach-label { position: relative; overflow: hidden; }
   .compose-attach-label input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-  #mail-emoji-panel, #mail-gif-panel { top: auto; bottom: 100%; right: auto; left: 0; margin-bottom: 0.4rem; margin-top: 0; padding: 0.6rem; }
+  #mail-emoji-panel { top: auto; bottom: 100%; right: auto; left: 0; margin-bottom: 0.4rem; margin-top: 0; padding: 0.6rem; }
   .emoji-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.3rem; }
   .emoji-pick { background: none; border: 1px solid transparent; font-size: 1.2rem; cursor: pointer; padding: 0.2rem; }
   .emoji-pick:hover { border-color: var(--red-dim); background: rgba(204,0,0,0.1); }
-  .gif-search-input { width: 100%; margin-bottom: 0.4rem; }
-  .gif-results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.3rem; max-height: 180px; overflow-y: auto; }
-  .gif-result-thumb { width: 100%; cursor: pointer; border: 1px solid var(--red-dim); }
-  .gif-empty, .gif-selected-note { grid-column: 1 / -1; color: var(--dim-white); font-size: 0.72rem; }
   .attachment-preview { margin-top: 0.5rem; border: 1px dashed var(--red-dim); padding: 0.5rem; }
   .attachment-preview img, .attachment-preview video { max-width: 100%; max-height: 240px; display: block; border: 1px solid var(--red-dim); }
 
@@ -706,7 +702,7 @@
                 {% if message.conversation.is_admin_only %} &#128274;{% endif %}
               </span>
               <span class="thread-snippet">
-                {% if message.forwarded_from_id %}[Forwarded by {{ message.sender.username }}] {% endif %}{% if message.shared_post_id %}[Shared post] {% endif %}{% if message.shared_comment_id %}[Shared comment] {% endif %}{% if message.gif_url %}[GIF] {% endif %}{% if message.media %}[Attachment] {% endif %}{% if message|admin_only_media_blocked:user %}[ CONFIDENTIAL ]{% else %}{{ message|render_body:user|striptags|truncatechars:100 }}{% endif %}
+                {% if message.forwarded_from_id %}[Forwarded by {{ message.sender.username }}] {% endif %}{% if message.shared_post_id %}[Shared post] {% endif %}{% if message.shared_comment_id %}[Shared comment] {% endif %}{% if message.gif_url %}[GIF] {% endif %}{% if message.media %}[Attachment] {% endif %}{% if message.body|has_image_link %}[Image] {% endif %}{% if message|admin_only_media_blocked:user %}[ CONFIDENTIAL ]{% else %}{{ message|render_body:user|striptags|truncatechars:100 }}{% endif %}
               </span>
             </div>
             <span class="thread-date">{{ message.created_at|date:"m/d/Y g:i A" }}</span>
@@ -747,7 +743,7 @@
     }
 
     // Categories search panel (Inbox only) - plain collapse/expand, same
-    // toggle-one-panel idea as the emoji/GIF panels in mail/_compose_
+    // toggle-open-close idea as the emoji panel in mail/_compose_
     // scripts.html, just scoped to this one page-level panel.
     document.addEventListener('click', function (e) {
       var toggle = e.target.closest('.categories-toggle');

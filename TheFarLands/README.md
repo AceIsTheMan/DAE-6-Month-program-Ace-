@@ -22,17 +22,15 @@ If you already had this project set up before and just pulled new changes,
 re-run `python3 manage.py migrate` — new passes sometimes add fields to the
 user model, and each one needs a migration applied to your local database.
 
-Optional: the Mail app's Social composer can search real GIFs via GIPHY
-(was Tenor, but Google discontinued the Tenor API on 2026-06-30 - see
-`tfl_site/settings.py`). Without a key it just shows "no GIFs found" and
-everything else still works fine, including plain `.gif` file uploads via
-the same composer's regular attachment field. Get a free key at
-https://developers.giphy.com/, then:
-
-```
-export GIPHY_API_KEY=your-key-here
-python3 manage.py runserver
-```
+Sending a GIF in the Mail app's Social composer doesn't need any API key
+or setup: attach a `.gif` file with `[ ATTACH ]` like any other image, or
+paste a GIF/image link (from Tenor's site, Giphy, wherever) straight into
+the message text — it auto-embeds as an inline preview when the message
+renders (see `forum/sanitize.py::embed_image_links`). There used to be an
+in-app GIF search button backed by Tenor's API, then GIPHY's, but Google
+discontinued the Tenor API on 2026-06-30 and the picker was dropped
+rather than chase a second dead provider — no third-party GIF service is
+wired in anymore.
 
 ## Pages / routes
 
@@ -96,6 +94,10 @@ been built.
 
 ## Recent updates (most recent first)
 
+- Dropped the Tenor/GIPHY GIF-search picker from Mail's Social composer
+  (Google discontinued the Tenor API on 2026-06-30). GIFs now go through
+  the existing attachment field or a plain link pasted into the message
+  text, auto-embedded as an inline preview.
 - Dashboard settings tab: Admin/Director-only moderator tools behind
   `/settings/?tab=dashboard` (and Director-only Chat Logs/Admin Logs/All
   Users tabs) — account search, expired-guest archive, soft-delete
@@ -142,8 +144,6 @@ python3 manage.py shell               # Django shell for one-off DB queries
   and `DEBUG = True`. Fine for local dev, but never ship this file as-is
   to anything public-facing. `ALLOWED_HOSTS` is locked to
   `127.0.0.1`/`localhost` on purpose.
-- **`GIPHY_API_KEY`** — read from an environment variable, not hardcoded.
-  Don't paste a real key directly into `settings.py` or commit one.
 - **`media/`** — real user-uploaded profile pictures. Don't bulk-delete;
   broken references show up as missing images on live profiles.
 - **Moderation / Report / ban code (`mail/models.py`,

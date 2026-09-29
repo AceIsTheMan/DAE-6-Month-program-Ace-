@@ -1,7 +1,5 @@
 from datetime import timedelta
 
-import requests
-from django.conf import settings
 from django.contrib import messages as flash
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied
@@ -1207,42 +1205,6 @@ def mail_comment_share(request, comment_id):
     return render(request, 'mail/_recipient_picker.html', {
         'form': form, 'share_comment_id': comment.id, 'picker_title': 'Share this comment',
     })
-
-
-@login_required
-def mail_gif_search(request):
-    """Server-side GIPHY proxy - the API key never reaches the browser,
-    and only a trimmed result list is forwarded, never GIPHY's raw
-    response. (Was Tenor until Google discontinued the Tenor API on
-    2026-06-30 - GIPHY is the replacement, same contract.) Returns an
-    empty result list (not an error) if no key is configured or the
-    request fails, so the compose box degrades gracefully instead of
-    breaking."""
-    _require_mail_access(request.user)
-    query = request.GET.get('q', '').strip()
-    api_key = getattr(settings, 'GIPHY_API_KEY', '')
-    if not query or not api_key:
-        return JsonResponse({'results': []})
-    try:
-        response = requests.get(
-            'https://api.giphy.com/v1/gifs/search',
-            params={'q': query, 'api_key': api_key, 'limit': 20},
-            timeout=3,
-        )
-        response.raise_for_status()
-        data = response.json()
-    except (requests.RequestException, ValueError):
-        return JsonResponse({'results': []})
-
-    results = []
-    for item in data.get('data', []):
-        images = item.get('images', {})
-        gif = images.get('downsized') or images.get('original')
-        if not gif or not gif.get('url'):
-            continue
-        preview = images.get('fixed_width_small') or images.get('preview_gif') or gif
-        results.append({'id': item.get('id'), 'url': gif.get('url'), 'preview_url': preview.get('url')})
-    return JsonResponse({'results': results})
 
 
 @login_required

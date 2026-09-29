@@ -8,6 +8,8 @@ from django.db.models import Count, Q
 from django.http import Http404, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
@@ -23,6 +25,70 @@ CHAT_LOG_MODELS = {
     'comment': (Comment, 'author'),
     'message': (Message, 'sender'),
 }
+
+# Chat Logs search (settings_view's 'logs' tab) - a wide-open search across
+# the whole site's history could return an unbounded number of rows, so
+# results are capped and the template is told the real total separately
+# (see _chat_log_matches) rather than silently truncating with no signal.
+CHAT_LOG_SEARCH_LIMIT = 200
+
+
+def _parse_local_datetime(raw):
+    """Parse a `<input type="datetime-local">` value ("YYYY-MM-DDTHH:MM")
+    into an aware datetime in the project's TIME_ZONE - the Chat Logs
+    date/time filters compare this against `created_at`, which Django
+    always stores/queries in UTC once USE_TZ is on (see tfl_site/
+    settings.py). Returns None for a blank or unparseable value instead
+    of raising, so a malformed query string just drops that one filter
+    rather than 500ing the whole search."""
+    if not raw:
+        return None
+    parsed = parse_datetime(raw)
+    if parsed is None:
+        return None
+    if timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed)
+    return parsed
+
+
+def _chat_log_matches(deleted_only, q='', log_user='', date_from=None, date_to=None):
+    """Every Post/Comment/Message matching the Chat Logs tab's filters -
+    just the soft-deleted queue (deleted_only=True, the tab's default
+    view, unchanged from before search existed) or, once a Director
+    actually searches, every message regardless of is_deleted (so
+    "who said what, and when" can be answered for live conversations
+    too, not just ones that got deleted). Newest first, capped at
+    CHAT_LOG_SEARCH_LIMIT. Returns (entries, total_count) - total_count
+    is the real match count before the cap, so the template can say
+    "showing 200 of 1,240 matches" instead of quietly cutting results."""
+    entries = []
+    total_count = 0
+    for kind, (model, author_field) in CHAT_LOG_MODELS.items():
+        qs = model.objects.select_related(author_field, 'deleted_by')
+        if deleted_only:
+            qs = qs.filter(is_deleted=True)
+        if q:
+            qs = qs.filter(body__icontains=q)
+        if log_user:
+            qs = qs.filter(**{f'{author_field}__username__icontains': log_user})
+        if date_from:
+            qs = qs.filter(created_at__gte=date_from)
+        if date_to:
+            qs = qs.filter(created_at__lte=date_to)
+        total_count += qs.count()
+        for obj in qs.order_by('-created_at')[:CHAT_LOG_SEARCH_LIMIT]:
+            entries.append({
+                'kind': kind,
+                'id': obj.pk,
+                'author': getattr(obj, author_field),
+                'body': obj.body,
+                'created_at': obj.created_at,
+                'is_deleted': obj.is_deleted,
+                'deleted_at': obj.deleted_at,
+                'deleted_by': obj.deleted_by,
+            })
+    entries.sort(key=lambda e: e['created_at'], reverse=True)
+    return entries[:CHAT_LOG_SEARCH_LIMIT], total_count
 
 
 def _annotate_moderation_counts(queryset):
@@ -356,8 +422,11 @@ def settings_view(request):
     point into moderator tools, including a by-username account search
     with warn/mute/ban counts and the expired-guest archive - see
     accounts.models.GuestArchive), and three Director-only tabs: Chat Logs
-    (soft-deleted Post/Comment/Message, Re-Send/Purge), Admin Logs (an
-    audit trail of what Admin-role accounts have done - see
+    (the soft-deleted Post/Comment/Message queue, Re-Send/Purge, by
+    default - or, once a keyword/username/date filter is used, a search
+    across ALL Post/Comment/Message content, deleted or not - see
+    _chat_log_matches), Admin Logs (an audit trail of what Admin-role
+    accounts have done - see
     _admin_activity_entries), and All Users (every account on the site
     with its full account info). Every gated tab is checked server-side,
     not just hidden by the tab UI - same convention as every other
@@ -387,19 +456,27 @@ def settings_view(request):
     elif active_tab == 'users':
         context['all_users'] = _annotate_moderation_counts(CustomUser.objects.all()).order_by('-date_joined')
     elif active_tab == 'logs':
-        entries = []
-        for kind, (model, author_field) in CHAT_LOG_MODELS.items():
-            qs = model.objects.filter(is_deleted=True).select_related(author_field, 'deleted_by')
-            for obj in qs:
-                entries.append({
-                    'kind': kind,
-                    'id': obj.pk,
-                    'author': getattr(obj, author_field),
-                    'body': obj.body,
-                    'deleted_at': obj.deleted_at,
-                    'deleted_by': obj.deleted_by,
-                })
-        entries.sort(key=lambda e: e['deleted_at'], reverse=True)
+        query = request.GET.get('q', '').strip()
+        log_user = request.GET.get('log_user', '').strip()
+        raw_date_from = request.GET.get('date_from', '')
+        raw_date_to = request.GET.get('date_to', '')
+        date_from = _parse_local_datetime(raw_date_from)
+        date_to = _parse_local_datetime(raw_date_to)
+        searching = bool(query or log_user or date_from or date_to)
+        context.update({
+            'log_search_query': query,
+            'log_search_user': log_user,
+            'log_search_date_from': raw_date_from,
+            'log_search_date_to': raw_date_to,
+            'log_searching': searching,
+        })
+        if searching:
+            entries, total_count = _chat_log_matches(
+                deleted_only=False, q=query, log_user=log_user, date_from=date_from, date_to=date_to,
+            )
+            context['log_search_total'] = total_count
+        else:
+            entries, _total = _chat_log_matches(deleted_only=True)
         context['log_entries'] = entries
     elif active_tab == 'admin_logs':
         context['admin_log_entries'] = _admin_activity_entries()

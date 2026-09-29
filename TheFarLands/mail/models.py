@@ -149,8 +149,12 @@ class Message(models.Model):
         validators=[FileExtensionValidator(allowed_extensions=MEDIA_EXTENSIONS)],
     )
 
-    # A GIF picked from the GIPHY search (see mail.views.mail_gif_search)
-    # - only the stable CDN URL is ever stored, never the binary.
+    # No longer set by MessageComposeForm - there was a Tenor/GIPHY
+    # search picker that wrote a CDN URL here, but it's gone (see
+    # mail.forms.MessageComposeForm's docstring; GIFs go through `media`
+    # or a pasted link now, see forum.sanitize.embed_image_links). Kept
+    # as a real field/column rather than dropped, since index.html still
+    # renders it if it's ever set some other way (e.g. the admin).
     gif_url = models.URLField(blank=True)
 
     # Set when this message is a forum post shared into Mail (see

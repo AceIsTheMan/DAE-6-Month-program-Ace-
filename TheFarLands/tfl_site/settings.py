@@ -144,16 +144,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'The Far Lands <noreply@thefarlands.local>'
 
-# GIF search (mail app's Social composer - see mail.views.mail_gif_search).
-# Was Tenor, but Google discontinued the Tenor API on 2026-06-30 (no new
-# keys since 2026-01-13, existing keys stopped working entirely on the
-# shutdown date), so this now talks to GIPHY instead - same idea, still
-# a live service. Read from the environment rather than committed here or
-# via a .env file/extra dependency - this is the project's only
-# third-party API secret so far, so a single `export GIPHY_API_KEY=...`
-# before `runserver` is enough; revisit django-environ/python-decouple if
-# a second secret shows up. Get a free key at https://developers.giphy.com/.
-GIPHY_API_KEY = os.environ.get('GIPHY_API_KEY', '')
+# No third-party GIF search API key needed - the mail app's Social
+# composer had a Tenor picker, then a GIPHY picker after Google
+# discontinued the Tenor API on 2026-06-30, and now has neither: a GIF is
+# just a `media` attachment (see mail.forms.MessageComposeForm) or a
+# plain link pasted into the message text, auto-embedded at render time
+# (see forum.sanitize.embed_image_links). No external API, no key to
+# manage, nothing to break if a provider shuts down again.
 
 # Master switch for the email-verification-before-login feature (see
 # accounts.forms.RegisterForm.save / EmailVerifiedLoginForm and

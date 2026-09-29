@@ -35,7 +35,6 @@ urlpatterns = [
     path('recipients/search/', views.mail_recipient_search, name='mail_recipient_search'),
     path('share/post/<int:post_id>/', views.mail_forum_share, name='mail_forum_share'),
     path('share/comment/<int:comment_id>/', views.mail_comment_share, name='mail_comment_share'),
-    path('gif-search/', views.mail_gif_search, name='mail_gif_search'),
     path('relationship/<str:username>/friend/', views.mail_relationship_friend, name='mail_relationship_friend'),
     path(
         'friend-request/<int:request_id>/respond/',

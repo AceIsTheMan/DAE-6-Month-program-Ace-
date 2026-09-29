@@ -23,9 +23,22 @@
   .log-entry { border: 1px solid var(--red-dim); padding: 0.7rem 1rem; margin-bottom: 0.7rem; }
   .log-entry-meta { font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase; color: var(--dim-white); margin-bottom: 0.3rem; }
   .log-entry-kind { color: var(--red-bright); }
+  .log-entry-status { color: var(--red-bright); }
   .log-entry-body { font-size: 0.85rem; color: var(--silver); white-space: pre-wrap; margin-bottom: 0.5rem; }
   .log-entry-actions { display: flex; gap: 0.5rem; }
   .log-entry-actions form { display: inline; }
+  .log-search-form { display: flex; flex-wrap: wrap; gap: 0.7rem; align-items: end; margin-bottom: 1.2rem; }
+  .log-search-field { display: flex; flex-direction: column; gap: 0.25rem; }
+  .log-search-field label { font-size: 0.68rem; letter-spacing: 1px; text-transform: uppercase; color: var(--dim-white); }
+  .log-search-field input[type="text"], .log-search-field input[type="datetime-local"] {
+    background: transparent;
+    border: 1px solid var(--red-dim);
+    color: var(--silver);
+    font-family: 'Share Tech Mono', monospace;
+    padding: 0.4rem 0.6rem;
+  }
+  .log-search-actions { display: flex; gap: 0.5rem; }
+  .log-search-meta { font-size: 0.72rem; color: var(--dim-white); margin-bottom: 0.8rem; }
   .user-search { margin-bottom: 1.2rem; display: flex; gap: 0.5rem; }
   .user-search input[type="text"] {
     flex: 1;
@@ -210,16 +223,49 @@
 </div>
 {% elif active_tab == 'logs' %}
 <div class="card">
+  <form method="get" action="{% url 'settings_page' %}" class="log-search-form">
+    <input type="hidden" name="tab" value="logs">
+    <div class="log-search-field">
+      <label for="log-search-q">Keyword</label>
+      <input type="text" id="log-search-q" name="q" placeholder="Search message text..." value="{{ log_search_query }}">
+    </div>
+    <div class="log-search-field">
+      <label for="log-search-user">Username</label>
+      <input type="text" id="log-search-user" name="log_user" placeholder="Who said it..." value="{{ log_search_user }}">
+    </div>
+    <div class="log-search-field">
+      <label for="log-search-from">From</label>
+      <input type="datetime-local" id="log-search-from" name="date_from" value="{{ log_search_date_from }}">
+    </div>
+    <div class="log-search-field">
+      <label for="log-search-to">To</label>
+      <input type="datetime-local" id="log-search-to" name="date_to" value="{{ log_search_date_to }}">
+    </div>
+    <div class="log-search-actions">
+      <button type="submit" class="donate-btn" style="font-size: 0.85rem;">[ SEARCH ]</button>
+      {% if log_searching %}<a href="{% url 'settings_page' %}?tab=logs" class="donate-btn" style="font-size: 0.85rem;">[ CLEAR ]</a>{% endif %}
+    </div>
+  </form>
+
+  {% if log_searching %}
+  <div class="log-search-meta">
+    Searching all Posts/Comments/Messages, deleted or not.
+    {% if log_search_total > log_entries|length %}Showing the {{ log_entries|length }} most recent of {{ log_search_total }} matches - narrow your search to see the rest.{% else %}{{ log_search_total }} match{{ log_search_total|pluralize }}.{% endif %}
+  </div>
+  {% endif %}
+
   {% if not log_entries %}
-  <p>No deleted posts, comments, or messages on record.</p>
+  <p>{% if log_searching %}No matches for that search.{% else %}No deleted posts, comments, or messages on record.{% endif %}</p>
   {% endif %}
   {% for entry in log_entries %}
   <div class="log-entry">
     <div class="log-entry-meta">
       <span class="log-entry-kind">{{ entry.kind|upper }}</span>
-      by {{ entry.author }} &middot; deleted {{ entry.deleted_at }} by {{ entry.deleted_by|default:"—" }}
+      by {{ entry.author }} &middot; {{ entry.created_at }}
+      {% if entry.is_deleted %}&middot; <span class="log-entry-status">deleted</span> {{ entry.deleted_at }} by {{ entry.deleted_by|default:"—" }}{% endif %}
     </div>
     <div class="log-entry-body">{{ entry.body|default:"(no text content)" }}</div>
+    {% if entry.is_deleted %}
     <div class="log-entry-actions">
       <form method="post" action="{% url 'chat_log_resend' entry.kind entry.id %}">
         {% csrf_token %}
@@ -230,6 +276,7 @@
         <button type="submit" class="donate-btn" style="font-size: 0.75rem;">[ PURGE ]</button>
       </form>
     </div>
+    {% endif %}
   </div>
   {% endfor %}
 </div>

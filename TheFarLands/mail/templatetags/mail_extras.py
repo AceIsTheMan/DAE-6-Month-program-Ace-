@@ -3,7 +3,7 @@ import re
 from django import template
 from django.utils.safestring import mark_safe
 
-from forum.sanitize import linkify_mentions
+from forum.sanitize import embed_image_links, has_image_link, linkify_mentions
 
 register = template.Library()
 
@@ -26,15 +26,21 @@ def _redact_html(html_text):
 @register.filter
 def render_body(message, viewer):
     """The message body actually safe to render for `viewer` - real
-    content (with @mentions linkified) if this isn't confidential Director
-    <->Admin mail or `viewer` is authorized to see it (see
-    accounts.models.CustomUser.is_moderator), a word-shaped blackout
-    otherwise. Redaction happens BEFORE any linkifying could apply, not
-    after, so there's no risk of a mention link's own <a> markup getting
-    chewed up by the blackout substitution."""
+    content (with @mentions linkified and any bare GIF/image link turned
+    into an inline preview - see forum.sanitize.embed_image_links) if
+    this isn't confidential Director<->Admin mail or `viewer` is
+    authorized to see it (see accounts.models.CustomUser.is_moderator), a
+    word-shaped blackout otherwise. Redaction happens BEFORE any
+    linkifying/embedding could apply, not after, so there's no risk of a
+    mention link's or embed's own markup getting chewed up by the
+    blackout substitution - and a redacted message never leaks an image
+    preview either."""
     if message.is_admin_only and not (viewer.is_authenticated and viewer.is_moderator):
         return mark_safe(_redact_html(message.body))
-    return mark_safe(linkify_mentions(message.body))
+    return mark_safe(embed_image_links(linkify_mentions(message.body)))
+
+
+register.filter('has_image_link', has_image_link)
 
 
 @register.filter
