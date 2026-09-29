@@ -106,7 +106,8 @@ convention (see forum/templates/forum/index.html:154-155's comment on
     &#9993;{% if unread_mail_count %}<span class="nav-icon-badge">{% if unread_mail_count > 10 %}!{% else %}{{ unread_mail_count }}{% endif %}</span>{% endif %}
   </button>
   <div class="dropdown-panel" id="mail-nav-dropdown">
-    <a href="{% url 'mail_inbox' %}" class="dropdown-item">&#9993; Mail</a>
+    {# ?cutscene=1 marks this as the one entry point the boot-up terminal splash is allowed to play from - see mail/templates/mail/index.html's script. Every other way into Mail (sidebar tabs, search, pagination, a bookmark) omits it and never plays the splash. #}
+    <a href="{% url 'mail_inbox' %}?cutscene=1" class="dropdown-item">&#9993; Mail</a>
     <a href="{% url 'mail_directives' %}" class="dropdown-item">
       &#9823; Directive
       {% if unread_directive_count %}<span class="dropdown-badge">&#9679;</span>{% endif %}

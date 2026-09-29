@@ -14,7 +14,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from forum.models import Comment, Post
-from mail.models import FriendRequest, Message, ModerationAction, Report, RoleChangeLog, Warning
+from mail.models import FriendRequest, Message, ModerationAction, Report, RoleChangeLog, UserRelationship, Warning
 
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
 from .models import CustomUser, GuestArchive
@@ -417,21 +417,37 @@ def toggle_status(request):
 def settings_view(request):
     """
     Gear/settings nav icon (see _nav_mail_icons.html) - tabs: Settings
-    (still a stub, "does nothing yet" same as the Currency/"Digit" balance
-    in the notification dropdown), Dashboard (Admin/Director-only entry
-    point into moderator tools, including a by-username account search
-    with warn/mute/ban counts and the expired-guest archive - see
-    accounts.models.GuestArchive), and three Director-only tabs: Chat Logs
-    (the soft-deleted Post/Comment/Message queue, Re-Send/Purge, by
-    default - or, once a keyword/username/date filter is used, a search
-    across ALL Post/Comment/Message content, deleted or not - see
-    _chat_log_matches), Admin Logs (an audit trail of what Admin-role
-    accounts have done - see
+    (every account's own personal settings - Profile/Blocked/
+    Notifications/Cutscenes sub-tabs, see below), Dashboard (Admin/
+    Director-only entry point into moderator tools, including a
+    by-username account search with warn/mute/ban counts and the
+    expired-guest archive - see accounts.models.GuestArchive), and three
+    Director-only tabs: Chat Logs (the soft-deleted Post/Comment/Message
+    queue, Re-Send/Purge, by default - or, once a keyword/username/date
+    filter is used, a search across ALL Post/Comment/Message content,
+    deleted or not - see _chat_log_matches), Admin Logs (an audit trail
+    of what Admin-role accounts have done - see
     _admin_activity_entries), and All Users (every account on the site
     with its full account info). Every gated tab is checked server-side,
     not just hidden by the tab UI - same convention as every other
     moderator-only view (see accounts.models.CustomUser.is_moderator/
     is_director).
+
+    The Settings tab itself has its own row of sub-tabs (`sub` query
+    param, defaults to 'profile'):
+      - profile: the same "// EDIT PROFILE" form/crop-tool as /profile/,
+        via the shared _profile_edit_panel.html include - a second entry
+        point to the same account fields, not a second form.
+      - blocked: every account this user has blocked (mail.models.
+        UserRelationship, kind=BLOCK) with an Unblock action - reuses
+        mail.views.mail_relationship_block's existing toggle endpoint via
+        fetch rather than a new one.
+      - notifications: on/off for the unread-mail badge (see mail.
+        context_processors.notification_counts) - CustomUser.
+        notifications_enabled.
+      - cutscenes: Always/10-Minute Cooldown/Never for the Mail tab's
+        boot-up terminal splash - CustomUser.mail_cutscene_mode, read by
+        mail/templates/mail/index.html's own script.
     """
     active_tab = request.GET.get('tab', 'settings')
     if active_tab == 'dashboard' and not request.user.is_moderator:
@@ -440,7 +456,29 @@ def settings_view(request):
         active_tab = 'settings'
 
     context = {'active_tab': active_tab}
-    if active_tab == 'dashboard':
+    if active_tab == 'settings':
+        active_sub_tab = request.GET.get('sub', 'profile')
+        if active_sub_tab not in ('profile', 'blocked', 'notifications', 'cutscenes'):
+            active_sub_tab = 'profile'
+        context['active_sub_tab'] = active_sub_tab
+        context['cutscene_mode_choices'] = CustomUser.CUTSCENE_MODE_CHOICES
+
+        if active_sub_tab == 'profile':
+            if request.method == 'POST':
+                edit_form = ProfileEditForm(request.POST, request.FILES, instance=request.user)
+                if edit_form.is_valid():
+                    edit_form.save()
+                    return redirect(f"{reverse('settings_page')}?tab=settings&sub=profile")
+            else:
+                edit_form = ProfileEditForm(instance=request.user)
+            context['edit_form'] = edit_form
+        elif active_sub_tab == 'blocked':
+            context['blocked_users'] = (
+                UserRelationship.objects.filter(from_user=request.user, kind=UserRelationship.BLOCK)
+                .select_related('to_user')
+                .order_by('to_user__username')
+            )
+    elif active_tab == 'dashboard':
         context.update({
             'total_accounts': CustomUser.objects.count(),
             'guest_accounts': CustomUser.objects.filter(is_guest=True).count(),
@@ -481,6 +519,36 @@ def settings_view(request):
     elif active_tab == 'admin_logs':
         context['admin_log_entries'] = _admin_activity_entries()
     return render(request, 'settings.html', context)
+
+
+@login_required
+def settings_toggle_notifications(request):
+    """Settings tab, Notifications sub-tab - flips CustomUser.
+    notifications_enabled, same plain on/off toggle shape as toggle_status
+    above. See mail.context_processors.notification_counts for what this
+    actually suppresses (the unread badge only, never message delivery
+    or last_read_at tracking)."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    request.user.notifications_enabled = not request.user.notifications_enabled
+    request.user.save(update_fields=['notifications_enabled'])
+    return redirect(f"{reverse('settings_page')}?tab=settings&sub=notifications")
+
+
+@login_required
+def settings_update_cutscene_mode(request):
+    """Settings tab, Cutscenes sub-tab - sets CustomUser.
+    mail_cutscene_mode from the posted radio choice. An unrecognized
+    value is just ignored (stays whatever it was) rather than erroring,
+    same defensive shape as mail.views.mail_report_resolve's status
+    param."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    mode = request.POST.get('mode', '')
+    if mode in dict(CustomUser.CUTSCENE_MODE_CHOICES):
+        request.user.mail_cutscene_mode = mode
+        request.user.save(update_fields=['mail_cutscene_mode'])
+    return redirect(f"{reverse('settings_page')}?tab=settings&sub=cutscenes")
 
 
 @login_required

@@ -44,10 +44,28 @@ def notification_counts(request):
     evaluated in one round trip) instead of a Python loop issuing one
     `.exists()` query per conversation - this ran on every page load, so
     a user in N conversations used to cost N+1 queries just for the nav.
+
+    `mail_cutscene_mode` (Settings tab, Cutscenes sub-tab) also rides
+    along here since it's another per-request, every-page value the Mail
+    tab's boot-up terminal script (mail/templates/mail/index.html) needs
+    - same "one context processor, not threaded through every view"
+    rationale as everything else in this function. If Notifications is
+    turned off (CustomUser.notifications_enabled), the unread counts
+    short-circuit to zero without even running the membership query -
+    there's nothing to show, so there's nothing to compute either.
     """
     user = getattr(request, 'user', None)
     if not user or not user.is_authenticated or user.is_guest:
         return {}
+
+    if not user.notifications_enabled:
+        return {
+            'unread_mail_count': 0,
+            'unread_directive_count': 0,
+            'unread_by_category': {},
+            'currency_balance': user.currency,
+            'mail_cutscene_mode': user.mail_cutscene_mode,
+        }
 
     muted_ids = set(
         UserRelationship.objects.filter(from_user=user, kind=UserRelationship.MUTE).values_list('to_user_id', flat=True)
@@ -75,4 +93,5 @@ def notification_counts(request):
         'unread_directive_count': unread_by_category[Conversation.DIRECTIVE],
         'unread_by_category': unread_by_category,
         'currency_balance': user.currency,
+        'mail_cutscene_mode': user.mail_cutscene_mode,
     }

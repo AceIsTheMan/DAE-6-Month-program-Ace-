@@ -54,6 +54,45 @@
   .user-table th { color: var(--red-bright); text-transform: uppercase; font-size: 0.68rem; letter-spacing: 1px; }
   .user-table tr:hover { background: rgba(204,0,0,0.06); }
   .user-table a { color: var(--silver); }
+
+  /* Settings tab's own sub-nav (Profile/Blocked/Notifications/
+     Cutscenes) - a second, indented row under the main tab strip so it
+     reads as nested rather than a sibling of Dashboard/Chat Logs/etc. */
+  .settings-subtabs { display: flex; gap: 0.4rem; margin: -0.4rem 0 1.2rem; padding-left: 0.2rem; }
+  .settings-subtab {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--dim-white);
+    text-decoration: none;
+    padding: 0.35rem 0.7rem;
+    border: 1px solid transparent;
+    border-bottom: 1px solid var(--red-dim);
+  }
+  .settings-subtab:hover, .settings-subtab.active { color: var(--red-bright); border-color: var(--red-dim); border-bottom-color: var(--red-bright); }
+
+  .settings-profile-preview { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.2rem; padding-bottom: 1.2rem; border-bottom: 1px dashed var(--red-dim); }
+  .settings-profile-photo {
+    width: 64px; height: 64px; flex-shrink: 0;
+    border: 2px solid var(--red-dim);
+    background: #1a0000;
+    overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .settings-profile-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .settings-profile-photo .no-pic { color: var(--red-dim); font-size: 1.6rem; }
+  .settings-profile-name { font-family: 'VT323', monospace; color: var(--red-bright); font-size: 1.6rem; letter-spacing: 1px; text-shadow: 0 0 6px var(--red); }
+  .settings-profile-meta { font-size: 0.72rem; letter-spacing: 1px; color: var(--dim-white); text-transform: uppercase; }
+
+  .blocked-row { display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--red-dim); padding: 0.6rem 0.9rem; margin-bottom: 0.5rem; }
+  .blocked-row .blocked-username { color: var(--silver); text-decoration: none; }
+  .blocked-row .blocked-username:hover { color: var(--red-bright); }
+  .blocked-row .blocked-since { font-size: 0.7rem; color: var(--dim-white); margin-left: 0.6rem; }
+
+  .cutscene-options { display: flex; flex-direction: column; gap: 0.7rem; }
+  .cutscene-option { display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; color: var(--silver); cursor: pointer; }
+  .cutscene-option input { accent-color: var(--red-bright); }
 </style>
 {% endblock %}
 
@@ -298,8 +337,92 @@
   {% endfor %}
 </div>
 {% else %}
-<div class="card">
-  <p>Nothing configurable here yet - the gear icon is a stub for now, same as the Digit balance in the notification dropdown.</p>
+<div class="settings-subtabs">
+  <a href="{% url 'settings_page' %}?tab=settings&sub=profile" class="settings-subtab{% if active_sub_tab == 'profile' %} active{% endif %}">Profile</a>
+  <a href="{% url 'settings_page' %}?tab=settings&sub=blocked" class="settings-subtab{% if active_sub_tab == 'blocked' %} active{% endif %}">Blocked</a>
+  <a href="{% url 'settings_page' %}?tab=settings&sub=notifications" class="settings-subtab{% if active_sub_tab == 'notifications' %} active{% endif %}">Notifications</a>
+  <a href="{% url 'settings_page' %}?tab=settings&sub=cutscenes" class="settings-subtab{% if active_sub_tab == 'cutscenes' %} active{% endif %}">Cutscenes</a>
 </div>
+
+{% if active_sub_tab == 'blocked' %}
+<div class="card">
+  <p class="field-help" style="margin-bottom: 1rem;">Blocked accounts can't message, friend-request, or find you in a Mail search - see the Block action on a profile's 3-dot menu.</p>
+  <div id="blocked-list">
+    {% for rel in blocked_users %}
+    <div class="blocked-row" data-username="{{ rel.to_user.username }}">
+      <span>
+        <a href="{% url 'user_profile' rel.to_user.username %}" class="blocked-username">{{ rel.to_user.username }}</a>
+        <span class="blocked-since">blocked {{ rel.created_at|date:"m/d/Y" }}</span>
+      </span>
+      <button type="button" class="donate-btn js-unblock-btn" data-username="{{ rel.to_user.username }}" style="font-size: 0.72rem;">[ UNBLOCK ]</button>
+    </div>
+    {% empty %}
+    <p>You haven't blocked anyone.</p>
+    {% endfor %}
+  </div>
+</div>
+<script>
+  (function () {
+    function getCookie(name) {
+      var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-unblock-btn');
+      if (!btn) return;
+      var username = btn.getAttribute('data-username');
+      var urlTemplate = "{% url 'mail_relationship_block' '__username__' %}";
+      fetch(urlTemplate.replace('__username__', username), {
+        method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data || data.blocked) return;
+          var row = btn.closest('.blocked-row');
+          if (row) row.remove();
+        });
+    });
+  })();
+</script>
+{% elif active_sub_tab == 'notifications' %}
+<div class="card">
+  <p class="field-help" style="margin-bottom: 1rem;">
+    Controls the unread-mail badge on the envelope nav icon and the Mail sidebar's per-category counts (see
+    mail.context_processors.notification_counts). Messages still arrive and get marked read normally either way -
+    this only decides whether that gets surfaced as a badge.
+  </p>
+  <form method="post" action="{% url 'settings_toggle_notifications' %}">
+    {% csrf_token %}
+    <button type="submit" class="donate-btn" style="font-size: 0.9rem;">
+      {% if user.notifications_enabled %}[ TURN NOTIFICATIONS OFF ]{% else %}[ TURN NOTIFICATIONS ON ]{% endif %}
+    </button>
+  </form>
+</div>
+{% elif active_sub_tab == 'cutscenes' %}
+<div class="card">
+  <p class="field-help" style="margin-bottom: 1rem;">How often the boot-up terminal splash plays when you open the Mail tab.</p>
+  <form method="post" action="{% url 'settings_update_cutscene_mode' %}" class="cutscene-options">
+    {% csrf_token %}
+    {% for value, label in cutscene_mode_choices %}
+    <label class="cutscene-option">
+      <input type="radio" name="mode" value="{{ value }}" {% if user.mail_cutscene_mode == value %}checked{% endif %} onchange="this.form.submit()">
+      {{ label }}
+    </label>
+    {% endfor %}
+  </form>
+</div>
+{% else %}
+<div class="card">
+  <div class="settings-profile-preview">
+    <div class="settings-profile-photo">
+      {% if user.profile_picture %}<img src="{{ user.profile_picture.url }}" alt="">{% else %}<div class="no-pic">?</div>{% endif %}
+    </div>
+    <div>
+      <div class="settings-profile-name">{{ user.username }}</div>
+      <div class="settings-profile-meta">{{ user.rank }} &middot; {{ user.role|upper }}</div>
+    </div>
+  </div>
+  {% include "_profile_edit_panel.html" %}
+</div>
+{% endif %}
 {% endif %}
 {% endblock %}

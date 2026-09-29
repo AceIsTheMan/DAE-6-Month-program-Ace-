@@ -73,6 +73,27 @@ class CustomUser(AbstractUser):
     ]
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_ONLINE)
 
+    # Settings tab, "Notifications" sub-tab - whether the unread-mail
+    # badge (envelope nav icon + Mail sidebar counts, see mail.context_
+    # processors.notification_counts) surfaces at all. Purely a display
+    # toggle: messages still arrive and last_read_at still tracks
+    # normally, this only decides whether that gets surfaced as a badge.
+    notifications_enabled = models.BooleanField(default=True)
+
+    # Settings tab, "Cutscenes" sub-tab - how often the Mail tab's
+    # boot-up terminal splash (mail/templates/mail/index.html) plays.
+    # COOLDOWN is the default so a first-time visitor sees it without
+    # having to opt in, then it backs off on its own.
+    CUTSCENE_ALWAYS = 'always'
+    CUTSCENE_COOLDOWN = 'cooldown'
+    CUTSCENE_NEVER = 'never'
+    CUTSCENE_MODE_CHOICES = [
+        (CUTSCENE_ALWAYS, 'Every time'),
+        (CUTSCENE_COOLDOWN, '10 minute cooldown'),
+        (CUTSCENE_NEVER, 'Never'),
+    ]
+    mail_cutscene_mode = models.CharField(max_length=10, choices=CUTSCENE_MODE_CHOICES, default=CUTSCENE_COOLDOWN)
+
     GUEST_TRIAL_DAYS = 7
 
     @property
