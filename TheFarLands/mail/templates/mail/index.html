@@ -5,6 +5,42 @@
 {% block extra_head %}
 {% include "forum/_composer_style.html" %}
 <style>
+  /* Boot-up terminal splash shown on entering the Mail tab - see the
+     script at the bottom of this template (mail-terminal-boot). Fixed/
+     full-viewport so it covers the already-rendered page underneath
+     without needing any server-side "don't render yet" logic - the real
+     content is there the whole time, this just sits on top of it. */
+  .mail-terminal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .mail-terminal-overlay.mail-terminal-fade { opacity: 0; transition: opacity 0.4s ease; pointer-events: none; }
+  .mail-terminal-overlay.mail-terminal-hidden { display: none; }
+  .mail-terminal-box {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.4rem;
+    letter-spacing: 1px;
+    color: var(--red-bright);
+    text-shadow: 0 0 8px var(--red), 0 0 20px var(--red-dim);
+    white-space: pre-wrap;
+    max-width: 90%;
+    text-align: center;
+  }
+  .mail-terminal-cursor { animation: mail-terminal-blink 1s step-end infinite; }
+  .mail-terminal-accepted {
+    display: block;
+    margin-top: 0.6rem;
+    color: #33ff5b;
+    text-shadow: 0 0 8px #33ff5b, 0 0 20px #0e6621;
+  }
+  @keyframes mail-terminal-blink { 50% { opacity: 0; } }
+
   .mail-layout { display: grid; grid-template-columns: 200px minmax(0,1fr); gap: 1.5rem; align-items: start; }
   .mail-layout.has-members { grid-template-columns: 200px minmax(0,1fr) 220px; }
   @media (max-width: 900px) {
@@ -298,6 +334,76 @@
 {% endblock %}
 
 {% block content %}
+<div id="mail-terminal-boot" class="mail-terminal-overlay">
+  <div class="mail-terminal-box">
+    <span id="mail-terminal-typed"></span><span id="mail-terminal-dots"></span><span class="mail-terminal-cursor">&#9608;</span>
+    <span id="mail-terminal-accepted" class="mail-terminal-accepted" style="display:none;">{accepted!}</span>
+  </div>
+</div>
+<script>
+  // Boot-up terminal splash - plays once, then suppressed for
+  // MAIL_TERMINAL_COOLDOWN_MS so re-clicking between mail sidebar tabs
+  // (a real page load each time, see mail/index.html's docstring-less
+  // full-reload nav) doesn't replay it on every single click.
+  (function () {
+    var overlay = document.getElementById('mail-terminal-boot');
+    if (!overlay) return;
+
+    var MAIL_TERMINAL_COOLDOWN_MS = 10 * 60 * 1000;
+    var STORAGE_KEY = 'mailTerminalLastShown';
+    var lastShown = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
+    if (Date.now() - lastShown < MAIL_TERMINAL_COOLDOWN_MS) {
+      overlay.classList.add('mail-terminal-hidden');
+      return;
+    }
+    localStorage.setItem(STORAGE_KEY, String(Date.now()));
+
+    var typedEl = document.getElementById('mail-terminal-typed');
+    var dotsEl = document.getElementById('mail-terminal-dots');
+    var acceptedEl = document.getElementById('mail-terminal-accepted');
+    var entryText = '>.entry_key (:communicate:) ';
+    var charIndex = 0;
+
+    function typeNextChar() {
+      if (charIndex < entryText.length) {
+        typedEl.textContent += entryText[charIndex];
+        charIndex++;
+        setTimeout(typeNextChar, 35);
+      } else {
+        animateLoadingDots();
+      }
+    }
+
+    function animateLoadingDots() {
+      var frames = ['.', '..', '...'];
+      var frame = 0;
+      var cyclesLeft = 5;
+      var tick = setInterval(function () {
+        dotsEl.textContent = frames[frame % frames.length];
+        frame++;
+        if (frame % frames.length === 0) {
+          cyclesLeft--;
+          if (cyclesLeft <= 0) {
+            clearInterval(tick);
+            dotsEl.textContent = '...';
+            revealAccepted();
+          }
+        }
+      }, 250);
+    }
+
+    function revealAccepted() {
+      acceptedEl.style.display = 'block';
+      setTimeout(function () {
+        overlay.classList.add('mail-terminal-fade');
+        setTimeout(function () { overlay.classList.add('mail-terminal-hidden'); }, 400);
+      }, 700);
+    }
+
+    typeNextChar();
+  })();
+</script>
+
 <div class="section-label">// {% if active_category == 'directives' %}DIRECTIVE{% else %}MAIL{% endif %}</div>
 <div class="section-divider"></div>
 
