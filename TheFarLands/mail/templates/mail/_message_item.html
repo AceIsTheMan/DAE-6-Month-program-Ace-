@@ -1,0 +1,20 @@
+{% load mail_extras %}
+<div class="thread-list-item">
+  {% if message.conversation.category == 'social' %}<a href="{% url 'mail_social_thread' message.conversation_id %}" class="thread-list-link">
+  {% else %}<div class="thread-list-link">
+  {% endif %}
+    <div class="thread-list-main">
+      <span class="thread-sender">
+        {% if active_category == 'sent' %}
+          {% if message.conversation.category == 'social' %}{{ message.conversation|conversation_display_name:user }}{% else %}{{ message.conversation.get_category_display }} conversation{% endif %}
+        {% else %}{{ message|warn_sender_display:user }}{% endif %}
+        {% if message.conversation.is_admin_only %} &#128274;{% endif %}
+      </span>
+      <span class="thread-snippet">
+        {% if message.forwarded_from_id %}[Forwarded by {{ message.sender.username }}] {% endif %}{% if message.shared_post_id %}[Shared post] {% endif %}{% if message.shared_comment_id %}[Shared comment] {% endif %}{% if message.gif_url %}[GIF] {% endif %}{% if message.media %}[Attachment] {% endif %}{% if message.body|has_image_link %}[Image] {% endif %}{% if message|admin_only_media_blocked:user %}[ CONFIDENTIAL ]{% else %}{{ message|render_body:user|striptags|truncatechars:100 }}{% endif %}
+      </span>
+    </div>
+    <span class="thread-date">{{ message.created_at|date:"m/d/Y g:i A" }}</span>
+  {% if message.conversation.category == 'social' %}</a>{% else %}</div>{% endif %}
+  {% include "_dots_menu.html" with target_type="message" target_id=message.id target_username=message.sender.username show_report=message.sender_id|ne:user.id show_forward=True show_save=True show_mark_read=message.sender_id|ne:user.id is_saved=active_category|eq:'saved' show_delete_message=message|can_delete_message:user %}
+</div>

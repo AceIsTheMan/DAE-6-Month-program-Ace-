@@ -92,6 +92,22 @@ def admin_only_media_blocked(message, viewer):
     return bool(message.is_admin_only and not (viewer.is_authenticated and viewer.is_moderator))
 
 
+def _dm_partner_membership(conversation, viewer):
+    """The other participant's membership row in a 1:1 DM, or None.
+
+    Deliberately reads `conversation.memberships.all()` and filters in
+    Python instead of `.exclude(user=viewer)` - calling `.exclude()` on
+    the manager builds a fresh queryset and bypasses the
+    `prefetch_related('memberships__user')` cache the sidebar list views
+    (mail.views.mail_social / mail_social_thread) rely on, which used to
+    mean one extra query per conversation rendered in the sidebar. `.all()`
+    is the one manager call Django's prefetch cache actually serves."""
+    for membership in conversation.memberships.all():
+        if membership.user_id != viewer.id:
+            return membership
+    return None
+
+
 @register.filter
 def conversation_display_name(conversation, viewer):
     """What to show as a Social conversation's name/title.
@@ -103,8 +119,8 @@ def conversation_display_name(conversation, viewer):
     isn't a group of one host + one member."""
     if conversation.is_group:
         return conversation.title or 'Group Chat'
-    other = conversation.memberships.exclude(user=viewer).select_related('user').first()
-    return other.user.username if other else 'Direct Message'
+    membership = _dm_partner_membership(conversation, viewer)
+    return membership.user.username if membership else 'Direct Message'
 
 
 @register.filter
@@ -114,5 +130,5 @@ def dm_partner(conversation, viewer):
     where there's no single "other person" to show."""
     if conversation.is_group:
         return None
-    membership = conversation.memberships.exclude(user=viewer).select_related('user').first()
+    membership = _dm_partner_membership(conversation, viewer)
     return membership.user if membership else None

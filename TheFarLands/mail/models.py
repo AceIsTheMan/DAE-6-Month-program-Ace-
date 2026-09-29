@@ -202,6 +202,17 @@ class Message(models.Model):
         'FriendRequest', on_delete=models.CASCADE, null=True, blank=True, related_name='message'
     )
 
+    # True only for a message composed via the Draft tab (see
+    # mail.views.mail_draft_new) - the one thing mail.views.mail_sent
+    # actually shows. Everything else a user's account can be the sender
+    # of (a reply typed into an existing Social thread, a Forward, a
+    # Share, a friend-request notice, a Directive/Update/Admin Mail send)
+    # is already visible from wherever it landed (Social, Directives,
+    # Updates, ...) - without this flag, Sent was every message the
+    # account had ever sent across every one of those paths combined,
+    # which just kept growing forever with no way to page through it.
+    sent_via_draft = models.BooleanField(default=False)
+
     # Soft delete - see mail.views.mail_message_delete. Never set on a
     # DIRECTIVE-category message (no delete UI is ever rendered for one,
     # same absolute rule as Conversation's docstring). A "deleted"

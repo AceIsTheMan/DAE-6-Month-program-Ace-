@@ -230,6 +230,31 @@ def _get_or_create_dm(user_a, user_b):
 FAN_LETTER_COMPRESS_THRESHOLD = 5
 FAN_LETTER_PAGE_SIZE = 5
 
+#: First-page/page size for a flat mail list (Sent today; see
+#: _LIST_QUERYSET_BUILDERS) - these used to load up to 100 messages in one
+#: shot with no way to see anything older, so an active account (a
+#: moderator issuing lots of Directives, in particular) just grew an
+#: ever-longer single page forever. Same "load more" shape as the Fan
+#: Letters panel above, just a flat list instead of a nested panel.
+LIST_PAGE_SIZE = 25
+
+
+def _sent_queryset(user, request):
+    return (
+        Message.objects.filter(sender=user, sent_via_draft=True, is_deleted=False)
+        .select_related('conversation', 'shared_post')
+        .order_by('-created_at')
+    )
+
+
+#: category -> (queryset_builder, sidebar_active_category). Registering a
+#: new flat tab here (Updates, Directives, ...) is the only step needed to
+#: give it the same "load more" pagination mail_list_page already serves -
+#: no new view required.
+_LIST_QUERYSET_BUILDERS = {
+    'sent': _sent_queryset,
+}
+
 
 def _apply_inbox_search(messages_list, request):
     """The 'Categories' search panel in Inbox - a plain GET-filtered query,
@@ -418,7 +443,9 @@ def mail_draft_new(request):
         return JsonResponse({'blocked': True, 'username': target.username})
 
     conversation = _get_or_create_dm(request.user, target)
-    Message.objects.create(conversation=conversation, sender=request.user, body=form.cleaned_data['body'])
+    Message.objects.create(
+        conversation=conversation, sender=request.user, body=form.cleaned_data['body'], sent_via_draft=True,
+    )
     conversation.last_message_at = timezone.now()
     conversation.save(update_fields=['last_message_at'])
     return JsonResponse({'ok': True, 'conversation_id': conversation.id})
@@ -427,14 +454,32 @@ def mail_draft_new(request):
 @login_required
 def mail_sent(request):
     _require_mail_access(request.user)
-    messages_list = (
-        Message.objects.filter(sender=request.user, is_deleted=False)
-        .select_related('conversation', 'shared_post')
-        .order_by('-created_at')[:100]
-    )
+    page = list(_sent_queryset(request.user, request)[:LIST_PAGE_SIZE])
     return render(request, 'mail/index.html', {
         **_sidebar_context(request.user, 'sent'),
-        'messages_list': messages_list,
+        'messages_list': page,
+        'next_offset': LIST_PAGE_SIZE if len(page) == LIST_PAGE_SIZE else None,
+    })
+
+
+@login_required
+def mail_list_page(request):
+    """Generic 'load more' behind a flat mail list - see
+    _LIST_QUERYSET_BUILDERS/LIST_PAGE_SIZE above. Same offset-based
+    pagination as mail_fan_letters_page, just parameterized by `category`
+    so it can back any registered flat tab instead of needing a dedicated
+    view per tab."""
+    _require_mail_access(request.user)
+    category = request.GET.get('category', '')
+    builder = _LIST_QUERYSET_BUILDERS.get(category)
+    if not builder:
+        raise Http404('Unknown mail list category.')
+    offset = int(request.GET.get('offset', 0) or 0)
+    page = list(builder(request.user, request)[offset:offset + LIST_PAGE_SIZE])
+    return render(request, 'mail/_message_list_page.html', {
+        'messages_list': page,
+        'active_category': category,
+        'next_offset': offset + LIST_PAGE_SIZE if len(page) == LIST_PAGE_SIZE else None,
     })
 
 
@@ -614,7 +659,7 @@ def mail_social_thread(request, conversation_id):
         **_sidebar_context(request.user, 'social'),
         'conversations': Conversation.objects.filter(
             category=Conversation.SOCIAL, participants=request.user
-        ).order_by('-last_message_at'),
+        ).prefetch_related('memberships__user').order_by('-last_message_at'),
         'open_conversation': conversation,
         'thread_messages': conversation.messages.filter(is_deleted=False).select_related(
             'sender', 'shared_post', 'shared_post__author'

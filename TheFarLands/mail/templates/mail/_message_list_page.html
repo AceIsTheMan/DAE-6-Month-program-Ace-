@@ -1,0 +1,6 @@
+{% for message in messages_list %}
+  {% include "mail/_message_item.html" %}
+{% endfor %}
+{% if next_offset %}
+<button type="button" class="js-mail-list-more" data-offset="{{ next_offset }}" data-category="{{ active_category }}">[ LOAD MORE ]</button>
+{% endif %}
