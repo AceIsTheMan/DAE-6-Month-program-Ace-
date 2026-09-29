@@ -1,3 +1,5 @@
+from collections import Counter
+
 from django.db.models import DateTimeField, Exists, OuterRef, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -13,12 +15,22 @@ _NEVER_READ_SENTINEL = timezone.datetime(1970, 1, 1, tzinfo=timezone.UTC)
 
 def notification_counts(request):
     """
-    Injects `unread_mail_count`, `unread_directive_count`, and
-    `currency_balance` into every template's context - this is the one
-    place in the project it's worth introducing a context processor
-    (a first here) rather than threading these through every existing
-    view in accounts and forum, since the nav (accounts/templates/
-    base.html, duplicated in home.html) renders on every page.
+    Injects `unread_mail_count`, `unread_directive_count`,
+    `unread_by_category`, and `currency_balance` into every template's
+    context - this is the one place in the project it's worth
+    introducing a context processor (a first here) rather than
+    threading these through every existing view in accounts and forum,
+    since the nav (accounts/templates/base.html, duplicated in
+    home.html) renders on every page.
+
+    `unread_by_category` breaks the same underlying count down by
+    Conversation.category (e.g. {'social': 2, 'fan_letter': 1}) so the
+    Mail sidebar (mail/templates/mail/_sidebar.html) can badge Social/
+    Updates/Fan Letter individually instead of only surfacing one
+    combined number - Inbox generalizes every category into one feed
+    (see mail.views.mail_inbox), so without a per-category breakdown
+    there was no way to tell where an unread notification actually was
+    without opening Inbox and reading every row.
 
     A conversation counts as unread if it has at least one Message,
     created after this user's last_read_at (or ever, if never read),
@@ -53,16 +65,14 @@ def notification_counts(request):
         .select_related('conversation')
         .annotate(is_unread=Exists(unread_messages))
     )
-    unread_mail_count = 0
-    unread_directive_count = 0
+    unread_by_category = Counter()
     for membership in memberships:
         if membership.is_unread:
-            unread_mail_count += 1
-            if membership.conversation.category == Conversation.DIRECTIVE:
-                unread_directive_count += 1
+            unread_by_category[membership.conversation.category] += 1
 
     return {
-        'unread_mail_count': unread_mail_count,
-        'unread_directive_count': unread_directive_count,
+        'unread_mail_count': sum(unread_by_category.values()),
+        'unread_directive_count': unread_by_category[Conversation.DIRECTIVE],
+        'unread_by_category': unread_by_category,
         'currency_balance': user.currency,
     }
