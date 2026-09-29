@@ -94,6 +94,14 @@ class CustomUser(AbstractUser):
     ]
     mail_cutscene_mode = models.CharField(max_length=10, choices=CUTSCENE_MODE_CHOICES, default=CUTSCENE_COOLDOWN)
 
+    # Settings tab, "Cutscenes" sub-tab - on/off for "C1", the secret
+    # breach cutscene (see accounts/templates/_secret_cutscene.html):
+    # the 1-in-100 roll on switching back to the browser tab, and the
+    # Director-only "!cmd_C1" cheat code. Off means neither ever plays
+    # for this account, full stop - the cheat code doesn't override it,
+    # so a Director who's turned this off doesn't get it either.
+    secret_cutscene_enabled = models.BooleanField(default=True)
+
     GUEST_TRIAL_DAYS = 7
 
     @property

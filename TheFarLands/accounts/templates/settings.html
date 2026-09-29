@@ -410,6 +410,18 @@
     {% endfor %}
   </form>
 </div>
+<div class="card" style="margin-top: 1rem;">
+  <p class="field-help" style="margin-bottom: 1rem;">
+    "C1" - a secret cutscene that can randomly play (a small chance every time you switch back to this browser tab).
+    Turning this off skips it entirely, no matter what.
+  </p>
+  <form method="post" action="{% url 'settings_toggle_secret_cutscene' %}">
+    {% csrf_token %}
+    <button type="submit" class="donate-btn" style="font-size: 0.9rem;">
+      {% if user.secret_cutscene_enabled %}[ TURN C1 OFF ]{% else %}[ TURN C1 ON ]{% endif %}
+    </button>
+  </form>
+</div>
 {% else %}
 <div class="card">
   <div class="settings-profile-preview">

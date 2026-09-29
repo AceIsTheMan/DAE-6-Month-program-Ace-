@@ -446,8 +446,11 @@ def settings_view(request):
         context_processors.notification_counts) - CustomUser.
         notifications_enabled.
       - cutscenes: Always/10-Minute Cooldown/Never for the Mail tab's
-        boot-up terminal splash - CustomUser.mail_cutscene_mode, read by
-        mail/templates/mail/index.html's own script.
+        boot-up terminal splash (CustomUser.mail_cutscene_mode, read by
+        mail/templates/mail/index.html's own script), plus a separate
+        on/off for "C1", the secret breach cutscene (CustomUser.
+        secret_cutscene_enabled - see accounts/templates/
+        _secret_cutscene.html and settings_toggle_secret_cutscene).
     """
     active_tab = request.GET.get('tab', 'settings')
     if active_tab == 'dashboard' and not request.user.is_moderator:
@@ -548,6 +551,20 @@ def settings_update_cutscene_mode(request):
     if mode in dict(CustomUser.CUTSCENE_MODE_CHOICES):
         request.user.mail_cutscene_mode = mode
         request.user.save(update_fields=['mail_cutscene_mode'])
+    return redirect(f"{reverse('settings_page')}?tab=settings&sub=cutscenes")
+
+
+@login_required
+def settings_toggle_secret_cutscene(request):
+    """Settings tab, Cutscenes sub-tab - flips CustomUser.
+    secret_cutscene_enabled, the on/off switch for "C1" (see accounts/
+    templates/_secret_cutscene.html). Off suppresses both ways it can
+    play - the random 1/100 roll and the Director-only "!cmd_C1" cheat
+    code - there's no override."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    request.user.secret_cutscene_enabled = not request.user.secret_cutscene_enabled
+    request.user.save(update_fields=['secret_cutscene_enabled'])
     return redirect(f"{reverse('settings_page')}?tab=settings&sub=cutscenes")
 
 

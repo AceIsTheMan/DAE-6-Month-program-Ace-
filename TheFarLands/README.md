@@ -52,9 +52,18 @@ wired in anymore.
   via the envelope icon in the nav (hidden for guest accounts) - this is
   in-site messaging stored in the database, not real email
 - `/settings/` — gear icon page, tabbed:
-  - **Settings** — still a stub, nothing configurable yet (same "does
-    nothing yet" status as the Currency/"Digit" balance in the
-    notification dropdown)
+  - **Settings** — every account's own personal settings, with its own
+    row of sub-tabs:
+    - **Profile** — the same photo/alias/bio/status form as `/profile/`'s
+      "// EDIT PROFILE" section, reused via a shared include
+      (`accounts/templates/_profile_edit_panel.html`)
+    - **Blocked** — every account you've blocked, with an Unblock button
+    - **Notifications** — on/off for the unread-mail badge (envelope nav
+      icon + Mail sidebar counts) — off doesn't stop mail from arriving,
+      it just stops surfacing that badge
+    - **Cutscenes** — Always/10-Minute Cooldown/Never for the Mail tab's
+      boot-up terminal splash, plus a separate on/off for "C1" (see
+      below)
   - **Dashboard** (Admin/Director only) — account totals, open Report
     count, a by-username search showing warn/mute/ban counts, and the
     expired guest-account archive
@@ -64,6 +73,24 @@ wired in anymore.
   - every gated tab is checked server-side, not just hidden by the tab
     UI (code: `accounts/views.py::settings_view` 👍)
 - `/admin/` — Django admin (run `python3 manage.py createsuperuser` first)
+
+## Cutscenes
+
+Two unrelated retro-terminal splash screens, both purely cosmetic:
+
+- **Mail boot-up terminal** — plays when you click the "Mail" nav icon's
+  "Mail" dropdown item specifically (not from clicking around inside Mail
+  itself). Frequency is a per-account setting under Settings → Cutscenes.
+  (code: `mail/templates/mail/index.html`, `accounts/templates/
+  _nav_mail_icons.html` 👍)
+- **"C1"** — a secret, site-wide easter egg, unrelated to Mail. Plays
+  automatically on a 1-in-100 chance every time you switch back to the
+  browser tab, filling the whole page with a scrolling "breach" of
+  in-universe lore text before clearing. A Director can also trigger it
+  on demand by typing `!cmd_C1` into any text field or textarea
+  anywhere on the site. Toggle it off entirely under Settings →
+  Cutscenes → "C1" — off means neither trigger plays, cheat code
+  included. (code: `accounts/templates/_secret_cutscene.html` 👍)
 
 ## Email verification
 
@@ -94,6 +121,16 @@ been built.
 
 ## Recent updates (most recent first)
 
+- Settings tab built out: Profile/Blocked/Notifications/Cutscenes
+  sub-tabs for every account, plus "C1" — a secret, site-wide easter-egg
+  cutscene (1/100 chance on switching back to the browser tab, or a
+  Director-only `!cmd_C1` cheat code), with its own off toggle. See
+  "Cutscenes" above.
+- Mail tab boot-up terminal splash (plays from the nav's "Mail" link),
+  Mail sidebar unread badges broken down per category, Sent tab scoped
+  to Draft-composed messages only, "Load More" pagination for Sent.
+- Query optimization pass across Mail: fixed an N+1 in the unread-badge
+  notification count and in the Social sidebar's DM-partner lookup.
 - Dropped the Tenor/GIPHY GIF-search picker from Mail's Social composer
   (Google discontinued the Tenor API on 2026-06-30). GIFs now go through
   the existing attachment field or a plain link pasted into the message

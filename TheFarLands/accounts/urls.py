@@ -30,6 +30,7 @@ urlpatterns = [
     path('settings/logs/<str:kind>/<int:obj_id>/purge/', views.chat_log_purge, name='chat_log_purge'),
     path('settings/notifications/toggle/', views.settings_toggle_notifications, name='settings_toggle_notifications'),
     path('settings/cutscenes/update/', views.settings_update_cutscene_mode, name='settings_update_cutscene_mode'),
+    path('settings/cutscenes/c1/toggle/', views.settings_toggle_secret_cutscene, name='settings_toggle_secret_cutscene'),
     path('status/toggle/', views.toggle_status, name='toggle_status'),
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.profile_edit_view, name='profile_edit'),
