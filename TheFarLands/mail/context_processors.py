@@ -1,4 +1,14 @@
-from .models import Conversation, ConversationParticipant, UserRelationship
+from django.db.models import DateTimeField, Exists, OuterRef, Value
+from django.db.models.functions import Coalesce
+from django.utils import timezone
+
+from .models import Conversation, ConversationParticipant, Message, UserRelationship
+
+#: Stand-in for "never read" when building the unread Exists subquery below -
+#: any real Message.created_at will be after this, so Coalescing a null
+#: last_read_at down to this sentinel is equivalent to not filtering by
+#: created_at at all (see notification_counts).
+_NEVER_READ_SENTINEL = timezone.datetime(1970, 1, 1, tzinfo=timezone.UTC)
 
 
 def notification_counts(request):
@@ -18,11 +28,10 @@ def notification_counts(request):
     a thread AND when they send into it (see mail.views), so a
     conversation where this user is the only sender never shows unread.
 
-    This is a Python loop over the user's own conversations (one query
-    per conversation), not a single aggregate query - simplest way to
-    apply the per-sender mute filter per conversation without a gnarlier
-    ORM expression, and fine at this project's scale (a handful of
-    conversations per user).
+    A single annotated query (one Exists subquery per membership, all
+    evaluated in one round trip) instead of a Python loop issuing one
+    `.exists()` query per conversation - this ran on every page load, so
+    a user in N conversations used to cost N+1 queries just for the nav.
     """
     user = getattr(request, 'user', None)
     if not user or not user.is_authenticated or user.is_guest:
@@ -32,19 +41,24 @@ def notification_counts(request):
         UserRelationship.objects.filter(from_user=user, kind=UserRelationship.MUTE).values_list('to_user_id', flat=True)
     )
 
-    memberships = ConversationParticipant.objects.filter(user=user).select_related('conversation')
+    unread_since = Coalesce(OuterRef('last_read_at'), Value(_NEVER_READ_SENTINEL, output_field=DateTimeField()))
+    unread_messages = Message.objects.filter(
+        conversation=OuterRef('conversation_id'), created_at__gt=unread_since
+    ).exclude(sender=user)
+    if muted_ids:
+        unread_messages = unread_messages.exclude(sender_id__in=muted_ids)
+
+    memberships = (
+        ConversationParticipant.objects.filter(user=user)
+        .select_related('conversation')
+        .annotate(is_unread=Exists(unread_messages))
+    )
     unread_mail_count = 0
     unread_directive_count = 0
     for membership in memberships:
-        conversation = membership.conversation
-        unread_messages = conversation.messages.exclude(sender=user)
-        if muted_ids:
-            unread_messages = unread_messages.exclude(sender_id__in=muted_ids)
-        if membership.last_read_at:
-            unread_messages = unread_messages.filter(created_at__gt=membership.last_read_at)
-        if unread_messages.exists():
+        if membership.is_unread:
             unread_mail_count += 1
-            if conversation.category == Conversation.DIRECTIVE:
+            if membership.conversation.category == Conversation.DIRECTIVE:
                 unread_directive_count += 1
 
     return {
