@@ -1,0 +1,157 @@
+<!-- Role-based terminal cutscenes - a growing family, separate from "C1"
+     (_secret_cutscene.html) and the Mail boot-up splash. Each one plays
+     automatically for the real matching account at the real moment (e.g.
+     a brand-new Agent's first login), and can also be previewed on
+     demand by the Director alone via its own cheat code - same split as
+     C1's random-roll vs. "!cmd_C1". Shares its typing/dot-loading engine
+     with C1 (see _cutscene_engine.html, included before this partial).
+
+     Built so far:
+       - agent_create: a brand-new Agent account's first login ever
+         (cheat code "!cmd_CAgent", Director only).
+
+     Gated to signed-in accounts only. -->
+{% if user.is_authenticated %}
+<style>
+  .rc-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10070;
+    background: #000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    opacity: 1;
+  }
+  .rc-overlay.rc-active { display: flex; }
+  .rc-overlay.rc-fade { opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
+  .rc-box {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--red-bright);
+    text-shadow: 0 0 8px var(--red), 0 0 16px var(--red-dim);
+    max-width: 640px;
+    width: 100%;
+  }
+  .rc-box div { margin-bottom: 0.35rem; font-size: 1.1rem; letter-spacing: 1px; }
+  .rc-final {
+    color: #33ff5b;
+    text-shadow: 0 0 8px #33ff5b, 0 0 20px #0e6621;
+  }
+</style>
+<div id="rc-overlay" class="rc-overlay">
+  <div class="rc-box">
+    <div id="rc-lines"></div>
+    <div id="rc-final" class="rc-final" style="display:none;"></div>
+  </div>
+</div>
+<script>
+  (function () {
+    var overlay = document.getElementById('rc-overlay');
+    if (!overlay) return;
+    var linesEl = document.getElementById('rc-lines');
+    var finalEl = document.getElementById('rc-final');
+    var typeAnimatedLine = window.TFL_Cutscene.typeAnimatedLine;
+
+    var playing = false;
+
+    function appendLine(container) {
+      var el = document.createElement('div');
+      container.appendChild(el);
+      return el;
+    }
+
+    function typeSequence(container, lines, done) {
+      var i = 0;
+      (function next() {
+        if (i >= lines.length) { if (done) done(); return; }
+        var el = appendLine(container);
+        typeAnimatedLine(el, lines[i], function () {
+          i++;
+          setTimeout(next, 350);
+        });
+      })();
+    }
+
+    function finish(delayBeforeFade) {
+      setTimeout(function () {
+        overlay.classList.add('rc-fade');
+        setTimeout(function () {
+          overlay.classList.remove('rc-active', 'rc-fade');
+          playing = false;
+        }, 500);
+      }, delayBeforeFade);
+    }
+
+    function resetOverlay() {
+      linesEl.innerHTML = '';
+      finalEl.style.display = 'none';
+      finalEl.textContent = '';
+      overlay.classList.remove('rc-fade');
+      overlay.classList.add('rc-active');
+    }
+
+    // agent_create - a brand-new Agent account's very first login (see
+    // accounts.signals.queue_role_cutscene_on_login). Three red lines,
+    // then everything clears and a green "Welcome" line shows.
+    function playAgentCreate(username) {
+      if (playing) return;
+      playing = true;
+      resetOverlay();
+      var lines = ['>:Reading information ...', '<:Uploading Data ...', '^: Data Uploaded ...'];
+      typeSequence(linesEl, lines, function () {
+        setTimeout(function () {
+          linesEl.innerHTML = '';
+          finalEl.style.display = 'block';
+          typeAnimatedLine(finalEl, '[Welcome Agent ' + username + ']', function () {
+            finish(1200);
+          });
+        }, 500);
+      });
+    }
+
+    var CUTSCENES = { agent_create: playAgentCreate };
+
+    // Real trigger: home_view queues the key in session, popped into
+    // role_cutscene_to_play on the one page load right after login - but
+    // it only plays once the "BE ADVISED" rules gate has actually been
+    // agreed to and dismissed (see home.html), not immediately on load.
+    var pendingKey = '{{ role_cutscene_to_play|default:"" }}';
+    var pendingUsername = '{{ user.username|default:"" }}';
+    if (pendingKey && CUTSCENES[pendingKey]) {
+      var proceedBtn = document.getElementById('rules-proceed');
+      var checkbox = document.getElementById('rules-checkbox');
+      if (proceedBtn) {
+        proceedBtn.addEventListener('click', function () {
+          if (checkbox && !checkbox.checked) return;
+          CUTSCENES[pendingKey](pendingUsername);
+        });
+      } else {
+        // No rules gate on this page (shouldn't normally happen - only
+        // home_view ever sets role_cutscene_to_play) - play anyway rather
+        // than silently losing it.
+        CUTSCENES[pendingKey](pendingUsername);
+      }
+    }
+
+    {% if user.is_director %}
+    // Director-only preview: "!cmd_CAgent" typed into any text field or
+    // textarea anywhere on the site plays agent_create immediately,
+    // using the Director's own username - same broad trigger shape as
+    // C1's "!cmd_C1".
+    var TEXT_INPUT_TYPES = ['text', 'search', 'email', 'url', ''];
+    var directorUsername = '{{ user.username }}';
+    document.addEventListener('input', function (e) {
+      var el = e.target;
+      var isTextField = el.tagName === 'TEXTAREA'
+        || (el.tagName === 'INPUT' && TEXT_INPUT_TYPES.indexOf(el.type) !== -1);
+      if (!isTextField) return;
+      if (el.value === '!cmd_CAgent') {
+        el.value = '';
+        playAgentCreate(directorUsername);
+      }
+    });
+    {% endif %}
+  })();
+</script>
+{% endif %}

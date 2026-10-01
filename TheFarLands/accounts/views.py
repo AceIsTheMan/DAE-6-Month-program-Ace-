@@ -192,9 +192,18 @@ def home_view(request):
     already dismissed it earlier as an anonymous visitor. It's popped (read
     AND removed) here so it only fires on the page load right after login,
     not on every later visit to home in the same session.
+
+    role_cutscene is the same one-shot shape, from the same login event
+    (see accounts.signals.queue_role_cutscene_on_login) - which role-based
+    terminal cutscene (see accounts/templates/_role_cutscenes.html) to
+    auto-play once the rules gate above is dismissed.
     """
     force_rules_gate = request.session.pop('force_rules_gate', False)
-    return render(request, 'home.html', {'force_rules_gate': force_rules_gate})
+    role_cutscene = request.session.pop('role_cutscene', '')
+    return render(request, 'home.html', {
+        'force_rules_gate': force_rules_gate,
+        'role_cutscene_to_play': role_cutscene,
+    })
 
 
 def _send_verification_email(request, user):

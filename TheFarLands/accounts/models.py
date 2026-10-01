@@ -102,6 +102,18 @@ class CustomUser(AbstractUser):
     # so a Director who's turned this off doesn't get it either.
     secret_cutscene_enabled = models.BooleanField(default=True)
 
+    # Drives which role-based terminal cutscene plays on login (see
+    # accounts.signals.queue_role_cutscene_on_login and accounts/
+    # templates/_role_cutscenes.html) - False only ever until this
+    # account's very first successful login, at which point that signal
+    # flips it True for good. Checking this (not Django's own
+    # last_login) is deliberate: last_login is the SAME in-memory object
+    # Django's own built-in update_last_login signal receiver also
+    # mutates off the same user_logged_in signal, so whether it's still
+    # None by the time our receiver runs depends on unguaranteed
+    # receiver ordering. A dedicated field sidesteps that race entirely.
+    has_completed_first_login = models.BooleanField(default=False)
+
     GUEST_TRIAL_DAYS = 7
 
     @property

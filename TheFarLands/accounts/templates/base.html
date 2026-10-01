@@ -370,7 +370,9 @@
 {% block extra_head %}{% endblock %}
 </head>
 <body>
+{% include "_cutscene_engine.html" %}
 {% include "_secret_cutscene.html" %}
+{% include "_role_cutscenes.html" %}
 <nav>
   <a href="{% url 'home' %}" class="nav-logo">{% if user.is_authenticated and user.profile_picture %}<img src="{{ user.profile_picture.url }}" alt="" class="nav-avatar">{% endif %}// {% if user.is_authenticated %}{{ user.username }}{% else %}UnknownUser{% endif %}</a>
   <ul class="nav-links">
