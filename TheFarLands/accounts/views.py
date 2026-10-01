@@ -197,12 +197,39 @@ def home_view(request):
     (see accounts.signals.queue_role_cutscene_on_login) - which role-based
     terminal cutscene (see accounts/templates/_role_cutscenes.html) to
     auto-play once the rules gate above is dismissed.
+
+    guest_trial_remaining is only ever computed for a signed-in guest -
+    the real "days:hours:minutes" left on their trial (see CustomUser.
+    guest_expires_at), fed into the guest_login cutscene's countdown
+    line rather than a hardcoded number, unlike guest_create's.
+
+    director_profile_picture_url is only computed when an Admin's own
+    login just queued admin_login - the real Director's picture (there's
+    only ever one), for the simulated "Director pfp" chat message that
+    cutscene shows.
     """
     force_rules_gate = request.session.pop('force_rules_gate', False)
     role_cutscene = request.session.pop('role_cutscene', '')
+
+    guest_trial_remaining = ''
+    if request.user.is_authenticated and request.user.is_guest:
+        remaining_seconds = max(0, (request.user.guest_expires_at - timezone.now()).total_seconds())
+        total_minutes = int(remaining_seconds // 60)
+        days, rem_minutes = divmod(total_minutes, 24 * 60)
+        hours, minutes = divmod(rem_minutes, 60)
+        guest_trial_remaining = f'{days}:{hours:02d}:{minutes:02d}'
+
+    director_profile_picture_url = ''
+    if role_cutscene == 'admin_login':
+        director = CustomUser.objects.filter(role=CustomUser.ROLE_DIRECTOR).first()
+        if director and director.profile_picture:
+            director_profile_picture_url = director.profile_picture.url
+
     return render(request, 'home.html', {
         'force_rules_gate': force_rules_gate,
         'role_cutscene_to_play': role_cutscene,
+        'director_profile_picture_url': director_profile_picture_url,
+        'guest_trial_remaining': guest_trial_remaining,
     })
 
 

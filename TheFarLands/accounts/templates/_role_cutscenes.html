@@ -6,9 +6,13 @@
      C1's random-roll vs. "!cmd_C1". Shares its typing/dot-loading engine
      with C1 (see _cutscene_engine.html, included before this partial).
 
-     Built so far:
-       - agent_create: a brand-new Agent account's first login ever
-         (cheat code "!cmd_CAgent", Director only).
+     Built: agent_create/agent_login, guest_create/guest_login,
+     admin_login, director_login - cheat codes "!cmd_CAgent",
+     "!cmd_CAgentLogin", "!cmd_CGuest", "!cmd_CGuestLogin",
+     "!cmd_CAdminLogin", "!cmd_CDirector" respectively, Director only.
+     Plus "!cmd_?" - also Director only, not a cutscene at all: a
+     10-second, display-only dark overlay listing every cheat code above
+     and what it does, for review.
 
      Gated to signed-in accounts only. -->
 {% if user.is_authenticated %}
@@ -38,6 +42,78 @@
     color: #33ff5b;
     text-shadow: 0 0 8px #33ff5b, 0 0 20px #0e6621;
   }
+  /* admin_login's simulated Director message - the Director "interrupting"
+     the terminal, not a UI departure from the red retro style (text stays
+     red), just an avatar + label identifying who's speaking. */
+  .rc-chat-row { display: flex; align-items: center; gap: 0.6rem; }
+  .rc-chat-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--red-dim);
+    flex-shrink: 0;
+  }
+  .rc-chat-noavatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #1a0000;
+    color: var(--red-dim);
+    font-size: 0.9rem;
+  }
+
+  /* "!cmd_?" review overlay - Director only, display-only reference for
+     10 seconds, not a cutscene (no typing, nothing narrative). Dims the
+     page rather than going solid black like the cutscenes above, so it
+     reads as a reference panel, not another in-universe sequence. */
+  .rc-help-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10080;
+    background: rgba(0,0,0,0.92);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    opacity: 1;
+  }
+  .rc-help-overlay.rc-help-active { display: flex; }
+  .rc-help-overlay.rc-help-fade { opacity: 0; transition: opacity 0.4s ease; pointer-events: none; }
+  .rc-help-card {
+    max-width: 640px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    background: linear-gradient(180deg, #0d0000, #000);
+    border: 1px solid var(--red);
+    box-shadow: 0 0 20px rgba(204,0,0,0.3);
+    padding: 1.5rem 1.8rem;
+  }
+  .rc-help-title {
+    font-family: 'VT323', monospace;
+    color: var(--red-bright);
+    font-size: 1.6rem;
+    letter-spacing: 3px;
+    text-shadow: 0 0 6px var(--red);
+    margin-bottom: 1rem;
+  }
+  .rc-help-row { padding: 0.5rem 0; border-bottom: 1px dashed var(--red-dim); }
+  .rc-help-row:last-child { border-bottom: none; }
+  .rc-help-code {
+    display: block;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--red-bright);
+    font-size: 0.9rem;
+    letter-spacing: 1px;
+  }
+  .rc-help-desc {
+    display: block;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--dim-white);
+    font-size: 0.78rem;
+    margin-top: 0.15rem;
+  }
 </style>
 <div id="rc-overlay" class="rc-overlay">
   <div class="rc-box">
@@ -45,13 +121,56 @@
     <div id="rc-final" class="rc-final" style="display:none;"></div>
   </div>
 </div>
+{% if user.is_director %}
+<div id="rc-help-overlay" class="rc-help-overlay">
+  <div class="rc-help-card">
+    <div class="rc-help-title">// CHEAT CODE REFERENCE</div>
+    <div class="rc-help-row">
+      <span class="rc-help-code">!cmd_C1</span>
+      <span class="rc-help-desc">The secret breach cutscene - full-screen lore-code flood, ends in "All cleared!"</span>
+    </div>
+    <div class="rc-help-row">
+      <span class="rc-help-code">!cmd_CAgent</span>
+      <span class="rc-help-desc">Agent account creation cutscene</span>
+    </div>
+    <div class="rc-help-row">
+      <span class="rc-help-code">!cmd_CAgentLogin</span>
+      <span class="rc-help-desc">Agent login cutscene</span>
+    </div>
+    <div class="rc-help-row">
+      <span class="rc-help-code">!cmd_CGuest</span>
+      <span class="rc-help-desc">Guest account creation cutscene</span>
+    </div>
+    <div class="rc-help-row">
+      <span class="rc-help-code">!cmd_CGuestLogin</span>
+      <span class="rc-help-desc">Guest login cutscene</span>
+    </div>
+    <div class="rc-help-row">
+      <span class="rc-help-code">!cmd_CAdminLogin</span>
+      <span class="rc-help-desc">Admin login cutscene</span>
+    </div>
+    <div class="rc-help-row">
+      <span class="rc-help-code">!cmd_CDirector</span>
+      <span class="rc-help-desc">Director login cutscene</span>
+    </div>
+    <div class="rc-help-row">
+      <span class="rc-help-code">!cmd_?</span>
+      <span class="rc-help-desc">This reference panel - shows for 10 seconds, display only</span>
+    </div>
+  </div>
+</div>
+{% endif %}
 <script>
   (function () {
     var overlay = document.getElementById('rc-overlay');
     if (!overlay) return;
     var linesEl = document.getElementById('rc-lines');
     var finalEl = document.getElementById('rc-final');
+    var typeLine = window.TFL_Cutscene.typeLine;
     var typeAnimatedLine = window.TFL_Cutscene.typeAnimatedLine;
+    var glitchOut = window.TFL_Cutscene.glitchOut;
+    var glitchFlicker = window.TFL_Cutscene.glitchFlicker;
+    var colorCycle = window.TFL_Cutscene.colorCycle;
 
     var playing = false;
 
@@ -86,6 +205,8 @@
     function resetOverlay() {
       linesEl.innerHTML = '';
       finalEl.style.display = 'none';
+      finalEl.style.color = '';
+      finalEl.style.textShadow = '';
       finalEl.textContent = '';
       overlay.classList.remove('rc-fade');
       overlay.classList.add('rc-active');
@@ -110,9 +231,10 @@
       });
     }
 
-    // agent_login - an Agent account's regular (non-first) login. All
-    // three lines stay red and stay on screen together - no clear, no
-    // color change, unlike agent_create.
+    // agent_login - an Agent account's regular (non-first) login. The
+    // first two lines stay red and stay on screen (no clearing); the
+    // final "[Approved! ...]" line is green, like agent_create's own
+    // final line.
     function playAgentLogin(username) {
       if (playing) return;
       playing = true;
@@ -120,15 +242,219 @@
       var lines = ['>:Proccessing Data ...', '<:Searching ...'];
       typeSequence(linesEl, lines, function () {
         var el = appendLine(linesEl);
+        el.style.color = '#33ff5b';
+        el.style.textShadow = '0 0 8px #33ff5b, 0 0 20px #0e6621';
         typeAnimatedLine(el, '[Approved! Welcome back Agent ' + username + ']', function () {
           finish(1200);
         });
       });
     }
 
+    // guest_create - a brand-new Guest ("Hacker") account's first login
+    // (guest_register_view logs a guest in immediately on creation, so
+    // this is their very first page load). The most elaborate of the
+    // bunch: a line that glitches out and vanishes after 6 loading
+    // cycles, a switch to green, that green line glitching through
+    // red/white/orange/yellow, then a held countdown line that swaps to
+    // a second, red one.
+    function playGuestCreate() {
+      if (playing) return;
+      playing = true;
+      resetOverlay();
+
+      var line1 = appendLine(linesEl);
+      typeAnimatedLine(line1, '>:Reading Information ...', function () {
+        var line2 = appendLine(linesEl);
+        typeAnimatedLine(line2, '<:Uploading Data ...', function () {
+          glitchOut(line2, '<:Uploading Data ...', 500, function () {
+            var line3 = appendLine(linesEl);
+            typeAnimatedLine(line3, '>*New Directive ...', function () {
+              var line4 = appendLine(linesEl);
+              typeAnimatedLine(line4, '^Uploading Infiltration.exe ...', function () {
+                setTimeout(function () {
+                  linesEl.innerHTML = '';
+                  finalEl.style.display = 'block';
+                  finalEl.style.color = '#33ff5b';
+                  finalEl.style.textShadow = '0 0 8px #33ff5b, 0 0 20px #0e6621';
+                  typeLine(finalEl, '[Virus uploaded successfully]', 30, function () {
+                    finalEl.style.textShadow = 'none';
+                    colorCycle(finalEl, ['red', 'white', 'orange', 'yellow'], 180, function () {
+                      setTimeout(function () {
+                        finalEl.innerHTML = '';
+                        typeLine(finalEl, '?: "You have in total of 07:00:00"', 25, function () {
+                          setTimeout(function () {
+                            finalEl.style.color = 'var(--red-bright)';
+                            finalEl.style.textShadow = '0 0 8px var(--red), 0 0 16px var(--red-dim)';
+                            // Instant swap, not typed - the hold ends and
+                            // the new value is just already there.
+                            finalEl.textContent = '?: "You have in total of 06:23:59:59"';
+                            finish(1200);
+                          }, 5000);
+                        });
+                      }, 400);
+                    });
+                  });
+                }, 400);
+              });
+            });
+          });
+        }, 6);
+      });
+    }
+
+    // guest_login - a returning Guest's regular (non-first) login.
+    // activeGuestTrialRemaining defaults to the real computed trial
+    // countdown for the account actually logging in (see home_view's
+    // guest_trial_remaining); the Director's cheat code below overrides
+    // it with a placeholder since the Director isn't really a guest.
+    var activeGuestTrialRemaining = '{{ guest_trial_remaining|default:"" }}';
+
+    function playGuestLogin() {
+      if (playing) return;
+      playing = true;
+      resetOverlay();
+      var trialRemaining = activeGuestTrialRemaining || '0:00:00';
+
+      var line1 = appendLine(linesEl);
+      typeLine(line1, '>:Reading', 30, function () {
+        // Glitches right as "ading" (the tail of "Reading") finishes
+        // typing, then the rest types on in yellow instead of red.
+        glitchFlicker(line1, '>:Reading', 210, function () {
+          line1.style.color = 'yellow';
+          var rest = ' Informat';
+          var i = 0;
+          (function typeRest() {
+            if (i < rest.length) {
+              line1.textContent += rest[i];
+              i++;
+              setTimeout(typeRest, 30);
+              return;
+            }
+            setTimeout(function () {
+              linesEl.innerHTML = '';
+              var line2 = appendLine(linesEl);
+              line2.style.color = 'yellow';
+              typeAnimatedLine(line2, '?: "You\'re back ..."', function () {
+                setTimeout(function () {
+                  linesEl.innerHTML = '';
+                  var line3 = appendLine(linesEl);
+                  line3.style.color = 'yellow';
+                  typeLine(line3, '?: "You have ' + trialRemaining + ' Left, be careful."', 25, function () {
+                    setTimeout(function () {
+                      linesEl.innerHTML = '';
+                      finalEl.style.display = 'block';
+                      typeLine(finalEl, '[Access Granted]', 30, function () {
+                        colorCycle(finalEl, ['#33ff5b', 'yellow', 'red', 'yellow'], 180, function () {
+                          finish(1200);
+                        });
+                      });
+                    }, 500);
+                  });
+                }, 500);
+              });
+            }, 300);
+          })();
+        });
+      });
+    }
+
+    // admin_login - an Admin account's login. Stays red/retro throughout
+    // (no color changes anywhere, per the spec) - a terminal lockout,
+    // then the Director personally stepping in via a simulated chat
+    // message (real Director pfp - see activeDirectorPfpUrl), then
+    // access granted.
+    var activeDirectorPfpUrl = '{{ director_profile_picture_url|default:"" }}';
+
+    function playAdminLogin(username) {
+      if (playing) return;
+      playing = true;
+      resetOverlay();
+
+      var lockoutLines = [
+        '>:Reading Information ...',
+        '<:Your Information has been locked',
+        '<:Error 999',
+        '<:Send Pass Key Immediately.',
+      ];
+      typeSequence(linesEl, lockoutLines, function () {
+        setTimeout(function () {
+          linesEl.innerHTML = '';
+          var chatLines = [
+            'Handled.',
+            'Uploaded an overwrite .exe so you can progress.',
+            "I'll be watching...",
+          ];
+          var i = 0;
+          (function nextChat() {
+            if (i >= chatLines.length) {
+              setTimeout(function () {
+                linesEl.innerHTML = '';
+                var finalLine = appendLine(linesEl);
+                typeLine(finalLine, '[Access Granted Admin ' + username + ']', 30, function () {
+                  finish(1200);
+                });
+              }, 600);
+              return;
+            }
+            var row = document.createElement('div');
+            row.className = 'rc-chat-row';
+            var avatar;
+            if (activeDirectorPfpUrl) {
+              avatar = document.createElement('img');
+              avatar.className = 'rc-chat-avatar';
+              avatar.src = activeDirectorPfpUrl;
+            } else {
+              avatar = document.createElement('div');
+              avatar.className = 'rc-chat-avatar rc-chat-noavatar';
+              avatar.textContent = '?';
+            }
+            var textEl = document.createElement('span');
+            row.appendChild(avatar);
+            row.appendChild(textEl);
+            linesEl.appendChild(row);
+            typeAnimatedLine(textEl, 'Director: "' + chatLines[i] + '"', function () {
+              i++;
+              setTimeout(nextChat, 500);
+            });
+          })();
+        }, 500);
+      });
+    }
+
+    // director_login - the Director's own login. Shortest of the six:
+    // stays red throughout except the final line, which switches green.
+    function playDirectorLogin() {
+      if (playing) return;
+      playing = true;
+      resetOverlay();
+
+      var line1 = appendLine(linesEl);
+      typeAnimatedLine(line1, '>:Reading Information ...', function () {
+        setTimeout(function () {
+          linesEl.innerHTML = '';
+          var line2 = appendLine(linesEl);
+          typeLine(line2, "<:Oh, It's you.", 30, function () {
+            setTimeout(function () {
+              linesEl.innerHTML = '';
+              finalEl.style.display = 'block';
+              finalEl.style.color = '#33ff5b';
+              finalEl.style.textShadow = '0 0 8px #33ff5b, 0 0 20px #0e6621';
+              typeLine(finalEl, '[Level 10 Access level Granted.]', 30, function () {
+                finish(1200);
+              });
+            }, 500);
+          });
+        }, 500);
+      });
+    }
+
     var CUTSCENES = {
       agent_create: playAgentCreate,
       agent_login: playAgentLogin,
+      guest_create: playGuestCreate,
+      guest_login: playGuestLogin,
+      admin_login: playAdminLogin,
+      director_login: playDirectorLogin,
     };
 
     // Real trigger: home_view queues the key in session, popped into
@@ -161,9 +487,35 @@
     // new one is just another line here.
     var TEXT_INPUT_TYPES = ['text', 'search', 'email', 'url', ''];
     var directorUsername = '{{ user.username }}';
+    // Guarded with an actual if-tag below (not just the `|default`
+    // filter) since calling .url on an ImageField with no file raises,
+    // it doesn't just come back empty - same pattern profile.html uses.
+    var directorOwnPfpUrl = '{% if user.profile_picture %}{{ user.profile_picture.url }}{% endif %}';
+    // "!cmd_?" - not a cutscene, a 10-second display-only reference
+    // panel listing every cheat code above. Doesn't touch `playing` at
+    // all - it can show regardless of whether a cutscene happens to be
+    // running, they're entirely separate overlays.
+    var helpOverlay = document.getElementById('rc-help-overlay');
+    function showCheatCodeHelp() {
+      if (!helpOverlay) return;
+      helpOverlay.classList.remove('rc-help-fade');
+      helpOverlay.classList.add('rc-help-active');
+      setTimeout(function () {
+        helpOverlay.classList.add('rc-help-fade');
+        setTimeout(function () {
+          helpOverlay.classList.remove('rc-help-active', 'rc-help-fade');
+        }, 400);
+      }, 10000);
+    }
+
     var CHEAT_CODES = {
       '!cmd_CAgent': function () { playAgentCreate(directorUsername); },
       '!cmd_CAgentLogin': function () { playAgentLogin(directorUsername); },
+      '!cmd_CGuest': function () { playGuestCreate(); },
+      '!cmd_CGuestLogin': function () { activeGuestTrialRemaining = '6:23:45'; playGuestLogin(); },
+      '!cmd_CAdminLogin': function () { activeDirectorPfpUrl = directorOwnPfpUrl; playAdminLogin(directorUsername); },
+      '!cmd_CDirector': function () { playDirectorLogin(); },
+      '!cmd_?': function () { showCheatCodeHelp(); },
     };
     document.addEventListener('input', function (e) {
       var el = e.target;

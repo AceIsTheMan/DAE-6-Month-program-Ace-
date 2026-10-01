@@ -80,11 +80,79 @@
       });
     }
 
+    // Rapidly scrambles el's own text into glitch characters for
+    // durationMs, then empties it and hides it (display:none) - "glitch
+    // out and disappear", not a smooth fade.
+    function glitchOut(el, originalText, durationMs, done) {
+      var glitchChars = '!@#$%^&*▓▒░<>/\\|~01';
+      var stepMs = 40;
+      var elapsed = 0;
+      var tick = setInterval(function () {
+        var scrambled = '';
+        for (var i = 0; i < originalText.length; i++) {
+          scrambled += Math.random() < 0.5
+            ? originalText[i]
+            : glitchChars[Math.floor(Math.random() * glitchChars.length)];
+        }
+        el.textContent = scrambled;
+        elapsed += stepMs;
+        if (elapsed >= durationMs) {
+          clearInterval(tick);
+          el.textContent = '';
+          el.style.display = 'none';
+          if (done) done();
+        }
+      }, stepMs);
+    }
+
+    // Same rapid character-scramble as glitchOut, but restores the
+    // original text afterward instead of erasing/hiding it - a quick
+    // "flicker of corruption" on text that needs to keep being there.
+    function glitchFlicker(el, originalText, durationMs, done) {
+      var glitchChars = '!@#$%^&*▓▒░<>/\\|~01';
+      var stepMs = 30;
+      var elapsed = 0;
+      var tick = setInterval(function () {
+        var scrambled = '';
+        for (var i = 0; i < originalText.length; i++) {
+          scrambled += Math.random() < 0.5
+            ? originalText[i]
+            : glitchChars[Math.floor(Math.random() * glitchChars.length)];
+        }
+        el.textContent = scrambled;
+        elapsed += stepMs;
+        if (elapsed >= durationMs) {
+          clearInterval(tick);
+          el.textContent = originalText;
+          if (done) done();
+        }
+      }, stepMs);
+    }
+
+    // Steps el's text color through `colors` in order, intervalMs apart,
+    // settling on the last one - a "glitching between colors" effect.
+    function colorCycle(el, colors, intervalMs, done) {
+      var i = 0;
+      el.style.color = colors[0];
+      var tick = setInterval(function () {
+        i++;
+        if (i >= colors.length) {
+          clearInterval(tick);
+          if (done) done();
+          return;
+        }
+        el.style.color = colors[i];
+      }, intervalMs);
+    }
+
     return {
       shuffle: shuffle,
       typeLine: typeLine,
       animateDots: animateDots,
       typeAnimatedLine: typeAnimatedLine,
+      glitchOut: glitchOut,
+      glitchFlicker: glitchFlicker,
+      colorCycle: colorCycle,
     };
   })();
 </script>
