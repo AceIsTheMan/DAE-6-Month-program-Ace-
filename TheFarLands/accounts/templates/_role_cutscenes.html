@@ -110,7 +110,26 @@
       });
     }
 
-    var CUTSCENES = { agent_create: playAgentCreate };
+    // agent_login - an Agent account's regular (non-first) login. All
+    // three lines stay red and stay on screen together - no clear, no
+    // color change, unlike agent_create.
+    function playAgentLogin(username) {
+      if (playing) return;
+      playing = true;
+      resetOverlay();
+      var lines = ['>:Proccessing Data ...', '<:Searching ...'];
+      typeSequence(linesEl, lines, function () {
+        var el = appendLine(linesEl);
+        typeAnimatedLine(el, '[Approved! Welcome back Agent ' + username + ']', function () {
+          finish(1200);
+        });
+      });
+    }
+
+    var CUTSCENES = {
+      agent_create: playAgentCreate,
+      agent_login: playAgentLogin,
+    };
 
     // Real trigger: home_view queues the key in session, popped into
     // role_cutscene_to_play on the one page load right after login - but
@@ -135,20 +154,26 @@
     }
 
     {% if user.is_director %}
-    // Director-only preview: "!cmd_CAgent" typed into any text field or
-    // textarea anywhere on the site plays agent_create immediately,
-    // using the Director's own username - same broad trigger shape as
-    // C1's "!cmd_C1".
+    // Director-only preview: each cheat code below, typed into any text
+    // field or textarea anywhere on the site, plays its cutscene
+    // immediately using the Director's own username - same broad
+    // trigger shape as C1's "!cmd_C1". One entry per cutscene; adding a
+    // new one is just another line here.
     var TEXT_INPUT_TYPES = ['text', 'search', 'email', 'url', ''];
     var directorUsername = '{{ user.username }}';
+    var CHEAT_CODES = {
+      '!cmd_CAgent': function () { playAgentCreate(directorUsername); },
+      '!cmd_CAgentLogin': function () { playAgentLogin(directorUsername); },
+    };
     document.addEventListener('input', function (e) {
       var el = e.target;
       var isTextField = el.tagName === 'TEXTAREA'
         || (el.tagName === 'INPUT' && TEXT_INPUT_TYPES.indexOf(el.type) !== -1);
       if (!isTextField) return;
-      if (el.value === '!cmd_CAgent') {
+      var handler = CHEAT_CODES[el.value];
+      if (handler) {
         el.value = '';
-        playAgentCreate(directorUsername);
+        handler();
       }
     });
     {% endif %}
