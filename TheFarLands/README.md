@@ -76,7 +76,8 @@ wired in anymore.
 
 ## Cutscenes
 
-Two unrelated retro-terminal splash screens, both purely cosmetic:
+Three unrelated families of retro-terminal splash screen, all purely
+cosmetic:
 
 - **Mail boot-up terminal** — plays when you click the "Mail" nav icon's
   "Mail" dropdown item specifically (not from clicking around inside Mail
@@ -85,12 +86,40 @@ Two unrelated retro-terminal splash screens, both purely cosmetic:
   _nav_mail_icons.html` 👍)
 - **"C1"** — a secret, site-wide easter egg, unrelated to Mail. Plays
   automatically on a 1-in-100 chance every time you switch back to the
-  browser tab, filling the whole page with a scrolling "breach" of
-  in-universe lore text before clearing. A Director can also trigger it
-  on demand by typing `!cmd_C1` into any text field or textarea
-  anywhere on the site. Toggle it off entirely under Settings →
-  Cutscenes → "C1" — off means neither trigger plays, cheat code
-  included. (code: `accounts/templates/_secret_cutscene.html` 👍)
+  browser tab: red terminal text types out, then the lore-code flood
+  (agents/hackers, rumors of a King, the Creator, factions, brainwashed
+  militias, corruption) reads left-aligned down the screen before cutting
+  instantly to green. A Director can also trigger it on demand by typing
+  `!cmd_C1` into any text field or textarea anywhere on the site. Toggle
+  it off entirely under Settings → Cutscenes → "C1" — off means neither
+  trigger plays, cheat code included.
+  (code: `accounts/templates/_secret_cutscene.html` 👍)
+- **Role-based create/login cutscenes** — six scenes, each tied to a real
+  account event and each independently Director-previewable on demand via
+  its own cheat code (typed into any text field or textarea anywhere on
+  the site, same as "C1"'s). The real trigger for a "_create" one only
+  ever fires once, on that account's first successful login ever (see
+  `CustomUser.has_completed_first_login`); every login after that gets
+  the matching "_login" scene instead. Admin/Director have no "_create"
+  scene (those roles are only ever reached by promotion, never public
+  self-registration), so every one of their logins is a "_login". Shares
+  its typing/dot-loading/glitch/color-cycle engine with "C1"
+  (`accounts/templates/_cutscene_engine.html`).
+  - `!cmd_CAgent` — a brand-new Agent account's first login (plays once
+    the "BE ADVISED" rules gate is agreed to and dismissed)
+  - `!cmd_CAgentLogin` — an Agent's regular (non-first) login
+  - `!cmd_CGuest` — a brand-new Guest ("Hacker") account's first login
+  - `!cmd_CGuestLogin` — a Guest's regular login, including the real
+    computed "days:hours:minutes" left on their trial
+    (`CustomUser.guest_expires_at`)
+  - `!cmd_CAdminLogin` — an Admin's login, including a simulated Director
+    chat interruption with the real Director's profile picture
+  - `!cmd_CDirector` — the Director's own login
+  - (code: `accounts/templates/_role_cutscenes.html`, `accounts.signals.
+    queue_role_cutscene_on_login`, `accounts.views.home_view` 👍)
+  - `!cmd_?` — not a cutscene: a Director-only, 10-second, display-only
+    panel that dims the page and lists every cheat code above with what
+    it does, for review
 
 ## Email verification
 
@@ -121,6 +150,10 @@ been built.
 
 ## Recent updates (most recent first)
 
+- Six role-based create/login terminal cutscenes (Agent/Guest/Admin/
+  Director), each with a real account-event trigger and a Director-only
+  preview cheat code, plus a `!cmd_?` review panel listing every cheat
+  code. See "Cutscenes" above.
 - Settings tab built out: Profile/Blocked/Notifications/Cutscenes
   sub-tabs for every account, plus "C1" — a secret, site-wide easter-egg
   cutscene (1/100 chance on switching back to the browser tab, or a
