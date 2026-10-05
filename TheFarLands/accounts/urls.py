@@ -31,6 +31,7 @@ urlpatterns = [
     path('settings/notifications/toggle/', views.settings_toggle_notifications, name='settings_toggle_notifications'),
     path('settings/cutscenes/update/', views.settings_update_cutscene_mode, name='settings_update_cutscene_mode'),
     path('settings/cutscenes/c1/toggle/', views.settings_toggle_secret_cutscene, name='settings_toggle_secret_cutscene'),
+    path('settings/director/grant-tokens/', views.director_grant_tokens, name='director_grant_tokens'),
     path('status/toggle/', views.toggle_status, name='toggle_status'),
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.profile_edit_view, name='profile_edit'),

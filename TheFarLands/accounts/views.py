@@ -17,7 +17,7 @@ from forum.models import Comment, Post
 from mail.models import FriendRequest, Message, ModerationAction, Report, RoleChangeLog, UserRelationship, Warning
 
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
-from .models import CustomUser, GuestArchive
+from .models import CustomUser, GuestArchive, TokenGrantLog
 
 # kind (used in the Chat Logs URLs/template) -> (model, author/sender field name)
 CHAT_LOG_MODELS = {
@@ -641,6 +641,39 @@ def chat_log_purge(request, kind, obj_id):
     obj = get_object_or_404(model, pk=obj_id, is_deleted=True)
     obj.delete()
     return redirect(f"{reverse('settings_page')}?tab=logs")
+
+
+# Sanity ceiling for the "!Token_<amount>" cheat code below - not a real
+# economic limit (the Director can just run it again), just a guard
+# against a fat-fingered extra zero or two silently wrecking the balance.
+MAX_CHEAT_TOKEN_GRANT = 1_000_000
+
+
+@login_required
+def director_grant_tokens(request):
+    """Backing endpoint for the Director-only "!Token_<amount>" cheat
+    code - same trigger shape as the "!cmd_*" cutscene previews
+    (typed into any text field anywhere on the site, see
+    _role_cutscenes.html's global `input` listener), except this one
+    actually writes to the database instead of just playing an
+    animation: it adds <amount> Cipher Tokens to the Director's own
+    CustomUser.currency and records a TokenGrantLog row."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    if not request.user.is_director:
+        raise PermissionDenied('Only the Director can use the token cheat code.')
+
+    try:
+        amount = int(request.POST.get('amount', ''))
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Invalid amount.'}, status=400)
+    if amount <= 0 or amount > MAX_CHEAT_TOKEN_GRANT:
+        return JsonResponse({'error': f'Amount must be between 1 and {MAX_CHEAT_TOKEN_GRANT}.'}, status=400)
+
+    request.user.currency += amount
+    request.user.save(update_fields=['currency'])
+    TokenGrantLog.objects.create(director=request.user, amount=amount, new_balance=request.user.currency)
+    return JsonResponse({'amount': amount, 'balance': request.user.currency})
 
 
 @login_required

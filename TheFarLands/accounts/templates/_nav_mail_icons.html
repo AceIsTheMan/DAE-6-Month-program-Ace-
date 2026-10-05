@@ -112,7 +112,7 @@ convention (see forum/templates/forum/index.html:154-155's comment on
       &#9823; Directive
       {% if unread_directive_count %}<span class="dropdown-badge">&#9679;</span>{% endif %}
     </a>
-    <div class="dropdown-item inert">&#164; Cipher Tokens &mdash; {{ currency_balance|default:"0" }}</div>
+    <div class="dropdown-item inert">&#164; Cipher Tokens &mdash; <span class="token-amount">{{ currency_balance|default:"0" }}</span></div>
   </div>
 </li>
 <li class="nav-auth-link nav-icon-wrap">

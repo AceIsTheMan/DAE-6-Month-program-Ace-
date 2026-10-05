@@ -14,6 +14,14 @@
      10-second, display-only dark overlay listing every cheat code above
      and what it does, for review.
 
+     "!Token_<amount>" (e.g. "!Token_500") - same trigger shape and
+     Director-only gate as the cheat codes above, but the only one that
+     isn't just a client-side animation: it POSTs to
+     accounts.views.director_grant_tokens, which actually adds <amount>
+     Cipher Tokens to the Director's own CustomUser.currency and logs a
+     TokenGrantLog row. A small toast (#rc-token-toast below) confirms
+     success/failure instead of playing a cutscene.
+
      Gated to signed-in accounts only. -->
 {% if user.is_authenticated %}
 <style>
@@ -117,6 +125,40 @@
     font-size: 0.78rem;
     margin-top: 0.15rem;
   }
+
+  /* "!Token_<amount>" confirmation toast - unlike every cutscene/help
+     overlay above, this one doesn't block the page (no inset:0 overlay):
+     it's a small top-center strip so the Director can see the result
+     without losing their place in whatever they were typing into. */
+  .rc-token-toast {
+    position: fixed;
+    top: 72px;
+    left: 50%;
+    z-index: 10090;
+    transform: translateX(-50%) translateY(-12px);
+    background: linear-gradient(180deg, #0d0000, #000);
+    border: 1px solid var(--red);
+    box-shadow: 0 0 20px rgba(204,0,0,0.4);
+    padding: 0.7rem 1.6rem;
+    font-family: 'VT323', monospace;
+    font-size: 1.3rem;
+    letter-spacing: 2px;
+    color: var(--red-bright);
+    text-shadow: 0 0 6px var(--red);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  .rc-token-toast.rc-token-toast-active {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+  .rc-token-toast.rc-token-toast-error {
+    border-color: var(--red-dim);
+    color: #ff6666;
+    text-shadow: none;
+  }
 </style>
 <div id="rc-overlay" class="rc-overlay">
   <div class="rc-box">
@@ -160,8 +202,13 @@
       <span class="rc-help-code">!cmd_?</span>
       <span class="rc-help-desc">This reference panel - shows for 10 seconds, display only</span>
     </div>
+    <div class="rc-help-row">
+      <span class="rc-help-code">!Token_&lt;amount&gt;</span>
+      <span class="rc-help-desc">e.g. !Token_500 - adds &lt;amount&gt; Cipher Tokens to your own account (not a preview - this one's real)</span>
+    </div>
   </div>
 </div>
+<div id="rc-token-toast" class="rc-token-toast"></div>
 {% endif %}
 <script>
   (function () {
@@ -520,6 +567,58 @@
       '!cmd_CDirector': function () { playDirectorLogin(); },
       '!cmd_?': function () { showCheatCodeHelp(); },
     };
+
+    // "!Token_<amount>" - the one cheat code that isn't just a client-side
+    // preview. Matched separately from CHEAT_CODES above since the
+    // amount varies (can't be a fixed object key).
+    var TOKEN_CHEAT_RE = /^!Token_(\d{1,7})$/i;
+    var tokenToast = document.getElementById('rc-token-toast');
+    var tokenToastTimer = null;
+    function showTokenToast(message, success) {
+      if (!tokenToast) return;
+      tokenToast.textContent = message;
+      tokenToast.classList.toggle('rc-token-toast-error', !success);
+      tokenToast.classList.add('rc-token-toast-active');
+      if (tokenToastTimer) clearTimeout(tokenToastTimer);
+      tokenToastTimer = setTimeout(function () {
+        tokenToast.classList.remove('rc-token-toast-active');
+      }, 3000);
+    }
+    function tokenCheatCsrf() {
+      // Self-contained rather than relying on base.html's TFL_getCookie -
+      // this partial is included before that script runs (both here and
+      // in home.html, which doesn't extend base.html at all), so load
+      // order can't be relied on.
+      var match = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+    function grantTokensViaCheatCode(amount) {
+      fetch('{% url "director_grant_tokens" %}', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': tokenCheatCsrf(),
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'amount=' + encodeURIComponent(amount),
+      })
+        .then(function (r) {
+          return r.json().then(function (data) { return { ok: r.ok, data: data }; });
+        })
+        .then(function (res) {
+          if (res.ok) {
+            showTokenToast('+' + res.data.amount + ' CIPHER TOKENS', true);
+            // Live-update any balance already on the page (nav dropdown,
+            // Store page token-square) without a full reload.
+            document.querySelectorAll('.token-amount').forEach(function (el) {
+              el.textContent = res.data.balance;
+            });
+          } else {
+            showTokenToast(res.data.error || 'TOKEN GRANT FAILED', false);
+          }
+        })
+        .catch(function () { showTokenToast('TOKEN GRANT FAILED', false); });
+    }
+
     document.addEventListener('input', function (e) {
       var el = e.target;
       var isTextField = el.tagName === 'TEXTAREA'
@@ -529,6 +628,12 @@
       if (handler) {
         el.value = '';
         handler();
+        return;
+      }
+      var tokenMatch = TOKEN_CHEAT_RE.exec(el.value);
+      if (tokenMatch) {
+        el.value = '';
+        grantTokensViaCheatCode(parseInt(tokenMatch[1], 10));
       }
     });
     {% endif %}

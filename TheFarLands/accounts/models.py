@@ -48,10 +48,13 @@ class CustomUser(AbstractUser):
     # email" error instead of a generic "wrong password" one.
     email_verified = models.BooleanField(default=True)
 
-    # The "Digit" balance shown (inert, does nothing yet) in the
-    # notification dropdown's Currency row - see mail.views. No
-    # earning/spending logic exists yet; this is a stub for a future
-    # currency system.
+    # Cipher Token balance, shown in the nav notification dropdown's
+    # Currency row and on the Store page (see mail.context_processors and
+    # accounts/templates/home.html's token-square). The only thing that
+    # writes to this right now is the Director-only "!Token_<amount>"
+    # cheat code (accounts/views.director_grant_tokens, triggered from
+    # _role_cutscenes.html) - everything else (VIP, the Store token
+    # packs) is still display-only, no real purchase flow wired up yet.
     currency = models.IntegerField(default=0)
 
     # Self-reported presence, set by the account owner in "// EDIT
@@ -190,3 +193,25 @@ class GuestArchive(models.Model):
 
     def __str__(self):
         return f'{self.username} (expired {self.archived_at:%Y-%m-%d})'
+
+
+class TokenGrantLog(models.Model):
+    """
+    Audit trail for the Director-only "!Token_<amount>" cheat code (typed
+    into any text field anywhere on the site, same trigger shape as the
+    "!cmd_*" cutscene previews in _role_cutscenes.html) - the only path
+    that writes to CustomUser.currency right now. See
+    accounts.views.director_grant_tokens.
+    """
+    director = models.ForeignKey(
+        'CustomUser', on_delete=models.CASCADE, related_name='token_grants'
+    )
+    amount = models.PositiveIntegerField()
+    new_balance = models.IntegerField(help_text='director.currency right after this grant.')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.director.username} +{self.amount} -> {self.new_balance}'
