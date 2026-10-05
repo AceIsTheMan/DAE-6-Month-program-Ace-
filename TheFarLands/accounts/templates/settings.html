@@ -54,6 +54,10 @@
   .user-table th { color: var(--red-bright); text-transform: uppercase; font-size: 0.68rem; letter-spacing: 1px; }
   .user-table tr:hover { background: rgba(204,0,0,0.06); }
   .user-table a { color: var(--silver); }
+  .token-rate-note { font-size: 0.75rem; color: var(--dim-white); letter-spacing: 1px; margin-bottom: 0.8rem; }
+  .token-rate-note span { color: var(--red-bright); text-shadow: 0 0 4px var(--red); }
+  .token-rate-wrap { max-height: 420px; overflow-y: auto; }
+  .token-rate-wrap .user-table th { position: sticky; top: 0; background: var(--deep-black); }
 
   /* Settings tab's own sub-nav (Profile/Blocked/Notifications/
      Cutscenes) - a second, indented row under the main tab strip so it
@@ -214,6 +218,189 @@
     </table>
   </div>
   {% endif %}
+
+  <div class="section-divider"></div>
+  <div class="dashboard-label" style="margin-bottom: 0.6rem; color: var(--dim-white); font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase;">Cipher Token Value</div>
+  <div class="token-rate-note">1 Cipher Token = <span>$0.25 USD</span> &mdash; reference conversion into every tracked world currency, snapshot 2026-10-05.</div>
+  <div class="user-table-wrap token-rate-wrap">
+    <table class="user-table">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Currency</th>
+          <th>Value of 1 Token</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>AED</td><td>UAE Dirham</td><td>0.918</td></tr>
+        <tr><td>AFN</td><td>Afghani</td><td>16.21</td></tr>
+        <tr><td>ALL</td><td>Lek</td><td>20.50</td></tr>
+        <tr><td>AMD</td><td>Armenian Dram</td><td>90.63</td></tr>
+        <tr><td>ANG</td><td>Netherlands Antillean Guilder</td><td>0.448</td></tr>
+        <tr><td>AOA</td><td>Kwanza</td><td>230.56</td></tr>
+        <tr><td>ARS</td><td>Argentine Peso</td><td>380.77</td></tr>
+        <tr><td>AUD</td><td>Australian Dollar</td><td>0.360</td></tr>
+        <tr><td>AWG</td><td>Aruban Florin</td><td>0.448</td></tr>
+        <tr><td>AZN</td><td>Azerbaijan Manat</td><td>0.426</td></tr>
+        <tr><td>BAM</td><td>Convertible Mark</td><td>0.435</td></tr>
+        <tr><td>BBD</td><td>Barbados Dollar</td><td>0.500</td></tr>
+        <tr><td>BDT</td><td>Taka</td><td>30.78</td></tr>
+        <tr><td>BGN</td><td>Bulgarian Lev</td><td>0.435</td></tr>
+        <tr><td>BHD</td><td>Bahraini Dinar</td><td>0.094</td></tr>
+        <tr><td>BIF</td><td>Burundi Franc</td><td>748.44</td></tr>
+        <tr><td>BMD</td><td>Bermudian Dollar</td><td>0.250</td></tr>
+        <tr><td>BND</td><td>Brunei Dollar</td><td>0.320</td></tr>
+        <tr><td>BOB</td><td>Boliviano</td><td>3.01</td></tr>
+        <tr><td>BRL</td><td>Brazilian Real</td><td>1.31</td></tr>
+        <tr><td>BSD</td><td>Bahamian Dollar</td><td>0.250</td></tr>
+        <tr><td>BTN</td><td>Ngultrum</td><td>24.11</td></tr>
+        <tr><td>BWP</td><td>Pula</td><td>3.50</td></tr>
+        <tr><td>BYN</td><td>Belarusian Ruble</td><td>0.756</td></tr>
+        <tr><td>BZD</td><td>Belize Dollar</td><td>0.500</td></tr>
+        <tr><td>CAD</td><td>Canadian Dollar</td><td>0.356</td></tr>
+        <tr><td>CDF</td><td>Congolese Franc</td><td>578.55</td></tr>
+        <tr><td>CHF</td><td>Swiss Franc</td><td>0.207</td></tr>
+        <tr><td>CLF</td><td>Unidad de Fomento</td><td>0.00625</td></tr>
+        <tr><td>CLP</td><td>Chilean Peso</td><td>247.00</td></tr>
+        <tr><td>CNH</td><td>Chinese Yuan (Offshore)</td><td>1.68</td></tr>
+        <tr><td>CNY</td><td>Yuan Renminbi</td><td>1.68</td></tr>
+        <tr><td>COP</td><td>Colombian Peso</td><td>827.19</td></tr>
+        <tr><td>CRC</td><td>Costa Rican Colon</td><td>114.74</td></tr>
+        <tr><td>CUP</td><td>Cuban Peso</td><td>6.00</td></tr>
+        <tr><td>CVE</td><td>Cabo Verde Escudo</td><td>24.50</td></tr>
+        <tr><td>CZK</td><td>Czech Koruna</td><td>5.43</td></tr>
+        <tr><td>DJF</td><td>Djibouti Franc</td><td>44.43</td></tr>
+        <tr><td>DKK</td><td>Danish Krone</td><td>1.66</td></tr>
+        <tr><td>DOP</td><td>Dominican Peso</td><td>15.04</td></tr>
+        <tr><td>DZD</td><td>Algerian Dinar</td><td>33.55</td></tr>
+        <tr><td>EGP</td><td>Egyptian Pound</td><td>13.06</td></tr>
+        <tr><td>ERN</td><td>Nakfa</td><td>3.75</td></tr>
+        <tr><td>ETB</td><td>Ethiopian Birr</td><td>40.38</td></tr>
+        <tr><td>EUR</td><td>Euro</td><td>0.222</td></tr>
+        <tr><td>FJD</td><td>Fiji Dollar</td><td>0.558</td></tr>
+        <tr><td>FKP</td><td>Falkland Islands Pound</td><td>0.189</td></tr>
+        <tr><td>FOK</td><td>Faroese Krona</td><td>1.66</td></tr>
+        <tr><td>GBP</td><td>Pound Sterling</td><td>0.189</td></tr>
+        <tr><td>GEL</td><td>Lari</td><td>0.650</td></tr>
+        <tr><td>GGP</td><td>Guernsey Pound</td><td>0.189</td></tr>
+        <tr><td>GHS</td><td>Ghana Cedi</td><td>2.90</td></tr>
+        <tr><td>GIP</td><td>Gibraltar Pound</td><td>0.189</td></tr>
+        <tr><td>GMD</td><td>Dalasi</td><td>18.60</td></tr>
+        <tr><td>GNF</td><td>Guinean Franc</td><td>2,199</td></tr>
+        <tr><td>GTQ</td><td>Quetzal</td><td>1.92</td></tr>
+        <tr><td>GYD</td><td>Guyana Dollar</td><td>52.28</td></tr>
+        <tr><td>HKD</td><td>Hong Kong Dollar</td><td>1.96</td></tr>
+        <tr><td>HNL</td><td>Lempira</td><td>6.72</td></tr>
+        <tr><td>HRK</td><td>Croatian Kuna</td><td>1.67</td></tr>
+        <tr><td>HTG</td><td>Gourde</td><td>32.73</td></tr>
+        <tr><td>HUF</td><td>Forint</td><td>81.92</td></tr>
+        <tr><td>IDR</td><td>Rupiah</td><td>4,479</td></tr>
+        <tr><td>ILS</td><td>New Israeli Sheqel</td><td>0.761</td></tr>
+        <tr><td>IMP</td><td>Isle of Man Pound</td><td>0.189</td></tr>
+        <tr><td>INR</td><td>Indian Rupee</td><td>24.10</td></tr>
+        <tr><td>IQD</td><td>Iraqi Dinar</td><td>327.70</td></tr>
+        <tr><td>IRR</td><td>Iranian Rial</td><td>370,056</td></tr>
+        <tr><td>ISK</td><td>Iceland Krona</td><td>30.48</td></tr>
+        <tr><td>JEP</td><td>Jersey Pound</td><td>0.189</td></tr>
+        <tr><td>JMD</td><td>Jamaican Dollar</td><td>39.69</td></tr>
+        <tr><td>JOD</td><td>Jordanian Dinar</td><td>0.177</td></tr>
+        <tr><td>JPY</td><td>Yen</td><td>39.43</td></tr>
+        <tr><td>KES</td><td>Kenyan Shilling</td><td>32.40</td></tr>
+        <tr><td>KGS</td><td>Som</td><td>21.87</td></tr>
+        <tr><td>KHR</td><td>Riel</td><td>1,013</td></tr>
+        <tr><td>KID</td><td>Kiribati Dollar</td><td>0.360</td></tr>
+        <tr><td>KMF</td><td>Comorian Franc</td><td>109.32</td></tr>
+        <tr><td>KRW</td><td>Won</td><td>336.15</td></tr>
+        <tr><td>KWD</td><td>Kuwaiti Dinar</td><td>0.077</td></tr>
+        <tr><td>KYD</td><td>Cayman Islands Dollar</td><td>0.208</td></tr>
+        <tr><td>KZT</td><td>Tenge</td><td>112.21</td></tr>
+        <tr><td>LAK</td><td>Lao Kip</td><td>5,584</td></tr>
+        <tr><td>LBP</td><td>Lebanese Pound</td><td>22,375</td></tr>
+        <tr><td>LKR</td><td>Sri Lanka Rupee</td><td>82.67</td></tr>
+        <tr><td>LRD</td><td>Liberian Dollar</td><td>43.02</td></tr>
+        <tr><td>LSL</td><td>Loti</td><td>4.16</td></tr>
+        <tr><td>LYD</td><td>Libyan Dinar</td><td>1.60</td></tr>
+        <tr><td>MAD</td><td>Moroccan Dirham</td><td>2.48</td></tr>
+        <tr><td>MDL</td><td>Moldovan Leu</td><td>4.45</td></tr>
+        <tr><td>MGA</td><td>Malagasy Ariary</td><td>1,115</td></tr>
+        <tr><td>MKD</td><td>Denar</td><td>13.57</td></tr>
+        <tr><td>MMK</td><td>Kyat</td><td>525.64</td></tr>
+        <tr><td>MNT</td><td>Tugrik</td><td>899.81</td></tr>
+        <tr><td>MOP</td><td>Pataca</td><td>2.02</td></tr>
+        <tr><td>MRU</td><td>Ouguiya</td><td>10.05</td></tr>
+        <tr><td>MUR</td><td>Mauritius Rupee</td><td>12.00</td></tr>
+        <tr><td>MVR</td><td>Rufiyaa</td><td>3.86</td></tr>
+        <tr><td>MWK</td><td>Malawi Kwacha</td><td>436.31</td></tr>
+        <tr><td>MXN</td><td>Mexican Peso</td><td>4.55</td></tr>
+        <tr><td>MYR</td><td>Malaysian Ringgit</td><td>1.02</td></tr>
+        <tr><td>MZN</td><td>Mozambique Metical</td><td>15.96</td></tr>
+        <tr><td>NAD</td><td>Namibia Dollar</td><td>4.16</td></tr>
+        <tr><td>NGN</td><td>Naira</td><td>332.82</td></tr>
+        <tr><td>NIO</td><td>Cordoba Oro</td><td>9.21</td></tr>
+        <tr><td>NOK</td><td>Norwegian Krone</td><td>2.40</td></tr>
+        <tr><td>NPR</td><td>Nepalese Rupee</td><td>38.57</td></tr>
+        <tr><td>NZD</td><td>New Zealand Dollar</td><td>0.445</td></tr>
+        <tr><td>OMR</td><td>Rial Omani</td><td>0.096</td></tr>
+        <tr><td>PAB</td><td>Balboa</td><td>0.250</td></tr>
+        <tr><td>PEN</td><td>Sol</td><td>0.865</td></tr>
+        <tr><td>PGK</td><td>Kina</td><td>1.13</td></tr>
+        <tr><td>PHP</td><td>Philippine Peso</td><td>15.66</td></tr>
+        <tr><td>PKR</td><td>Pakistan Rupee</td><td>69.37</td></tr>
+        <tr><td>PLN</td><td>Zloty</td><td>0.974</td></tr>
+        <tr><td>PYG</td><td>Guarani</td><td>1,464</td></tr>
+        <tr><td>QAR</td><td>Qatari Rial</td><td>0.910</td></tr>
+        <tr><td>RON</td><td>Romanian Leu</td><td>1.19</td></tr>
+        <tr><td>RSD</td><td>Serbian Dinar</td><td>26.14</td></tr>
+        <tr><td>RUB</td><td>Russian Ruble</td><td>20.95</td></tr>
+        <tr><td>RWF</td><td>Rwanda Franc</td><td>369.68</td></tr>
+        <tr><td>SAR</td><td>Saudi Riyal</td><td>0.938</td></tr>
+        <tr><td>SBD</td><td>Solomon Islands Dollar</td><td>1.99</td></tr>
+        <tr><td>SCR</td><td>Seychelles Rupee</td><td>3.66</td></tr>
+        <tr><td>SDG</td><td>Sudanese Pound</td><td>114.65</td></tr>
+        <tr><td>SEK</td><td>Swedish Krona</td><td>2.51</td></tr>
+        <tr><td>SGD</td><td>Singapore Dollar</td><td>0.320</td></tr>
+        <tr><td>SHP</td><td>Saint Helena Pound</td><td>0.189</td></tr>
+        <tr><td>SLE</td><td>Leone</td><td>6.16</td></tr>
+        <tr><td>SLL</td><td>Leone</td><td>6,164</td></tr>
+        <tr><td>SOS</td><td>Somali Shilling</td><td>142.88</td></tr>
+        <tr><td>SRD</td><td>Surinam Dollar</td><td>9.42</td></tr>
+        <tr><td>SSP</td><td>South Sudanese Pound</td><td>1,413</td></tr>
+        <tr><td>STN</td><td>Sao Tome Dobra</td><td>5.44</td></tr>
+        <tr><td>SYP</td><td>Syrian Pound</td><td>30.49</td></tr>
+        <tr><td>SZL</td><td>Lilangeni</td><td>4.16</td></tr>
+        <tr><td>THB</td><td>Baht</td><td>8.39</td></tr>
+        <tr><td>TJS</td><td>Somoni</td><td>2.31</td></tr>
+        <tr><td>TMT</td><td>Turkmenistan New Manat</td><td>0.875</td></tr>
+        <tr><td>TND</td><td>Tunisian Dinar</td><td>0.742</td></tr>
+        <tr><td>TOP</td><td>Pa’anga</td><td>0.598</td></tr>
+        <tr><td>TRY</td><td>Turkish Lira</td><td>12.29</td></tr>
+        <tr><td>TTD</td><td>Trinidad and Tobago Dollar</td><td>1.70</td></tr>
+        <tr><td>TVD</td><td>Tuvaluan Dollar</td><td>0.360</td></tr>
+        <tr><td>TWD</td><td>New Taiwan Dollar</td><td>7.97</td></tr>
+        <tr><td>TZS</td><td>Tanzanian Shilling</td><td>661.91</td></tr>
+        <tr><td>UAH</td><td>Hryvnia</td><td>11.28</td></tr>
+        <tr><td>UGX</td><td>Uganda Shilling</td><td>983.24</td></tr>
+        <tr><td>USD</td><td>US Dollar</td><td>0.250</td></tr>
+        <tr><td>UYU</td><td>Peso Uruguayo</td><td>10.14</td></tr>
+        <tr><td>UZS</td><td>Uzbekistan Sum</td><td>2,959</td></tr>
+        <tr><td>VES</td><td>Venezuelan Bolivar</td><td>217.84</td></tr>
+        <tr><td>VND</td><td>Dong</td><td>6,487</td></tr>
+        <tr><td>VUV</td><td>Vatu</td><td>30.04</td></tr>
+        <tr><td>WST</td><td>Tala</td><td>0.688</td></tr>
+        <tr><td>XAF</td><td>CFA Franc BEAC</td><td>145.76</td></tr>
+        <tr><td>XCD</td><td>East Caribbean Dollar</td><td>0.675</td></tr>
+        <tr><td>XCG</td><td>Caribbean Guilder</td><td>0.448</td></tr>
+        <tr><td>XDR</td><td>SDR (Special Drawing Right)</td><td>0.185</td></tr>
+        <tr><td>XOF</td><td>CFA Franc BCEAO</td><td>145.76</td></tr>
+        <tr><td>XPF</td><td>CFP Franc</td><td>26.52</td></tr>
+        <tr><td>YER</td><td>Yemeni Rial</td><td>59.23</td></tr>
+        <tr><td>ZAR</td><td>Rand</td><td>4.16</td></tr>
+        <tr><td>ZMW</td><td>Zambian Kwacha</td><td>4.94</td></tr>
+        <tr><td>ZWG</td><td>Zimbabwe Gold</td><td>6.69</td></tr>
+        <tr><td>ZWL</td><td>Zimbabwean Dollar</td><td>6.69</td></tr>
+      </tbody>
+    </table>
+  </div>
 </div>
 {% elif active_tab == 'users' %}
 <div class="card">
@@ -227,7 +414,7 @@
           <th>Status</th>
           <th>Guest</th>
           <th>Verified</th>
-          <th>Digits</th>
+          <th>Cipher Tokens</th>
           <th>Warnings</th>
           <th>Mutes</th>
           <th>Bans</th>

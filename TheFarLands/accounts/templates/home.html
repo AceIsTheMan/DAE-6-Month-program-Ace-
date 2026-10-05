@@ -693,6 +693,69 @@
       margin: 0 auto;
     }
 
+    .store-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .token-balance {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .token-square {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      border: 1px solid var(--red);
+      background: #0a0000;
+      padding: 0.5rem 1rem;
+      box-shadow: 0 0 12px rgba(204,0,0,0.3);
+    }
+
+    .token-icon {
+      width: 28px;
+      height: 28px;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 0 4px var(--red-bright));
+      display: block;
+    }
+
+    .token-amount {
+      font-family: 'VT323', monospace;
+      font-size: 1.7rem;
+      color: #fff;
+      text-shadow: 0 0 6px var(--red);
+      letter-spacing: 2px;
+    }
+
+    .token-add-btn {
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'VT323', monospace;
+      font-size: 1.7rem;
+      line-height: 1;
+      color: #fff;
+      background: linear-gradient(135deg, var(--red), var(--red-bright));
+      border: 1px solid #ff6666;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 0 12px rgba(255,26,26,0.4);
+    }
+
+    .token-add-btn:hover {
+      transform: scale(1.08);
+      box-shadow: 0 0 20px rgba(255,26,26,0.7);
+    }
+
     .vip-card {
       position: relative;
       border: 1px solid var(--red);
@@ -1313,7 +1376,18 @@
   <div style="margin-top:56px; background:#000; padding-top:3rem;">
     <div class="store-wrap">
 
-      <div class="section-label">// STORE</div>
+      <div class="store-header">
+        <div class="section-label">// STORE</div>
+        {% if user.is_authenticated and not user.is_guest %}
+        <div class="token-balance">
+          <div class="token-square">
+            <img src="{% static 'accounts/cipher_token.gif' %}" alt="Cipher Token" class="token-icon">
+            <span class="token-amount">{{ currency_balance|default:"0" }}</span>
+          </div>
+          <button type="button" class="token-add-btn" aria-label="Add Cipher Tokens">+</button>
+        </div>
+        {% endif %}
+      </div>
       <div class="section-divider"></div>
 
       <div class="vip-card">
