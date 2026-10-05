@@ -884,6 +884,116 @@
       50%      { opacity: 1;   transform: scale(1.15) rotate(25deg); }
     }
 
+    /* ─── TOKEN PACKS ─── */
+    .token-packs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem;
+      margin-top: 2.5rem;
+    }
+
+    .token-pack {
+      position: relative;
+      border: 1px solid var(--red-dim);
+      background: linear-gradient(145deg, #0a0000, #140000);
+      padding: 2.2rem 1.2rem 1.8rem;
+      text-align: center;
+      overflow: hidden;
+      transition: all 0.2s;
+    }
+
+    .token-pack:hover {
+      border-color: var(--red-bright);
+      box-shadow: 0 0 18px rgba(204,0,0,0.3);
+      transform: translateY(-4px);
+    }
+
+    .token-pack-img {
+      width: 96px;
+      height: 96px;
+      margin: 0 auto 1rem;
+      display: block;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 0 6px rgba(255,26,26,0.4));
+    }
+
+    .token-pack-amount {
+      font-family: 'VT323', monospace;
+      font-size: 1.9rem;
+      color: var(--red-bright);
+      letter-spacing: 2px;
+      text-shadow: 0 0 6px var(--red);
+      text-transform: uppercase;
+    }
+
+    .token-pack-price {
+      font-family: 'VT323', monospace;
+      font-size: 2.6rem;
+      color: #fff;
+      text-shadow: 0 0 8px var(--red);
+      margin: 0.3rem 0 1.4rem;
+    }
+
+    .token-pack-btn {
+      display: block;
+      width: fit-content;
+      margin: 0 auto;
+      font-family: 'VT323', monospace;
+      font-size: 1.2rem;
+      letter-spacing: 3px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--red), var(--red-bright));
+      border: none;
+      padding: 0.55rem 1.8rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      box-shadow: 0 0 12px rgba(255,26,26,0.4);
+    }
+
+    .token-pack-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 22px rgba(255,26,26,0.7);
+    }
+
+    /* Best-value pack (treasure chest) gets the same glow/sparkle
+       treatment as the VIP card so it reads as the premium tier. */
+    .token-pack.best {
+      border-color: var(--red);
+      box-shadow: 0 0 20px rgba(204,0,0,0.25), inset 0 0 30px rgba(204,0,0,0.06);
+    }
+
+    .token-pack-ribbon {
+      position: absolute;
+      top: 1rem;
+      right: -2.1rem;
+      transform: rotate(40deg);
+      background: linear-gradient(135deg, var(--red-bright), var(--red));
+      color: #fff;
+      font-family: 'VT323', monospace;
+      font-size: 0.9rem;
+      letter-spacing: 2px;
+      padding: 0.2rem 2.5rem;
+      box-shadow: 0 0 10px rgba(255,26,26,0.5);
+    }
+
+    .token-pack-sparkle {
+      position: absolute;
+      color: var(--red-bright);
+      text-shadow: 0 0 6px var(--red-bright), 0 0 12px var(--red);
+      pointer-events: none;
+      animation: vipSparkleTwinkle 1.5s ease-in-out infinite;
+    }
+
+    .token-pack-sparkle.p1 { top: 8%;    left: 10%;  font-size: 0.8rem; animation-delay: 0s; }
+    .token-pack-sparkle.p2 { top: 14%;   right: 14%; font-size: 1.1rem; animation-delay: 0.4s; }
+    .token-pack-sparkle.p3 { bottom: 30%; left: 7%;  font-size: 0.9rem; animation-delay: 0.8s; }
+    .token-pack-sparkle.p4 { bottom: 16%; right: 9%; font-size: 0.7rem; animation-delay: 1.1s; }
+
+    @media (max-width: 700px) {
+      .token-packs { grid-template-columns: 1fr; }
+    }
+
     /* ─── ANIMATIONS ─── */
     @keyframes flicker {
       0%, 95%, 100% { opacity: 1; }
@@ -1414,6 +1524,36 @@
 
         <button class="vip-btn">[ GET VIP ]</button>
         <div class="vip-note">// Billed monthly — cancel anytime //</div>
+      </div>
+
+      <div class="token-packs">
+
+        <div class="token-pack">
+          <img src="{% static 'accounts/cipher_token.gif' %}" alt="Cipher Token" class="token-pack-img">
+          <div class="token-pack-amount">4 Tokens</div>
+          <div class="token-pack-price">$1<span style="font-size:1rem; color:var(--dim-white); letter-spacing:2px;">.00</span></div>
+          <button class="token-pack-btn">[ BUY ]</button>
+        </div>
+
+        <div class="token-pack">
+          <img src="{% static 'accounts/coin_bag.gif' %}" alt="Bag of Cipher Tokens" class="token-pack-img">
+          <div class="token-pack-amount">40 Tokens</div>
+          <div class="token-pack-price">$10<span style="font-size:1rem; color:var(--dim-white); letter-spacing:2px;">.00</span></div>
+          <button class="token-pack-btn">[ BUY ]</button>
+        </div>
+
+        <div class="token-pack best">
+          <div class="token-pack-ribbon">BEST VALUE</div>
+          <div class="token-pack-sparkle p1">✦</div>
+          <div class="token-pack-sparkle p2">✧</div>
+          <div class="token-pack-sparkle p3">✦</div>
+          <div class="token-pack-sparkle p4">✧</div>
+          <img src="{% static 'accounts/treasure_chest.gif' %}" alt="Chest of Cipher Tokens" class="token-pack-img">
+          <div class="token-pack-amount">400 Tokens</div>
+          <div class="token-pack-price">$100<span style="font-size:1rem; color:var(--dim-white); letter-spacing:2px;">.00</span></div>
+          <button class="token-pack-btn">[ BUY ]</button>
+        </div>
+
       </div>
 
     </div>
