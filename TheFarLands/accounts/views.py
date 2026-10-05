@@ -657,7 +657,9 @@ def director_grant_tokens(request):
     _role_cutscenes.html's global `input` listener), except this one
     actually writes to the database instead of just playing an
     animation: it adds <amount> Cipher Tokens to the Director's own
-    CustomUser.currency and records a TokenGrantLog row."""
+    CustomUser.currency, records a TokenGrantLog row (Director-specific
+    admin audit trail), and a TokenTransaction row (the user-facing
+    ledger entry shown on the Mail app's Cipher Tokens tab)."""
     if request.method != 'POST':
         return HttpResponseNotAllowed(['POST'])
     if not request.user.is_director:
@@ -673,6 +675,13 @@ def director_grant_tokens(request):
     request.user.currency += amount
     request.user.save(update_fields=['currency'])
     TokenGrantLog.objects.create(director=request.user, amount=amount, new_balance=request.user.currency)
+    TokenTransaction.objects.create(
+        user=request.user,
+        kind=TokenTransaction.ADMIN_GRANT,
+        amount=amount,
+        balance_after=request.user.currency,
+        note='Director cheat code (!Token_<amount>)',
+    )
     return JsonResponse({'amount': amount, 'balance': request.user.currency})
 
 

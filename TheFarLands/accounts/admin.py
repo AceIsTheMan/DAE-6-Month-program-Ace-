@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import CustomUser, GuestArchive, TokenGrantLog
+from .models import CustomUser, GuestArchive, TokenGrantLog, TokenTransaction
 
 
 class CustomUserAdmin(UserAdmin):
@@ -23,6 +23,25 @@ class GuestArchiveAdmin(admin.ModelAdmin):
     search_fields = ('username', 'alias')
     ordering = ('-archived_at',)
     readonly_fields = [f.name for f in GuestArchive._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(TokenTransaction)
+class TokenTransactionAdmin(admin.ModelAdmin):
+    """Read-only view of the per-user Cipher Token ledger shown on the
+    Mail app's Cipher Tokens tab (mail.views.mail_tokens) - locked for
+    the same reason as TokenGrantLog below: a ledger that can be edited
+    after the fact isn't a ledger."""
+    list_display = ('user', 'kind', 'amount', 'balance_after', 'created_at')
+    list_filter = ('kind',)
+    search_fields = ('user__username', 'note')
+    ordering = ('-created_at',)
+    readonly_fields = [f.name for f in TokenTransaction._meta.fields]
 
     def has_add_permission(self, request):
         return False

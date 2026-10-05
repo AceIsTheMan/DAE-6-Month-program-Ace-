@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load mail_extras %}
+{% load mail_extras static %}
 {% block title %}Mail // The Far Lands{% endblock %}
 
 {% block extra_head %}
@@ -279,6 +279,44 @@
     white-space: nowrap;
   }
   .friend-message-btn:hover { color: var(--red-bright); border-color: var(--red-bright); }
+
+  /* Cipher Tokens tab - a ledger, not a message feed, so it gets its
+     own stat-tile + row layout rather than reusing friend-item/
+     report-item. */
+  .token-tab-stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .token-tab-stat { border: 1px solid var(--red-dim); padding: 0.8rem 1.2rem; min-width: 140px; }
+  .token-tab-stat-value { font-family: 'VT323', monospace; font-size: 1.8rem; color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
+  .token-tab-stat-label { font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase; color: var(--dim-white); }
+  .token-tab-subhead { font-family: 'VT323', monospace; font-size: 1.1rem; letter-spacing: 2px; color: var(--red-bright); text-shadow: 0 0 4px var(--red); margin: 1.2rem 0 0.6rem; }
+  .token-tab-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .token-tab-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0.9rem; border-left: 2px solid var(--red-dim); background: rgba(204,0,0,0.05); }
+  .token-tab-row-icon { width: 24px; height: 24px; flex-shrink: 0; image-rendering: pixelated; }
+  .token-tab-row-main { flex-grow: 1; min-width: 0; }
+  .token-tab-row-top { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .token-tab-row-amount { font-family: 'VT323', monospace; font-size: 1.2rem; color: var(--red-bright); text-shadow: 0 0 4px var(--red); }
+  .token-tab-row-amount-neg { color: #ff6666; text-shadow: none; }
+  .token-tab-row-kind { font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; color: var(--dim-white); }
+  .token-tab-row-note { font-size: 0.72rem; color: var(--dim-white); margin-top: 0.15rem; }
+  .token-tab-row-date { font-size: 0.68rem; color: var(--dim-white); white-space: nowrap; }
+  .token-tab-history-toggle {
+    display: block;
+    margin: 1.5rem 0 0.8rem;
+    font-family: 'VT323', monospace;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    color: var(--silver);
+    background: none;
+    border: 1px solid var(--red-dim);
+    padding: 0.5rem 1.2rem;
+    cursor: pointer;
+  }
+  .token-tab-history-toggle:hover { color: var(--red-bright); border-color: var(--red-bright); }
+  .token-tab-history { display: none; overflow-x: auto; }
+  .token-tab-history.token-tab-history-open { display: block; }
+  .token-tab-history-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  .token-tab-history-table th, .token-tab-history-table td { border: 1px solid var(--red-dim); padding: 0.4rem 0.6rem; text-align: left; white-space: nowrap; }
+  .token-tab-history-table th { color: var(--red-bright); text-transform: uppercase; font-size: 0.66rem; letter-spacing: 1px; }
+
   .reports-list { display: flex; flex-direction: column; gap: 0.8rem; }
   .report-item { border: 1px solid var(--red-dim); padding: 0.8rem; }
   .report-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem; font-size: 0.72rem; color: var(--dim-white); margin-bottom: 0.4rem; }
@@ -598,6 +636,78 @@
             });
           })();
         </script>
+      {% endif %}
+    {% elif active_category == 'tokens' %}
+      <div class="token-tab-stats">
+        <div class="token-tab-stat">
+          <div class="token-tab-stat-value">{{ token_total_earned }}</div>
+          <div class="token-tab-stat-label">Total Earned</div>
+        </div>
+        <div class="token-tab-stat">
+          <div class="token-tab-stat-value">{{ token_balance }}</div>
+          <div class="token-tab-stat-label">Current Balance</div>
+        </div>
+        <div class="token-tab-stat">
+          <div class="token-tab-stat-value">{{ token_total_spent }}</div>
+          <div class="token-tab-stat-label">Total Spent</div>
+        </div>
+      </div>
+
+      <div class="token-tab-subhead">// EARNED</div>
+      <div class="token-tab-list">
+        {% for t in token_earned %}
+        <div class="token-tab-row">
+          <img src="{% static 'accounts/cipher_token.gif' %}" alt="" class="token-tab-row-icon">
+          <div class="token-tab-row-main">
+            <div class="token-tab-row-top">
+              <span class="token-tab-row-amount">+{{ t.amount }}</span>
+              <span class="token-tab-row-kind">{{ t.get_kind_display }}</span>
+            </div>
+            {% if t.note %}<div class="token-tab-row-note">{{ t.note }}</div>{% endif %}
+          </div>
+          <div class="token-tab-row-date">{{ t.created_at|date:"M j, Y, g:i A" }}</div>
+        </div>
+        {% empty %}
+        <div class="empty-feed">No Cipher Tokens earned yet.</div>
+        {% endfor %}
+      </div>
+
+      <div class="token-tab-subhead">// SPENT (MONTHLY SUMMARY)</div>
+      <div class="token-tab-list">
+        {% for m in token_monthly_spent %}
+        <div class="token-tab-row">
+          <div class="token-tab-row-main">
+            <div class="token-tab-row-top">
+              <span class="token-tab-row-amount token-tab-row-amount-neg">-{{ m.amount }}</span>
+              <span class="token-tab-row-kind">{{ m.label }}</span>
+            </div>
+            <div class="token-tab-row-note">{{ m.count }} transaction{{ m.count|pluralize }}</div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="empty-feed">No Cipher Tokens spent yet.</div>
+        {% endfor %}
+      </div>
+
+      {% if token_history %}
+      <button type="button" class="token-tab-history-toggle" onclick="document.getElementById('token-balance-history').classList.toggle('token-tab-history-open'); this.textContent = this.textContent.indexOf('SHOW') !== -1 ? '[ HIDE BALANCE HISTORY ]' : '[ SHOW BALANCE HISTORY ]';">[ SHOW BALANCE HISTORY ]</button>
+      <div id="token-balance-history" class="token-tab-history">
+        <table class="token-tab-history-table">
+          <thead>
+            <tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance After</th></tr>
+          </thead>
+          <tbody>
+            {% for t in token_history %}
+            <tr>
+              <td>{{ t.created_at|date:"M j, Y, g:i A" }}</td>
+              <td>{{ t.get_kind_display }}</td>
+              <td class="{% if t.amount < 0 %}token-tab-row-amount-neg{% endif %}">{% if t.amount >= 0 %}+{% endif %}{{ t.amount }}</td>
+              <td>{{ t.balance_after }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
       {% endif %}
     {% elif active_category == 'friends' %}
       <div class="friends-list">

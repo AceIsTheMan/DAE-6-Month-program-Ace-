@@ -21,6 +21,7 @@ urlpatterns = [
     path('social/<int:conversation_id>/', views.mail_social_thread, name='mail_social_thread'),
     path('friends/', views.mail_friends, name='mail_friends'),
     path('saved/', views.mail_saved, name='mail_saved'),
+    path('tokens/', views.mail_tokens, name='mail_tokens'),
     path('message/<int:message_id>/save/', views.mail_message_save, name='mail_message_save'),
     path('message/<int:message_id>/mark-read/', views.mail_message_mark_read, name='mail_message_mark_read'),
     path('message/<int:message_id>/forward/', views.mail_message_forward, name='mail_message_forward'),

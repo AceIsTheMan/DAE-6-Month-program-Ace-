@@ -215,3 +215,50 @@ class TokenGrantLog(models.Model):
 
     def __str__(self):
         return f'{self.director.username} +{self.amount} -> {self.new_balance}'
+
+
+class TokenTransaction(models.Model):
+    """
+    One line in a user's Cipher Token history - the ledger behind the
+    Mail app's Cipher Tokens tab (mail.views.mail_tokens). Every change
+    to CustomUser.currency should eventually create one of these; today
+    the only writer is the Director's "!Token_<amount>" cheat code
+    (accounts.views.director_grant_tokens, kind=ADMIN_GRANT) since
+    nothing else (VIP, the Store token packs) is wired to a real
+    purchase/gift/win flow yet - see that view's docstring.
+
+    `amount` is signed: positive for anything that adds tokens (gift/
+    purchase/won/admin_grant), negative for SPENT. `balance_after` snapshots
+    currency right after this row was applied, so the history view can
+    just order by created_at and read each row's own balance_after
+    instead of replaying the whole ledger to reconstruct a running total.
+    """
+    GIFT = 'gift'
+    PURCHASE = 'purchase'
+    WON = 'won'
+    ADMIN_GRANT = 'admin_grant'
+    SPENT = 'spent'
+    KIND_CHOICES = [
+        (GIFT, 'Gift'),
+        (PURCHASE, 'Purchase'),
+        (WON, 'Won'),
+        (ADMIN_GRANT, 'Admin Grant'),
+        (SPENT, 'Spent'),
+    ]
+    #: Kinds that add to the balance - everything else (just SPENT today)
+    #: subtracts. Used to split "earned" vs. "spent" in the history tab.
+    EARNED_KINDS = (GIFT, PURCHASE, WON, ADMIN_GRANT)
+
+    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='token_transactions')
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
+    amount = models.IntegerField(help_text='Signed - positive for earned, negative for spent.')
+    balance_after = models.IntegerField()
+    note = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        sign = '+' if self.amount >= 0 else ''
+        return f'{self.user.username} {sign}{self.amount} ({self.get_kind_display()})'

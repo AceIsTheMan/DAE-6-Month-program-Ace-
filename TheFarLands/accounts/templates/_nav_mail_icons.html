@@ -1,3 +1,4 @@
+{% load static %}
 {% comment %}
 Mail/notification (envelope) and Settings (gear) nav icons - included from
 both accounts/templates/base.html and accounts/templates/home.html (which
@@ -13,8 +14,13 @@ convention (see forum/templates/forum/index.html:154-155's comment on
   settings/gear             - gear (u2699)
   Directive (person icon)   - chess pawn (u265F, Chess Symbols is
                                monochrome by definition)
-  Currency/"Cipher Token"   - generic currency sign (u00A4)
   unread indicator          - filled circle (u25CF)
+
+Currency/"Cipher Token" is the one deliberate exception to "no raster
+icons" above - it uses the actual branded coin art
+(accounts/static/accounts/cipher_token.gif, see also the Store page's
+token-square and token-pack cards) instead of a generic glyph, now that
+Cipher Tokens are a real, named thing rather than a placeholder "Digit".
 {% endcomment %}
 {% if user.is_authenticated and not user.is_guest %}
 <style>
@@ -56,6 +62,12 @@ convention (see forum/templates/forum/index.html:154-155's comment on
   .dropdown-item:hover { background: rgba(204,0,0,0.15); color: var(--red-bright); }
   .dropdown-item.inert { cursor: default; color: var(--dim-white); }
   .dropdown-item.inert:hover { background: none; color: var(--dim-white); }
+  .dropdown-token-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    image-rendering: pixelated;
+  }
   .dropdown-badge { color: var(--red-bright); margin-left: auto; text-shadow: 0 0 4px var(--red); }
   .nav-icon-wrap { position: relative; }
   .nav-icon-btn {
@@ -112,7 +124,10 @@ convention (see forum/templates/forum/index.html:154-155's comment on
       &#9823; Directive
       {% if unread_directive_count %}<span class="dropdown-badge">&#9679;</span>{% endif %}
     </a>
-    <div class="dropdown-item inert">&#164; Cipher Tokens &mdash; <span class="token-amount">{{ currency_balance|default:"0" }}</span></div>
+    <div class="dropdown-item inert">
+      <img src="{% static 'accounts/cipher_token.gif' %}" alt="" class="dropdown-token-icon">
+      <span>Cipher Tokens &mdash; <span class="token-amount">{{ currency_balance|default:"0" }}</span></span>
+    </div>
   </div>
 </li>
 <li class="nav-auth-link nav-icon-wrap">

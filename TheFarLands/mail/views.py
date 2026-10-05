@@ -9,7 +9,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 
-from accounts.models import CustomUser
+from accounts.models import CustomUser, TokenTransaction
 from forum.models import Comment, Post
 from forum.sanitize import sanitize_post_html
 
@@ -501,6 +501,49 @@ def mail_updates(request):
     return render(request, 'mail/index.html', {
         **_sidebar_context(request.user, 'updates'),
         'messages_list': messages_list,
+    })
+
+
+#: Cap on how many TokenTransaction rows mail_tokens pulls per user - a
+#: ledger, not a Conversation, so there's no unread/offset pagination to
+#: lean on like the rest of Mail; this is the same "just cap it" guard
+#: CHAT_LOG_SEARCH_LIMIT uses in accounts/views.py.
+TOKEN_HISTORY_LIMIT = 500
+
+
+@login_required
+def mail_tokens(request):
+    """Cipher Tokens tab - a read-only ledger over accounts.models.
+    TokenTransaction, not a Conversation/Message like every other tab.
+    Earned transactions (gift/purchase/won/admin_grant) are shown one
+    row per transaction - what the user got, when, and from where.
+    SPENT transactions are collapsed into a monthly summary instead of
+    itemized (see TokenTransaction's docstring); the full mixed
+    chronological ledger, each row carrying its own balance_after
+    snapshot, is still available as "balance history" for anyone who
+    wants to drill in further."""
+    _require_mail_access(request.user)
+    transactions = list(
+        TokenTransaction.objects.filter(user=request.user).order_by('-created_at')[:TOKEN_HISTORY_LIMIT]
+    )
+    earned = [t for t in transactions if t.kind in TokenTransaction.EARNED_KINDS]
+    spent = [t for t in transactions if t.kind == TokenTransaction.SPENT]
+
+    monthly_spent = {}
+    for t in spent:
+        key = t.created_at.strftime('%Y-%m')
+        bucket = monthly_spent.setdefault(key, {'label': t.created_at.strftime('%B %Y'), 'amount': 0, 'count': 0})
+        bucket['amount'] += -t.amount
+        bucket['count'] += 1
+
+    return render(request, 'mail/index.html', {
+        **_sidebar_context(request.user, 'tokens'),
+        'token_earned': earned,
+        'token_monthly_spent': list(monthly_spent.values()),
+        'token_total_earned': sum(t.amount for t in earned),
+        'token_total_spent': -sum(t.amount for t in spent),
+        'token_balance': request.user.currency,
+        'token_history': transactions,
     })
 
 

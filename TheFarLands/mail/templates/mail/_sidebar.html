@@ -13,6 +13,7 @@
   <a href="{% url 'mail_friends' %}" class="mail-category{% if active_category == 'friends' %} active{% endif %}">Friends</a>
   <a href="{% url 'mail_fan_letters' %}" class="mail-category{% if active_category == 'fan_letters' %} active{% endif %}">Fan Letter{% if unread_by_category.fan_letter %} <span class="mail-category-badge">{{ unread_by_category.fan_letter }}</span>{% endif %}</a>
   <a href="{% url 'mail_saved' %}" class="mail-category{% if active_category == 'saved' %} active{% endif %}">Saved</a>
+  <a href="{% url 'mail_tokens' %}" class="mail-category{% if active_category == 'tokens' %} active{% endif %}">Cipher Tokens</a>
   {% if can_moderate %}
   <a href="{% url 'mail_reports' %}" class="mail-category{% if active_category == 'reports' %} active{% endif %}">Reports</a>
   <a href="{% url 'mail_report_history' %}" class="mail-category{% if active_category == 'report_history' %} active{% endif %}">Report History</a>
