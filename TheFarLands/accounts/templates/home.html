@@ -686,6 +686,141 @@
       transform: scale(1.04);
     }
 
+    /* ─── STORE PAGE ─── */
+    .store-wrap {
+      padding: 4rem 2rem;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .vip-card {
+      position: relative;
+      border: 1px solid var(--red);
+      background: linear-gradient(145deg, #0a0000, #150000);
+      padding: 3rem 2rem 2.5rem;
+      text-align: center;
+      overflow: hidden;
+      box-shadow: 0 0 24px rgba(204,0,0,0.25), inset 0 0 40px rgba(204,0,0,0.06);
+    }
+
+    .vip-badge {
+      position: absolute;
+      top: 1.2rem;
+      right: 1.2rem;
+      font-family: 'VT323', monospace;
+      font-size: 1.3rem;
+      letter-spacing: 3px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--red-bright), var(--red));
+      padding: 0.3rem 1rem;
+      border: 1px solid #ff6666;
+      transform: rotate(6deg);
+      animation: vipBadgePulse 2s ease-in-out infinite;
+    }
+
+    .vip-title {
+      font-family: 'VT323', monospace;
+      font-size: 2.6rem;
+      letter-spacing: 6px;
+      color: var(--red-bright);
+      text-shadow: 0 0 10px var(--red), 0 0 24px rgba(255,26,26,0.4);
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    .vip-price {
+      font-family: 'VT323', monospace;
+      font-size: 3.2rem;
+      color: #fff;
+      text-shadow: 0 0 8px var(--red);
+      margin-bottom: 1.5rem;
+    }
+
+    .vip-price span {
+      font-size: 1rem;
+      color: var(--dim-white);
+      letter-spacing: 2px;
+      margin-left: 0.3rem;
+    }
+
+    .vip-perks {
+      list-style: none;
+      display: inline-block;
+      text-align: left;
+      margin-bottom: 2rem;
+    }
+
+    .vip-perks li {
+      font-size: 0.75rem;
+      color: var(--silver);
+      letter-spacing: 1px;
+      padding: 0.4rem 0 0.4rem 1.4rem;
+      position: relative;
+    }
+
+    .vip-perks li::before {
+      content: '▸';
+      position: absolute;
+      left: 0;
+      color: var(--red-bright);
+      text-shadow: 0 0 4px var(--red);
+    }
+
+    .vip-btn {
+      display: block;
+      width: fit-content;
+      margin: 0.5rem auto 0;
+      font-family: 'VT323', monospace;
+      font-size: 1.5rem;
+      letter-spacing: 4px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--red), var(--red-bright));
+      border: none;
+      padding: 0.7rem 3rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      box-shadow: 0 0 16px rgba(255,26,26,0.5);
+    }
+
+    .vip-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 28px rgba(255,26,26,0.8);
+    }
+
+    .vip-note {
+      margin-top: 1.2rem;
+      font-size: 0.6rem;
+      color: #330000;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .vip-sparkle {
+      position: absolute;
+      color: var(--red-bright);
+      text-shadow: 0 0 6px var(--red-bright), 0 0 12px var(--red);
+      pointer-events: none;
+      animation: vipSparkleTwinkle 1.6s ease-in-out infinite;
+    }
+
+    .vip-sparkle.s1 { top: 10%;    left: 7%;   font-size: 0.8rem; animation-delay: 0s; }
+    .vip-sparkle.s2 { top: 18%;    right: 10%; font-size: 1.3rem; animation-delay: 0.3s; }
+    .vip-sparkle.s3 { bottom: 14%; left: 12%;  font-size: 1rem;   animation-delay: 0.6s; }
+    .vip-sparkle.s4 { bottom: 22%; right: 7%;  font-size: 0.7rem; animation-delay: 0.9s; }
+    .vip-sparkle.s5 { top: 50%;    left: 3%;   font-size: 0.9rem; animation-delay: 1.2s; }
+    .vip-sparkle.s6 { top: 46%;    right: 4%;  font-size: 1.1rem; animation-delay: 0.45s; }
+
+    @keyframes vipBadgePulse {
+      0%, 100% { box-shadow: 0 0 10px var(--red-bright), 0 0 20px rgba(255,26,26,0.4); }
+      50% { box-shadow: 0 0 18px var(--red-bright), 0 0 38px rgba(255,26,26,0.75); }
+    }
+
+    @keyframes vipSparkleTwinkle {
+      0%, 100% { opacity: 0;   transform: scale(0.4) rotate(0deg); }
+      50%      { opacity: 1;   transform: scale(1.15) rotate(25deg); }
+    }
+
     /* ─── ANIMATIONS ─── */
     @keyframes flicker {
       0%, 95%, 100% { opacity: 1; }
@@ -714,6 +849,9 @@
     @media (max-width: 600px) {
       .nav-links li a { font-size: 0.62rem; padding: 0.4rem 0.5rem; letter-spacing: 1px; }
       .banner-placeholder { height: 300px; }
+      .vip-badge { top: 0.8rem; right: 0.8rem; font-size: 1rem; }
+      .vip-title { font-size: 1.9rem; }
+      .vip-price { font-size: 2.4rem; }
     }
   </style>
 </head>
@@ -1172,16 +1310,38 @@
      STORE PAGE
 ════════════════════════════════════════════════════ -->
 <div id="page-store" class="page">
-  <div style="margin-top:56px;">
-    <div class="updates-wrap">
-      <div class="updates-icon">⚠</div>
-      <div class="updates-title">// STORE //</div>
-      <div class="updates-note">
-        Come back <span>2027</span> — something is coming.
+  <div style="margin-top:56px; background:#000; padding-top:3rem;">
+    <div class="store-wrap">
+
+      <div class="section-label">// STORE</div>
+      <div class="section-divider"></div>
+
+      <div class="vip-card">
+        <div class="vip-sparkle s1">✦</div>
+        <div class="vip-sparkle s2">✧</div>
+        <div class="vip-sparkle s3">✦</div>
+        <div class="vip-sparkle s4">✧</div>
+        <div class="vip-sparkle s5">✦</div>
+        <div class="vip-sparkle s6">✧</div>
+
+        <div class="vip-badge">VIP</div>
+
+        <div class="vip-title">VIP Membership</div>
+        <div class="vip-price">$5<span>/ month</span></div>
+
+        <ul class="vip-perks">
+          <li>Exclusive VIP tag</li>
+          <li>Name color change</li>
+          <li>Profile cosmetics</li>
+          <li>Custom theme</li>
+          <li>Exclusive emoji's and stickers</li>
+          <li>Early access content</li>
+        </ul>
+
+        <button class="vip-btn">[ GET VIP ]</button>
+        <div class="vip-note">// Billed monthly — cancel anytime //</div>
       </div>
-      <div style="font-size:0.65rem; color:#330000; letter-spacing:3px; text-transform:uppercase; margin-top:1rem;">
-        [ NO FURTHER INFORMATION AT THIS TIME ]
-      </div>
+
     </div>
   </div>
 </div>
