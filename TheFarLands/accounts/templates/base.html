@@ -380,6 +380,7 @@
     <li><a href="{% url 'forum' %}"{% if request.resolver_match.url_name == 'forum' %} class="active"{% endif %}>FORUM</a></li>
     <li><a href="{% url 'home' %}?page=updates">UPDATES</a></li>
     <li><a href="{% url 'home' %}?page=socials">SOCIALS &amp; SUPPORT</a></li>
+    <li><a href="{% url 'home' %}?page=store">STORE</a></li>
     {% if user.is_authenticated %}
     <li class="nav-auth-link"><a href="{% url 'profile' %}"{% if request.resolver_match.url_name == 'profile' or request.resolver_match.url_name == 'user_profile' %} class="active"{% endif %}>PROFILE</a></li>
     {% include "_nav_mail_icons.html" %}

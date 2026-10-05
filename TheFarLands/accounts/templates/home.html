@@ -985,6 +985,7 @@
     <li><a href="{% url 'forum' %}">FORUM</a></li>
     <li><a href="#" onclick="showPage('updates', this)">UPDATES</a></li>
     <li><a href="#" onclick="showPage('socials', this)">SOCIALS &amp; SUPPORT</a></li>
+    <li><a href="#" onclick="showPage('store', this)">STORE</a></li>
     {% if user.is_authenticated %}
     <li class="nav-auth-link"><a href="{% url 'profile' %}">PROFILE</a></li>
     {% include "_nav_mail_icons.html" %}
@@ -1167,6 +1168,24 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════
+     STORE PAGE
+════════════════════════════════════════════════════ -->
+<div id="page-store" class="page">
+  <div style="margin-top:56px;">
+    <div class="updates-wrap">
+      <div class="updates-icon">⚠</div>
+      <div class="updates-title">// STORE //</div>
+      <div class="updates-note">
+        Come back <span>2027</span> — something is coming.
+      </div>
+      <div style="font-size:0.65rem; color:#330000; letter-spacing:3px; text-transform:uppercase; margin-top:1rem;">
+        [ NO FURTHER INFORMATION AT THIS TIME ]
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- ─── LIGHTBOX ─── -->
 <div class="lightbox" id="lightbox" onclick="closeLightboxOutside(event)">
@@ -1204,14 +1223,15 @@
      of silently keeping stale JS. -->
 <script src="{% static 'accounts/TFL.js' %}?v=5"></script>
 <script>
-  // The UPDATES / SOCIALS & SUPPORT nav links on every OTHER page (see
-  // base.html) can't call showPage() directly - there's no page-switcher
-  // on those pages, just this one. They instead link back here with
-  // ?page=updates / ?page=socials, and this picks that up on load and
-  // switches to the right section, same as clicking the tab would.
+  // The UPDATES / SOCIALS & SUPPORT / STORE nav links on every OTHER page
+  // (see base.html) can't call showPage() directly - there's no
+  // page-switcher on those pages, just this one. They instead link back
+  // here with ?page=updates / ?page=socials / ?page=store, and this picks
+  // that up on load and switches to the right section, same as clicking
+  // the tab would.
   (function () {
     var page = new URLSearchParams(window.location.search).get('page');
-    if (page !== 'updates' && page !== 'socials') return;
+    if (page !== 'updates' && page !== 'socials' && page !== 'store') return;
     var target = null;
     document.querySelectorAll('.nav-links a').forEach(function (a) {
       var onclick = a.getAttribute('onclick') || '';
