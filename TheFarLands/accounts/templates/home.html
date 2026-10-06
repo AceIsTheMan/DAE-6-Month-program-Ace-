@@ -994,6 +994,99 @@
       .token-packs { grid-template-columns: 1fr; }
     }
 
+    /* ─── GIFT CARD ─── */
+    .gift-card {
+      margin-top: 2.5rem;
+      border: 1px solid var(--red-dim);
+      background: linear-gradient(145deg, #0a0000, #140000);
+      padding: 2.2rem 2rem 2rem;
+      text-align: center;
+    }
+
+    .gift-card-icon {
+      width: 96px;
+      height: 96px;
+      margin: 0 auto 1rem;
+      display: block;
+      image-rendering: pixelated;
+      filter: drop-shadow(0 0 6px rgba(255,26,26,0.4));
+    }
+
+    .gift-card-title {
+      font-family: 'VT323', monospace;
+      font-size: 2rem;
+      letter-spacing: 4px;
+      color: var(--red-bright);
+      text-shadow: 0 0 8px var(--red);
+      text-transform: uppercase;
+      margin-bottom: 0.3rem;
+    }
+
+    .gift-card-sub {
+      font-size: 0.7rem;
+      color: var(--dim-white);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 1.8rem;
+    }
+
+    .gift-tiers {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 1.8rem;
+    }
+
+    .gift-tier-btn {
+      font-family: 'VT323', monospace;
+      font-size: 1.1rem;
+      letter-spacing: 2px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--red), var(--red-bright));
+      border: none;
+      padding: 0.6rem 1.6rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      box-shadow: 0 0 12px rgba(255,26,26,0.4);
+    }
+
+    .gift-tier-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 20px rgba(255,26,26,0.7);
+    }
+
+    .gift-card-divider {
+      width: 60%;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--red-dim), transparent);
+      margin: 0 auto 1.8rem;
+    }
+
+    .gift-vip-btn {
+      display: block;
+      width: fit-content;
+      margin: 0 auto;
+      font-family: 'VT323', monospace;
+      font-size: 1.3rem;
+      letter-spacing: 3px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--red-dim), var(--red));
+      border: 1px solid var(--red-bright);
+      padding: 0.7rem 2.2rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      box-shadow: 0 0 14px rgba(204,0,0,0.4);
+    }
+
+    .gift-vip-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 0 24px rgba(255,26,26,0.7);
+      border-color: #fff;
+    }
+
     /* ─── ANIMATIONS ─── */
     @keyframes flicker {
       0%, 95%, 100% { opacity: 1; }
@@ -1554,6 +1647,22 @@
           <button class="token-pack-btn">[ BUY ]</button>
         </div>
 
+      </div>
+
+      <div class="gift-card">
+        <img src="{% static 'accounts/gift_box.gif' %}" alt="Gift" class="gift-card-icon">
+        <div class="gift-card-title">Gift Cipher Tokens</div>
+        <div class="gift-card-sub">// Send tokens or VIP to a friend's account //</div>
+
+        <div class="gift-tiers">
+          <button class="gift-tier-btn">[ GIFT 4 TOKENS ]</button>
+          <button class="gift-tier-btn">[ GIFT 40 TOKENS ]</button>
+          <button class="gift-tier-btn">[ GIFT 400 TOKENS ]</button>
+        </div>
+
+        <div class="gift-card-divider"></div>
+
+        <button class="gift-vip-btn">[ GIFT 1 MONTH VIP ]</button>
       </div>
 
     </div>
