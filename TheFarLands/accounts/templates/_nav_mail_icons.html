@@ -124,10 +124,10 @@ Cipher Tokens are a real, named thing rather than a placeholder "Digit".
       &#9823; Directive
       {% if unread_directive_count %}<span class="dropdown-badge">&#9679;</span>{% endif %}
     </a>
-    <div class="dropdown-item inert">
+    <a href="{% url 'mail_tokens' %}" class="dropdown-item">
       <img src="{% static 'accounts/cipher_token.gif' %}" alt="" class="dropdown-token-icon">
       <span>Cipher Tokens &mdash; <span class="token-amount">{{ currency_balance|default:"0" }}</span></span>
-    </div>
+    </a>
   </div>
 </li>
 <li class="nav-auth-link nav-icon-wrap">
