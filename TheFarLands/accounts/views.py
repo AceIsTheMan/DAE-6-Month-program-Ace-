@@ -16,7 +16,9 @@ from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 
 from forum.models import Comment, Post
+from mail.forms import _is_blocked_pair
 from mail.models import FriendRequest, Message, ModerationAction, Report, RoleChangeLog, UserRelationship, Warning
+from mail.views import _get_or_create_dm
 
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
 from .models import CustomUser, GuestArchive, TokenGrantLog, TokenTransaction
@@ -770,6 +772,134 @@ def store_purchase(request):
         response['total_days'] = total_days
         response['vip_expires_at'] = request.user.vip_expires_at.isoformat()
         response['vip_days_remaining'] = request.user.vip_days_remaining
+
+    return JsonResponse(response)
+
+
+#: "they can gift as many times in 1 gift as they want" - still bounded
+#: so a mis-typed quantity can't overflow an IntegerField; 'own'-balance
+#: gifts are additionally bounded by the sender's real balance below.
+GIFT_MAX_QUANTITY = 1_000_000
+
+
+@login_required
+def store_gift(request):
+    """Backing endpoint for the Store's Gift card (see home.html's gift
+    fields on the shared checkout modal). Same STORE_CATALOG pricing as
+    store_purchase, except the tokens/VIP land on a chosen recipient
+    instead of the buyer, and the recipient gets a Mail DM announcing it
+    (reusing mail.views._get_or_create_dm - the same find-or-create DM
+    thread every other cross-account notice in Mail uses).
+
+    Token gifts take a `source`:
+      - 'buy' (default): fresh tokens, paid for (fake) by the sender -
+        the recipient's balance goes up, the sender's doesn't move.
+      - 'own': transferred out of the sender's own existing balance -
+        they must actually have that many tokens. Logs a SPENT row for
+        the sender (so it shows in their monthly spent summary on the
+        Cipher Tokens tab) alongside the recipient's GIFT row.
+    VIP gifts have no 'own' mode - VIP isn't a transferable balance, so
+    it's always bought fresh for the recipient, stacking onto whatever
+    VIP time they already have left (same stacking rule as
+    store_purchase)."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    if request.user.is_guest:
+        return JsonResponse({'error': 'Guest accounts cannot use the Store.'}, status=403)
+
+    item_key = request.POST.get('item', '')
+    item = STORE_CATALOG.get(item_key)
+    if item is None:
+        return JsonResponse({'error': 'Unknown item.'}, status=400)
+
+    try:
+        quantity = int(request.POST.get('quantity', '1'))
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Invalid quantity.'}, status=400)
+    if quantity < 1 or quantity > GIFT_MAX_QUANTITY:
+        return JsonResponse({'error': f'Quantity must be between 1 and {GIFT_MAX_QUANTITY}.'}, status=400)
+
+    recipient_username = request.POST.get('recipient', '').strip()
+    recipient = CustomUser.objects.filter(username=recipient_username).first()
+    if recipient is None:
+        return JsonResponse({'error': 'Recipient not found.'}, status=400)
+    if recipient == request.user:
+        return JsonResponse({'error': 'You cannot gift yourself.'}, status=400)
+    if recipient.is_guest:
+        return JsonResponse({'error': 'Guest accounts cannot receive gifts.'}, status=400)
+    if _is_blocked_pair(request.user, recipient):
+        return JsonResponse({'error': 'Gifting is not available between these accounts.'}, status=403)
+
+    source = request.POST.get('source', 'buy')
+    if source not in ('buy', 'own'):
+        source = 'buy'
+    if item['kind'] != 'tokens':
+        source = 'buy'  # VIP has no "own balance" to gift from
+
+    payment_method = request.POST.get('payment_method', 'card')
+    if payment_method not in ('card', 'paypal', 'cipher_pay'):
+        payment_method = 'card'
+
+    note = request.POST.get('note', '').strip()[:500]
+
+    response = {
+        'item': item_key,
+        'label': item['label'],
+        'kind': item['kind'],
+        'quantity': quantity,
+        'source': source,
+        'recipient': recipient.username,
+    }
+
+    if item['kind'] == 'tokens':
+        total_tokens = item['unit_tokens'] * quantity
+        if source == 'own':
+            if request.user.currency < total_tokens:
+                return JsonResponse({'error': 'You do not have enough Cipher Tokens for this gift.'}, status=400)
+            request.user.currency -= total_tokens
+            request.user.save(update_fields=['currency'])
+            TokenTransaction.objects.create(
+                user=request.user,
+                kind=TokenTransaction.SPENT,
+                amount=-total_tokens,
+                balance_after=request.user.currency,
+                note=f'Gifted {total_tokens} tokens to {recipient.username}',
+            )
+            response['sender_balance'] = request.user.currency
+            response['total_price_cents'] = 0
+        else:
+            response['total_price_cents'] = item['unit_price_cents'] * quantity
+
+        recipient.currency += total_tokens
+        recipient.save(update_fields=['currency'])
+        gift_note = f'Gift from {request.user.username}'
+        if note:
+            gift_note += f': "{note}"'
+        TokenTransaction.objects.create(
+            user=recipient,
+            kind=TokenTransaction.GIFT,
+            amount=total_tokens,
+            balance_after=recipient.currency,
+            note=gift_note,
+        )
+        response['total_tokens'] = total_tokens
+        gift_desc = f'{total_tokens} Cipher Tokens'
+    else:  # 'vip'
+        total_days = item['unit_days'] * quantity
+        base = recipient.vip_expires_at if recipient.is_vip else timezone.now()
+        recipient.vip_expires_at = base + timedelta(days=total_days)
+        recipient.save(update_fields=['vip_expires_at'])
+        response['total_days'] = total_days
+        response['total_price_cents'] = item['unit_price_cents'] * quantity
+        gift_desc = f'{total_days} day{"s" if total_days != 1 else ""} of VIP Membership'
+
+    body_lines = [f'\U0001f381 You received a gift from {request.user.username}: {gift_desc}.']
+    if note:
+        body_lines.append(f'Note: "{note}"')
+    conversation = _get_or_create_dm(request.user, recipient)
+    Message.objects.create(conversation=conversation, sender=request.user, body='\n'.join(body_lines))
+    conversation.last_message_at = timezone.now()
+    conversation.save(update_fields=['last_message_at'])
 
     return JsonResponse(response)
 

@@ -33,6 +33,7 @@ urlpatterns = [
     path('settings/cutscenes/c1/toggle/', views.settings_toggle_secret_cutscene, name='settings_toggle_secret_cutscene'),
     path('settings/director/grant-tokens/', views.director_grant_tokens, name='director_grant_tokens'),
     path('store/purchase/', views.store_purchase, name='store_purchase'),
+    path('store/gift/', views.store_gift, name='store_gift'),
     path('status/toggle/', views.toggle_status, name='toggle_status'),
     path('profile/', views.profile_view, name='profile'),
     path('profile/edit/', views.profile_edit_view, name='profile_edit'),

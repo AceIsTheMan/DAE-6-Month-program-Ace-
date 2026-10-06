@@ -494,7 +494,9 @@
       margin-bottom: 0.3rem;
     }
     .store-checkout-field input[type="number"],
-    .store-checkout-field select {
+    .store-checkout-field input[type="text"],
+    .store-checkout-field select,
+    .store-checkout-field textarea {
       width: 100%;
       background: transparent;
       border: 1px solid var(--red-dim);
@@ -502,9 +504,56 @@
       font-family: 'Share Tech Mono', monospace;
       font-size: 0.9rem;
       padding: 0.5rem 0.7rem;
+      resize: vertical;
     }
     .store-checkout-field input[type="number"]:focus,
-    .store-checkout-field select:focus { outline: none; border-color: var(--red-bright); }
+    .store-checkout-field input[type="text"]:focus,
+    .store-checkout-field select:focus,
+    .store-checkout-field textarea:focus { outline: none; border-color: var(--red-bright); }
+    .sc-recipient-results {
+      max-height: 160px;
+      overflow-y: auto;
+      border: 1px solid var(--red-dim);
+      border-top: none;
+      display: none;
+    }
+    .sc-recipient-results:not(:empty) { display: block; }
+    .sc-recipient-row {
+      padding: 0.45rem 0.7rem;
+      font-size: 0.82rem;
+      color: var(--silver);
+      cursor: pointer;
+    }
+    .sc-recipient-row:hover { background: rgba(204,0,0,0.15); color: var(--red-bright); }
+    .sc-recipient-selected {
+      border: 1px solid var(--red-dim);
+      padding: 0.55rem 0.8rem;
+      font-size: 0.85rem;
+      color: var(--silver);
+    }
+    .sc-recipient-selected strong { color: var(--red-bright); text-shadow: 0 0 4px var(--red); }
+    .sc-recipient-change {
+      background: none;
+      border: none;
+      color: var(--dim-white);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.75rem;
+      cursor: pointer;
+      float: right;
+    }
+    .sc-recipient-change:hover { color: var(--red-bright); }
+    .sc-source-toggle { display: flex; flex-direction: column; gap: 0.5rem; }
+    .sc-source-toggle label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.82rem;
+      color: var(--silver);
+      text-transform: none;
+      letter-spacing: 0;
+      cursor: pointer;
+    }
+    .sc-source-toggle input { accent-color: var(--red-bright); }
     .store-checkout-receipt {
       border: 1px dashed var(--red-dim);
       padding: 0.9rem 1rem;
@@ -1795,14 +1844,32 @@
         <div class="gift-card-sub">// Send tokens or VIP to a friend's account //</div>
 
         <div class="gift-tiers">
-          <button class="gift-tier-btn">[ GIFT 4 TOKENS ]</button>
-          <button class="gift-tier-btn">[ GIFT 40 TOKENS ]</button>
-          <button class="gift-tier-btn">[ GIFT 400 TOKENS ]</button>
+          {% if user.is_authenticated and not user.is_guest %}
+          <button type="button" class="gift-tier-btn" onclick="openStoreCheckout(this)"
+            data-item="tokens_4" data-label="4 Tokens" data-icon="{% static 'accounts/cipher_token.gif' %}"
+            data-unit-price-cents="100" data-unit-tokens="4" data-gift="true">[ GIFT 4 TOKENS ]</button>
+          <button type="button" class="gift-tier-btn" onclick="openStoreCheckout(this)"
+            data-item="tokens_40" data-label="40 Tokens" data-icon="{% static 'accounts/coin_bag.gif' %}"
+            data-unit-price-cents="1000" data-unit-tokens="40" data-gift="true">[ GIFT 40 TOKENS ]</button>
+          <button type="button" class="gift-tier-btn" onclick="openStoreCheckout(this)"
+            data-item="tokens_400" data-label="400 Tokens" data-icon="{% static 'accounts/treasure_chest.gif' %}"
+            data-unit-price-cents="10000" data-unit-tokens="400" data-gift="true">[ GIFT 400 TOKENS ]</button>
+          {% else %}
+          <a href="{% url 'login' %}" class="gift-tier-btn">[ GIFT 4 TOKENS ]</a>
+          <a href="{% url 'login' %}" class="gift-tier-btn">[ GIFT 40 TOKENS ]</a>
+          <a href="{% url 'login' %}" class="gift-tier-btn">[ GIFT 400 TOKENS ]</a>
+          {% endif %}
         </div>
 
         <div class="gift-card-divider"></div>
 
-        <button class="gift-vip-btn">[ GIFT 1 MONTH VIP ]</button>
+        {% if user.is_authenticated and not user.is_guest %}
+        <button type="button" class="gift-vip-btn" onclick="openStoreCheckout(this)"
+          data-item="vip_month" data-label="VIP Membership" data-icon=""
+          data-unit-price-cents="500" data-unit-days="30" data-gift="true">[ GIFT 1 MONTH VIP ]</button>
+        {% else %}
+        <a href="{% url 'login' %}" class="gift-vip-btn">[ GIFT 1 MONTH VIP ]</a>
+        {% endif %}
       </div>
 
     </div>
@@ -1825,11 +1892,31 @@
     </div>
 
     <div class="store-checkout-field">
-      <label for="sc-quantity">Quantity (per checkout, max 50)</label>
+      <label for="sc-quantity" id="sc-quantity-label">Quantity (per checkout, max 50)</label>
       <input type="number" id="sc-quantity" min="1" max="50" value="1" oninput="recomputeStoreCheckout()">
     </div>
 
-    <div class="store-checkout-field">
+    <div class="store-checkout-field sc-gift-only" id="sc-gift-recipient-field" style="display:none;">
+      <label>Gift To</label>
+      <div id="sc-recipient-search-wrap">
+        <input type="text" id="sc-recipient-search" placeholder="Search username..." autocomplete="off" oninput="searchGiftRecipient()">
+        <div id="sc-recipient-results" class="sc-recipient-results"></div>
+      </div>
+      <div id="sc-recipient-selected" class="sc-recipient-selected" style="display:none;">
+        Gifting to: <strong id="sc-recipient-name"></strong>
+        <button type="button" class="sc-recipient-change" onclick="clearGiftRecipient()">[ change ]</button>
+      </div>
+    </div>
+
+    <div class="store-checkout-field sc-gift-only" id="sc-gift-source-field" style="display:none;">
+      <label>Token Source</label>
+      <div class="sc-source-toggle">
+        <label><input type="radio" name="sc-source" value="buy" checked onchange="recomputeStoreCheckout()"> Buy new tokens to gift</label>
+        <label><input type="radio" name="sc-source" value="own" onchange="recomputeStoreCheckout()"> Gift from my own balance</label>
+      </div>
+    </div>
+
+    <div class="store-checkout-field" id="sc-payment-field">
       <label for="sc-payment">Payment Method</label>
       <select id="sc-payment" onchange="recomputeStoreCheckout()">
         <option value="card">Credit / Debit Card</option>
@@ -1838,22 +1925,36 @@
       </select>
     </div>
 
+    <div class="store-checkout-field sc-gift-only" id="sc-gift-note-field" style="display:none;">
+      <label for="sc-note">Gift Note (optional, shown to recipient)</label>
+      <textarea id="sc-note" maxlength="500" rows="3" placeholder="Add a personal message..."></textarea>
+    </div>
+
     <div class="store-checkout-receipt">
       <div class="store-checkout-row"><span>Item</span><span id="sc-r-item"></span></div>
-      <div class="store-checkout-row"><span>Unit Price</span><span id="sc-r-unit"></span></div>
+      <div class="store-checkout-row" id="sc-r-unit-row"><span>Unit Price</span><span id="sc-r-unit"></span></div>
       <div class="store-checkout-row"><span>Quantity</span><span id="sc-r-qty"></span></div>
       <div class="store-checkout-row" id="sc-r-tokens-row"><span>Tokens</span><span id="sc-r-tokens"></span></div>
       <div class="store-checkout-row" id="sc-r-days-row"><span>VIP Duration</span><span id="sc-r-days"></span></div>
-      <div class="store-checkout-row"><span>Processing Fee</span><span>$0.00</span></div>
+      <div class="store-checkout-row" id="sc-r-fee-row"><span>Processing Fee</span><span>$0.00</span></div>
       <div class="store-checkout-row store-checkout-total"><span>Total</span><span id="sc-r-total"></span></div>
     </div>
 
-    <div class="store-checkout-preview">
+    <div class="store-checkout-preview sc-buy-only" id="sc-buy-preview">
       <div class="store-checkout-preview-row" id="sc-preview-balance">
         <span>Token Balance After Purchase</span><span id="sc-preview-balance-val"></span>
       </div>
       <div class="store-checkout-preview-row" id="sc-preview-vip">
         <span>VIP Access After Purchase</span><span id="sc-preview-vip-val"></span>
+      </div>
+    </div>
+
+    <div class="store-checkout-preview sc-gift-only" id="sc-gift-preview" style="display:none;">
+      <div class="store-checkout-preview-row">
+        <span>Your Current Balance</span><span id="sc-gift-current-balance"></span>
+      </div>
+      <div class="store-checkout-preview-row" id="sc-gift-balance-after-row" style="display:none;">
+        <span>Your Balance After Gift</span><span id="sc-gift-balance-after"></span>
       </div>
     </div>
 
@@ -1867,13 +1968,21 @@
     var TFL_STORE_BALANCE = {{ currency_balance|default:"0" }};
     var TFL_STORE_VIP_EXPIRES_AT = {% if user.vip_expires_at %}"{{ user.vip_expires_at|date:'c' }}"{% else %}null{% endif %};
     var scState = null;
+    var giftSelectedRecipient = null;
+    var giftRecipientTimer = null;
 
     function storeCheckoutCsrf() {
       var match = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
       return match ? decodeURIComponent(match.pop()) : '';
     }
 
+    function giftSourceMode() {
+      var checked = document.querySelector('input[name="sc-source"]:checked');
+      return checked ? checked.value : 'buy';
+    }
+
     window.openStoreCheckout = function (btn) {
+      var isGift = btn.dataset.gift === 'true';
       scState = {
         item: btn.dataset.item,
         label: btn.dataset.label,
@@ -1881,6 +1990,7 @@
         unitPriceCents: parseInt(btn.dataset.unitPriceCents, 10),
         unitTokens: btn.dataset.unitTokens ? parseInt(btn.dataset.unitTokens, 10) : null,
         unitDays: btn.dataset.unitDays ? parseInt(btn.dataset.unitDays, 10) : null,
+        isGift: isGift,
       };
       document.getElementById('sc-title').textContent = scState.label;
       var iconEl = document.getElementById('sc-icon');
@@ -1891,12 +2001,40 @@
         iconEl.style.display = 'none';
       }
       document.getElementById('sc-unit-price').textContent = '$' + (scState.unitPriceCents / 100).toFixed(2) + ' each';
-      document.getElementById('sc-quantity').value = 1;
+
+      var qtyEl = document.getElementById('sc-quantity');
+      qtyEl.value = 1;
+      qtyEl.max = isGift ? '1000000' : '50';
+      document.getElementById('sc-quantity-label').textContent = isGift ? 'Quantity (per gift)' : 'Quantity (per checkout, max 50)';
+
       document.getElementById('sc-payment').value = 'card';
       document.getElementById('sc-error').style.display = 'none';
+
+      document.querySelectorAll('.sc-gift-only').forEach(function (el) { el.style.display = isGift ? '' : 'none'; });
+
+      // Recipient picker reset
+      giftSelectedRecipient = null;
+      document.getElementById('sc-recipient-search').value = '';
+      document.getElementById('sc-recipient-results').innerHTML = '';
+      document.getElementById('sc-recipient-selected').style.display = 'none';
+      document.getElementById('sc-recipient-search-wrap').style.display = 'block';
+
+      // Note reset
+      var noteEl = document.getElementById('sc-note');
+      if (noteEl) noteEl.value = '';
+
+      // Source toggle - only meaningful for gifting tokens (not VIP)
+      var sourceField = document.getElementById('sc-gift-source-field');
+      if (isGift && scState.unitTokens) {
+        sourceField.style.display = '';
+        document.querySelector('input[name="sc-source"][value="buy"]').checked = true;
+      } else {
+        sourceField.style.display = 'none';
+      }
+
       var confirmBtn = document.getElementById('sc-confirm');
       confirmBtn.disabled = false;
-      confirmBtn.textContent = '[ CONFIRM PURCHASE ]';
+      confirmBtn.textContent = isGift ? '[ SEND GIFT ]' : '[ CONFIRM PURCHASE ]';
       recomputeStoreCheckout();
       document.getElementById('store-checkout-modal').classList.add('active');
     };
@@ -1905,47 +2043,112 @@
       document.getElementById('store-checkout-modal').classList.remove('active');
     };
 
+    window.searchGiftRecipient = function () {
+      clearTimeout(giftRecipientTimer);
+      var q = document.getElementById('sc-recipient-search').value.trim();
+      var resultsEl = document.getElementById('sc-recipient-results');
+      if (q.length < 2) { resultsEl.innerHTML = ''; return; }
+      giftRecipientTimer = setTimeout(function () {
+        fetch('{% url "mail_recipient_search" %}?q=' + encodeURIComponent(q) + '&mode=social')
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            resultsEl.innerHTML = '';
+            (data.results || []).forEach(function (u) {
+              var row = document.createElement('div');
+              row.className = 'sc-recipient-row';
+              row.textContent = u.username;
+              row.onclick = function () { selectGiftRecipient(u.username); };
+              resultsEl.appendChild(row);
+            });
+          })
+          .catch(function () {});
+      }, 250);
+    };
+
+    window.selectGiftRecipient = function (username) {
+      giftSelectedRecipient = username;
+      document.getElementById('sc-recipient-search').value = '';
+      document.getElementById('sc-recipient-results').innerHTML = '';
+      document.getElementById('sc-recipient-name').textContent = username;
+      document.getElementById('sc-recipient-selected').style.display = 'block';
+      document.getElementById('sc-recipient-search-wrap').style.display = 'none';
+      document.getElementById('sc-error').style.display = 'none';
+    };
+
+    window.clearGiftRecipient = function () {
+      giftSelectedRecipient = null;
+      document.getElementById('sc-recipient-selected').style.display = 'none';
+      document.getElementById('sc-recipient-search-wrap').style.display = 'block';
+    };
+
     window.recomputeStoreCheckout = function () {
       if (!scState) return;
       var qtyEl = document.getElementById('sc-quantity');
+      var maxQty = scState.isGift ? 1000000 : 50;
       var qty = parseInt(qtyEl.value, 10);
       if (!qty || qty < 1) qty = 1;
-      if (qty > 50) qty = 50;
+      if (qty > maxQty) qty = maxQty;
       qtyEl.value = qty;
 
-      var totalCents = scState.unitPriceCents * qty;
+      var isOwnGift = scState.isGift && scState.unitTokens && giftSourceMode() === 'own';
+
+      var totalCents = isOwnGift ? 0 : scState.unitPriceCents * qty;
       document.getElementById('sc-r-item').textContent = scState.label;
+      document.getElementById('sc-r-unit-row').style.display = isOwnGift ? 'none' : 'flex';
       document.getElementById('sc-r-unit').textContent = '$' + (scState.unitPriceCents / 100).toFixed(2);
       document.getElementById('sc-r-qty').textContent = qty;
+      document.getElementById('sc-r-fee-row').style.display = isOwnGift ? 'none' : 'flex';
       document.getElementById('sc-r-total').textContent = '$' + (totalCents / 100).toFixed(2);
+
+      document.getElementById('sc-payment-field').style.display = isOwnGift ? 'none' : '';
 
       var tokensRow = document.getElementById('sc-r-tokens-row');
       var daysRow = document.getElementById('sc-r-days-row');
+      var buyPreview = document.getElementById('sc-buy-preview');
+      var giftPreview = document.getElementById('sc-gift-preview');
       var balanceRow = document.getElementById('sc-preview-balance');
       var vipRow = document.getElementById('sc-preview-vip');
+      var balanceAfterRow = document.getElementById('sc-gift-balance-after-row');
+
+      buyPreview.style.display = scState.isGift ? 'none' : '';
+      giftPreview.style.display = (scState.isGift && scState.unitTokens) ? '' : 'none';
 
       if (scState.unitTokens) {
         var totalTokens = scState.unitTokens * qty;
         tokensRow.style.display = 'flex';
         document.getElementById('sc-r-tokens').textContent = '+' + totalTokens;
         daysRow.style.display = 'none';
-        balanceRow.style.display = 'flex';
-        document.getElementById('sc-preview-balance-val').textContent = TFL_STORE_BALANCE + totalTokens;
-        vipRow.style.display = 'none';
+
+        if (scState.isGift) {
+          document.getElementById('sc-gift-current-balance').textContent = TFL_STORE_BALANCE;
+          if (isOwnGift) {
+            balanceAfterRow.style.display = 'flex';
+            document.getElementById('sc-gift-balance-after').textContent = Math.max(0, TFL_STORE_BALANCE - totalTokens);
+          } else {
+            balanceAfterRow.style.display = 'none';
+          }
+        } else {
+          balanceRow.style.display = 'flex';
+          document.getElementById('sc-preview-balance-val').textContent = TFL_STORE_BALANCE + totalTokens;
+          vipRow.style.display = 'none';
+        }
       } else {
         var totalDays = scState.unitDays * qty;
         daysRow.style.display = 'flex';
         document.getElementById('sc-r-days').textContent = totalDays + ' day' + (totalDays === 1 ? '' : 's');
         tokensRow.style.display = 'none';
-        vipRow.style.display = 'flex';
-        var now = new Date();
-        var currentExpiry = TFL_STORE_VIP_EXPIRES_AT ? new Date(TFL_STORE_VIP_EXPIRES_AT) : null;
-        var base = (currentExpiry && currentExpiry > now) ? currentExpiry : now;
-        var newExpiry = new Date(base.getTime() + totalDays * 86400000);
-        var daysRemaining = Math.ceil((newExpiry - now) / 86400000);
-        document.getElementById('sc-preview-vip-val').textContent =
-          newExpiry.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) + ' (' + daysRemaining + ' days)';
-        balanceRow.style.display = 'none';
+
+        if (!scState.isGift) {
+          vipRow.style.display = 'flex';
+          var now = new Date();
+          var currentExpiry = TFL_STORE_VIP_EXPIRES_AT ? new Date(TFL_STORE_VIP_EXPIRES_AT) : null;
+          var base = (currentExpiry && currentExpiry > now) ? currentExpiry : now;
+          var newExpiry = new Date(base.getTime() + totalDays * 86400000);
+          var daysRemaining = Math.ceil((newExpiry - now) / 86400000);
+          document.getElementById('sc-preview-vip-val').textContent =
+            newExpiry.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) + ' (' + daysRemaining + ' days)';
+          balanceRow.style.display = 'none';
+        }
       }
     };
 
@@ -1954,47 +2157,70 @@
       var confirmBtn = document.getElementById('sc-confirm');
       var errorEl = document.getElementById('sc-error');
       errorEl.style.display = 'none';
+
+      if (scState.isGift && !giftSelectedRecipient) {
+        errorEl.textContent = 'Please select who you are gifting this to.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
+      var qty = parseInt(document.getElementById('sc-quantity').value, 10);
+      var payment = document.getElementById('sc-payment').value;
+      var source = scState.isGift && scState.unitTokens ? giftSourceMode() : 'buy';
+
+      if (scState.isGift && source === 'own' && scState.unitTokens * qty > TFL_STORE_BALANCE) {
+        errorEl.textContent = 'You do not have enough Cipher Tokens for this gift.';
+        errorEl.style.display = 'block';
+        return;
+      }
+
       confirmBtn.disabled = true;
       confirmBtn.textContent = '[ PROCESSING... ]';
 
-      var qty = document.getElementById('sc-quantity').value;
-      var payment = document.getElementById('sc-payment').value;
+      var url = scState.isGift ? '{% url "store_gift" %}' : '{% url "store_purchase" %}';
+      var body = 'item=' + encodeURIComponent(scState.item) + '&quantity=' + encodeURIComponent(qty) + '&payment_method=' + encodeURIComponent(payment);
+      if (scState.isGift) {
+        body += '&recipient=' + encodeURIComponent(giftSelectedRecipient) + '&source=' + encodeURIComponent(source);
+        var note = document.getElementById('sc-note').value;
+        if (note) body += '&note=' + encodeURIComponent(note);
+      }
 
-      fetch('{% url "store_purchase" %}', {
+      fetch(url, {
         method: 'POST',
         headers: {
           'X-CSRFToken': storeCheckoutCsrf(),
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: 'item=' + encodeURIComponent(scState.item) + '&quantity=' + encodeURIComponent(qty) + '&payment_method=' + encodeURIComponent(payment),
+        body: body,
       })
         .then(function (r) {
           return r.json().then(function (data) { return { ok: r.ok, data: data }; });
         })
         .then(function (res) {
           if (!res.ok) {
-            errorEl.textContent = res.data.error || 'Purchase failed.';
+            errorEl.textContent = res.data.error || (scState.isGift ? 'Gift failed.' : 'Purchase failed.');
             errorEl.style.display = 'block';
             confirmBtn.disabled = false;
-            confirmBtn.textContent = '[ CONFIRM PURCHASE ]';
+            confirmBtn.textContent = scState.isGift ? '[ SEND GIFT ]' : '[ CONFIRM PURCHASE ]';
             return;
           }
-          if (res.data.kind === 'tokens') {
+          if (!scState.isGift && res.data.kind === 'tokens') {
             TFL_STORE_BALANCE = res.data.balance;
-            document.querySelectorAll('.token-amount').forEach(function (el) {
-              el.textContent = res.data.balance;
-            });
-          } else {
+            document.querySelectorAll('.token-amount').forEach(function (el) { el.textContent = res.data.balance; });
+          } else if (!scState.isGift) {
             TFL_STORE_VIP_EXPIRES_AT = res.data.vip_expires_at;
+          } else if (res.data.sender_balance !== undefined) {
+            TFL_STORE_BALANCE = res.data.sender_balance;
+            document.querySelectorAll('.token-amount').forEach(function (el) { el.textContent = res.data.sender_balance; });
           }
-          confirmBtn.textContent = '[ PURCHASE COMPLETE ]';
+          confirmBtn.textContent = scState.isGift ? '[ GIFT SENT ]' : '[ PURCHASE COMPLETE ]';
           setTimeout(window.closeStoreCheckout, 1200);
         })
         .catch(function () {
-          errorEl.textContent = 'Purchase failed - please try again.';
+          errorEl.textContent = 'Something went wrong - please try again.';
           errorEl.style.display = 'block';
           confirmBtn.disabled = false;
-          confirmBtn.textContent = '[ CONFIRM PURCHASE ]';
+          confirmBtn.textContent = scState.isGift ? '[ SEND GIFT ]' : '[ CONFIRM PURCHASE ]';
         });
     };
   })();
