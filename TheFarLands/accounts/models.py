@@ -50,12 +50,28 @@ class CustomUser(AbstractUser):
 
     # Cipher Token balance, shown in the nav notification dropdown's
     # Currency row and on the Store page (see mail.context_processors and
-    # accounts/templates/home.html's token-square). The only thing that
-    # writes to this right now is the Director-only "!Token_<amount>"
-    # cheat code (accounts/views.director_grant_tokens, triggered from
-    # _role_cutscenes.html) - everything else (VIP, the Store token
-    # packs) is still display-only, no real purchase flow wired up yet.
+    # accounts/templates/home.html's token-square). Written by the
+    # Director-only "!Token_<amount>" cheat code (accounts.views.
+    # director_grant_tokens) and by accounts.views.store_purchase (a
+    # Store token-pack buy).
     currency = models.IntegerField(default=0)
+
+    # When this account's VIP access ends - None/in the past means no
+    # active VIP. Written only by accounts.views.store_purchase: each VIP
+    # purchase "stacks" by extending from the later of now/the current
+    # expiry, rather than overwriting it, so buying more VIP time while
+    # already a VIP never shortens what they already paid for.
+    vip_expires_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def is_vip(self):
+        return self.vip_expires_at is not None and self.vip_expires_at > timezone.now()
+
+    @property
+    def vip_days_remaining(self):
+        if not self.is_vip:
+            return 0
+        return max(0, (self.vip_expires_at - timezone.now()).days)
 
     # Self-reported presence, set by the account owner in "// EDIT
     # PROFILE" (see accounts.forms.ProfileEditForm) and shown on their

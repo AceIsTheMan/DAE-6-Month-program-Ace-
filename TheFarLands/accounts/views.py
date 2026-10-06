@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
@@ -17,7 +19,24 @@ from forum.models import Comment, Post
 from mail.models import FriendRequest, Message, ModerationAction, Report, RoleChangeLog, UserRelationship, Warning
 
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
-from .models import CustomUser, GuestArchive, TokenGrantLog
+from .models import CustomUser, GuestArchive, TokenGrantLog, TokenTransaction
+
+# Store catalog - the one source of truth for what each Store button
+# actually buys, keyed to match each button's `data-item` in home.html's
+# Store page. Prices/amounts are trusted from here, never from the
+# client, so a tampered POST can't buy more than what's listed - see
+# store_purchase below. "cents" throughout (not dollars) to avoid float
+# rounding on money math.
+STORE_CATALOG = {
+    'vip_month': {'label': 'VIP Membership', 'kind': 'vip', 'unit_price_cents': 500, 'unit_days': 30},
+    'tokens_4': {'label': '4 Tokens', 'kind': 'tokens', 'unit_price_cents': 100, 'unit_tokens': 4},
+    'tokens_40': {'label': '40 Tokens', 'kind': 'tokens', 'unit_price_cents': 1000, 'unit_tokens': 40},
+    'tokens_400': {'label': '400 Tokens', 'kind': 'tokens', 'unit_price_cents': 10000, 'unit_tokens': 400},
+}
+#: "how many times the account can purchase in 1 go" - a quantity
+#: multiplier on one checkout, capped so a typo doesn't buy 9999 VIP
+#: months in one click.
+STORE_MAX_QUANTITY = 50
 
 # kind (used in the Chat Logs URLs/template) -> (model, author/sender field name)
 CHAT_LOG_MODELS = {
@@ -683,6 +702,76 @@ def director_grant_tokens(request):
         note='Director cheat code (!Token_<amount>)',
     )
     return JsonResponse({'amount': amount, 'balance': request.user.currency})
+
+
+@login_required
+def store_purchase(request):
+    """Backing endpoint for the Store page's purchase popup (see
+    home.html's `.store-checkout-modal` and its JS). Still fake money -
+    `payment_method` is accepted and echoed back for the receipt but
+    never validated/charged against anything, same spirit as the rest of
+    this Store (VIP/token prices are cosmetic, there's no real payment
+    gateway). What IS real: `item`/`quantity` are priced from
+    STORE_CATALOG (never trusted from the client) and the resulting
+    tokens/VIP time are actually applied to the account.
+
+    VIP "stacks": a purchase extends from the later of now or the
+    account's current vip_expires_at, so buying more time while already
+    VIP adds to what's left instead of overwriting it."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    if request.user.is_guest:
+        return JsonResponse({'error': 'Guest accounts cannot use the Store.'}, status=403)
+
+    item_key = request.POST.get('item', '')
+    item = STORE_CATALOG.get(item_key)
+    if item is None:
+        return JsonResponse({'error': 'Unknown item.'}, status=400)
+
+    try:
+        quantity = int(request.POST.get('quantity', '1'))
+    except (TypeError, ValueError):
+        return JsonResponse({'error': 'Invalid quantity.'}, status=400)
+    if quantity < 1 or quantity > STORE_MAX_QUANTITY:
+        return JsonResponse({'error': f'Quantity must be between 1 and {STORE_MAX_QUANTITY}.'}, status=400)
+
+    payment_method = request.POST.get('payment_method', 'card')
+    if payment_method not in ('card', 'paypal', 'cipher_pay'):
+        payment_method = 'card'
+
+    total_price_cents = item['unit_price_cents'] * quantity
+    response = {
+        'item': item_key,
+        'label': item['label'],
+        'kind': item['kind'],
+        'quantity': quantity,
+        'payment_method': payment_method,
+        'total_price_cents': total_price_cents,
+    }
+
+    if item['kind'] == 'tokens':
+        total_tokens = item['unit_tokens'] * quantity
+        request.user.currency += total_tokens
+        request.user.save(update_fields=['currency'])
+        TokenTransaction.objects.create(
+            user=request.user,
+            kind=TokenTransaction.PURCHASE,
+            amount=total_tokens,
+            balance_after=request.user.currency,
+            note=f'{quantity}x {item["label"]} ({payment_method})',
+        )
+        response['total_tokens'] = total_tokens
+        response['balance'] = request.user.currency
+    else:  # 'vip'
+        total_days = item['unit_days'] * quantity
+        base = request.user.vip_expires_at if request.user.is_vip else timezone.now()
+        request.user.vip_expires_at = base + timedelta(days=total_days)
+        request.user.save(update_fields=['vip_expires_at'])
+        response['total_days'] = total_days
+        response['vip_expires_at'] = request.user.vip_expires_at.isoformat()
+        response['vip_days_remaining'] = request.user.vip_days_remaining
+
+    return JsonResponse(response)
 
 
 @login_required

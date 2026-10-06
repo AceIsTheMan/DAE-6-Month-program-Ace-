@@ -445,6 +445,122 @@
       text-shadow: 0 0 6px var(--red);
     }
 
+    /* ─── STORE CHECKOUT MODAL ─── */
+    .store-checkout-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.88);
+      z-index: 6000;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .store-checkout-modal.active { display: flex; }
+    .store-checkout-box {
+      position: relative;
+      width: 100%;
+      max-width: 440px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: linear-gradient(180deg, #0d0000, #000);
+      border: 1px solid var(--red);
+      box-shadow: 0 0 30px rgba(204,0,0,0.4);
+      padding: 1.6rem 1.6rem 1.8rem;
+    }
+    .store-checkout-close {
+      position: absolute;
+      top: 0.8rem; right: 1rem;
+      background: none;
+      border: none;
+      color: var(--dim-white);
+      font-family: 'VT323', monospace;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+      cursor: pointer;
+    }
+    .store-checkout-close:hover { color: var(--red-bright); }
+    .store-checkout-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.4rem; padding-right: 2rem; }
+    .store-checkout-icon { width: 56px; height: 56px; flex-shrink: 0; image-rendering: pixelated; display: none; }
+    .store-checkout-title { font-family: 'VT323', monospace; font-size: 1.5rem; color: var(--red-bright); text-shadow: 0 0 6px var(--red); letter-spacing: 2px; }
+    .store-checkout-unit-price { font-size: 0.75rem; color: var(--dim-white); letter-spacing: 1px; margin-top: 0.2rem; }
+    .store-checkout-field { margin-bottom: 1rem; }
+    .store-checkout-field label {
+      display: block;
+      font-size: 0.68rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: var(--dim-white);
+      margin-bottom: 0.3rem;
+    }
+    .store-checkout-field input[type="number"],
+    .store-checkout-field select {
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--red-dim);
+      color: var(--silver);
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.9rem;
+      padding: 0.5rem 0.7rem;
+    }
+    .store-checkout-field input[type="number"]:focus,
+    .store-checkout-field select:focus { outline: none; border-color: var(--red-bright); }
+    .store-checkout-receipt {
+      border: 1px dashed var(--red-dim);
+      padding: 0.9rem 1rem;
+      margin: 1.2rem 0;
+    }
+    .store-checkout-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--silver);
+      padding: 0.25rem 0;
+    }
+    .store-checkout-total {
+      border-top: 1px solid var(--red-dim);
+      margin-top: 0.4rem;
+      padding-top: 0.5rem;
+      font-family: 'VT323', monospace;
+      font-size: 1.2rem;
+      color: var(--red-bright);
+      text-shadow: 0 0 4px var(--red);
+    }
+    .store-checkout-preview { margin-bottom: 1.2rem; }
+    .store-checkout-preview-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--dim-white);
+      letter-spacing: 0.5px;
+      padding: 0.3rem 0;
+    }
+    .store-checkout-preview-row span:last-child { color: var(--red-bright); text-shadow: 0 0 4px var(--red); }
+    .store-checkout-error {
+      font-size: 0.75rem;
+      color: #ff6666;
+      border: 1px solid var(--red-dim);
+      padding: 0.6rem 0.8rem;
+      margin-bottom: 1rem;
+    }
+    .store-checkout-confirm {
+      display: block;
+      width: 100%;
+      font-family: 'VT323', monospace;
+      font-size: 1.3rem;
+      letter-spacing: 3px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--red), var(--red-bright));
+      border: none;
+      padding: 0.8rem;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: all 0.2s;
+      box-shadow: 0 0 14px rgba(255,26,26,0.4);
+    }
+    .store-checkout-confirm:hover { box-shadow: 0 0 24px rgba(255,26,26,0.7); }
+    .store-checkout-confirm:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+
     .lightbox-caption {
       margin-top: 1rem;
       font-family: 'Share Tech Mono', monospace;
@@ -1615,7 +1731,13 @@
           <li>Early access content</li>
         </ul>
 
-        <button class="vip-btn">[ GET VIP ]</button>
+        {% if user.is_authenticated and not user.is_guest %}
+        <button type="button" class="vip-btn" onclick="openStoreCheckout(this)"
+          data-item="vip_month" data-label="VIP Membership" data-icon=""
+          data-unit-price-cents="500" data-unit-days="30">[ GET VIP ]</button>
+        {% else %}
+        <a href="{% url 'login' %}" class="vip-btn">[ GET VIP ]</a>
+        {% endif %}
         <div class="vip-note">// Billed monthly — cancel anytime //</div>
       </div>
 
@@ -1625,14 +1747,26 @@
           <img src="{% static 'accounts/cipher_token.gif' %}" alt="Cipher Token" class="token-pack-img">
           <div class="token-pack-amount">4 Tokens</div>
           <div class="token-pack-price">$1<span style="font-size:1rem; color:var(--dim-white); letter-spacing:2px;">.00</span></div>
-          <button class="token-pack-btn">[ BUY ]</button>
+          {% if user.is_authenticated and not user.is_guest %}
+          <button type="button" class="token-pack-btn" onclick="openStoreCheckout(this)"
+            data-item="tokens_4" data-label="4 Tokens" data-icon="{% static 'accounts/cipher_token.gif' %}"
+            data-unit-price-cents="100" data-unit-tokens="4">[ BUY ]</button>
+          {% else %}
+          <a href="{% url 'login' %}" class="token-pack-btn">[ BUY ]</a>
+          {% endif %}
         </div>
 
         <div class="token-pack">
           <img src="{% static 'accounts/coin_bag.gif' %}" alt="Bag of Cipher Tokens" class="token-pack-img">
           <div class="token-pack-amount">40 Tokens</div>
           <div class="token-pack-price">$10<span style="font-size:1rem; color:var(--dim-white); letter-spacing:2px;">.00</span></div>
-          <button class="token-pack-btn">[ BUY ]</button>
+          {% if user.is_authenticated and not user.is_guest %}
+          <button type="button" class="token-pack-btn" onclick="openStoreCheckout(this)"
+            data-item="tokens_40" data-label="40 Tokens" data-icon="{% static 'accounts/coin_bag.gif' %}"
+            data-unit-price-cents="1000" data-unit-tokens="40">[ BUY ]</button>
+          {% else %}
+          <a href="{% url 'login' %}" class="token-pack-btn">[ BUY ]</a>
+          {% endif %}
         </div>
 
         <div class="token-pack best">
@@ -1644,7 +1778,13 @@
           <img src="{% static 'accounts/treasure_chest.gif' %}" alt="Chest of Cipher Tokens" class="token-pack-img">
           <div class="token-pack-amount">400 Tokens</div>
           <div class="token-pack-price">$100<span style="font-size:1rem; color:var(--dim-white); letter-spacing:2px;">.00</span></div>
-          <button class="token-pack-btn">[ BUY ]</button>
+          {% if user.is_authenticated and not user.is_guest %}
+          <button type="button" class="token-pack-btn" onclick="openStoreCheckout(this)"
+            data-item="tokens_400" data-label="400 Tokens" data-icon="{% static 'accounts/treasure_chest.gif' %}"
+            data-unit-price-cents="10000" data-unit-tokens="400">[ BUY ]</button>
+          {% else %}
+          <a href="{% url 'login' %}" class="token-pack-btn">[ BUY ]</a>
+          {% endif %}
         </div>
 
       </div>
@@ -1668,6 +1808,198 @@
     </div>
   </div>
 </div>
+
+
+<!-- ─── STORE CHECKOUT MODAL ─── -->
+{% if user.is_authenticated and not user.is_guest %}
+<div class="store-checkout-modal" id="store-checkout-modal">
+  <div class="store-checkout-box">
+    <button type="button" class="store-checkout-close" onclick="closeStoreCheckout()">[ CLOSE × ]</button>
+
+    <div class="store-checkout-header">
+      <img id="sc-icon" src="" alt="" class="store-checkout-icon">
+      <div>
+        <div class="store-checkout-title" id="sc-title"></div>
+        <div class="store-checkout-unit-price" id="sc-unit-price"></div>
+      </div>
+    </div>
+
+    <div class="store-checkout-field">
+      <label for="sc-quantity">Quantity (per checkout, max 50)</label>
+      <input type="number" id="sc-quantity" min="1" max="50" value="1" oninput="recomputeStoreCheckout()">
+    </div>
+
+    <div class="store-checkout-field">
+      <label for="sc-payment">Payment Method</label>
+      <select id="sc-payment" onchange="recomputeStoreCheckout()">
+        <option value="card">Credit / Debit Card</option>
+        <option value="paypal">PayPal</option>
+        <option value="cipher_pay">Cipher Pay Wallet</option>
+      </select>
+    </div>
+
+    <div class="store-checkout-receipt">
+      <div class="store-checkout-row"><span>Item</span><span id="sc-r-item"></span></div>
+      <div class="store-checkout-row"><span>Unit Price</span><span id="sc-r-unit"></span></div>
+      <div class="store-checkout-row"><span>Quantity</span><span id="sc-r-qty"></span></div>
+      <div class="store-checkout-row" id="sc-r-tokens-row"><span>Tokens</span><span id="sc-r-tokens"></span></div>
+      <div class="store-checkout-row" id="sc-r-days-row"><span>VIP Duration</span><span id="sc-r-days"></span></div>
+      <div class="store-checkout-row"><span>Processing Fee</span><span>$0.00</span></div>
+      <div class="store-checkout-row store-checkout-total"><span>Total</span><span id="sc-r-total"></span></div>
+    </div>
+
+    <div class="store-checkout-preview">
+      <div class="store-checkout-preview-row" id="sc-preview-balance">
+        <span>Token Balance After Purchase</span><span id="sc-preview-balance-val"></span>
+      </div>
+      <div class="store-checkout-preview-row" id="sc-preview-vip">
+        <span>VIP Access After Purchase</span><span id="sc-preview-vip-val"></span>
+      </div>
+    </div>
+
+    <div class="store-checkout-error" id="sc-error" style="display:none;"></div>
+
+    <button type="button" class="store-checkout-confirm" id="sc-confirm" onclick="confirmStoreCheckout()">[ CONFIRM PURCHASE ]</button>
+  </div>
+</div>
+<script>
+  (function () {
+    var TFL_STORE_BALANCE = {{ currency_balance|default:"0" }};
+    var TFL_STORE_VIP_EXPIRES_AT = {% if user.vip_expires_at %}"{{ user.vip_expires_at|date:'c' }}"{% else %}null{% endif %};
+    var scState = null;
+
+    function storeCheckoutCsrf() {
+      var match = document.cookie.match('(^|;)\\s*csrftoken\\s*=\\s*([^;]+)');
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+
+    window.openStoreCheckout = function (btn) {
+      scState = {
+        item: btn.dataset.item,
+        label: btn.dataset.label,
+        icon: btn.dataset.icon || '',
+        unitPriceCents: parseInt(btn.dataset.unitPriceCents, 10),
+        unitTokens: btn.dataset.unitTokens ? parseInt(btn.dataset.unitTokens, 10) : null,
+        unitDays: btn.dataset.unitDays ? parseInt(btn.dataset.unitDays, 10) : null,
+      };
+      document.getElementById('sc-title').textContent = scState.label;
+      var iconEl = document.getElementById('sc-icon');
+      if (scState.icon) {
+        iconEl.src = scState.icon;
+        iconEl.style.display = 'block';
+      } else {
+        iconEl.style.display = 'none';
+      }
+      document.getElementById('sc-unit-price').textContent = '$' + (scState.unitPriceCents / 100).toFixed(2) + ' each';
+      document.getElementById('sc-quantity').value = 1;
+      document.getElementById('sc-payment').value = 'card';
+      document.getElementById('sc-error').style.display = 'none';
+      var confirmBtn = document.getElementById('sc-confirm');
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = '[ CONFIRM PURCHASE ]';
+      recomputeStoreCheckout();
+      document.getElementById('store-checkout-modal').classList.add('active');
+    };
+
+    window.closeStoreCheckout = function () {
+      document.getElementById('store-checkout-modal').classList.remove('active');
+    };
+
+    window.recomputeStoreCheckout = function () {
+      if (!scState) return;
+      var qtyEl = document.getElementById('sc-quantity');
+      var qty = parseInt(qtyEl.value, 10);
+      if (!qty || qty < 1) qty = 1;
+      if (qty > 50) qty = 50;
+      qtyEl.value = qty;
+
+      var totalCents = scState.unitPriceCents * qty;
+      document.getElementById('sc-r-item').textContent = scState.label;
+      document.getElementById('sc-r-unit').textContent = '$' + (scState.unitPriceCents / 100).toFixed(2);
+      document.getElementById('sc-r-qty').textContent = qty;
+      document.getElementById('sc-r-total').textContent = '$' + (totalCents / 100).toFixed(2);
+
+      var tokensRow = document.getElementById('sc-r-tokens-row');
+      var daysRow = document.getElementById('sc-r-days-row');
+      var balanceRow = document.getElementById('sc-preview-balance');
+      var vipRow = document.getElementById('sc-preview-vip');
+
+      if (scState.unitTokens) {
+        var totalTokens = scState.unitTokens * qty;
+        tokensRow.style.display = 'flex';
+        document.getElementById('sc-r-tokens').textContent = '+' + totalTokens;
+        daysRow.style.display = 'none';
+        balanceRow.style.display = 'flex';
+        document.getElementById('sc-preview-balance-val').textContent = TFL_STORE_BALANCE + totalTokens;
+        vipRow.style.display = 'none';
+      } else {
+        var totalDays = scState.unitDays * qty;
+        daysRow.style.display = 'flex';
+        document.getElementById('sc-r-days').textContent = totalDays + ' day' + (totalDays === 1 ? '' : 's');
+        tokensRow.style.display = 'none';
+        vipRow.style.display = 'flex';
+        var now = new Date();
+        var currentExpiry = TFL_STORE_VIP_EXPIRES_AT ? new Date(TFL_STORE_VIP_EXPIRES_AT) : null;
+        var base = (currentExpiry && currentExpiry > now) ? currentExpiry : now;
+        var newExpiry = new Date(base.getTime() + totalDays * 86400000);
+        var daysRemaining = Math.ceil((newExpiry - now) / 86400000);
+        document.getElementById('sc-preview-vip-val').textContent =
+          newExpiry.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) + ' (' + daysRemaining + ' days)';
+        balanceRow.style.display = 'none';
+      }
+    };
+
+    window.confirmStoreCheckout = function () {
+      if (!scState) return;
+      var confirmBtn = document.getElementById('sc-confirm');
+      var errorEl = document.getElementById('sc-error');
+      errorEl.style.display = 'none';
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = '[ PROCESSING... ]';
+
+      var qty = document.getElementById('sc-quantity').value;
+      var payment = document.getElementById('sc-payment').value;
+
+      fetch('{% url "store_purchase" %}', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': storeCheckoutCsrf(),
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: 'item=' + encodeURIComponent(scState.item) + '&quantity=' + encodeURIComponent(qty) + '&payment_method=' + encodeURIComponent(payment),
+      })
+        .then(function (r) {
+          return r.json().then(function (data) { return { ok: r.ok, data: data }; });
+        })
+        .then(function (res) {
+          if (!res.ok) {
+            errorEl.textContent = res.data.error || 'Purchase failed.';
+            errorEl.style.display = 'block';
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = '[ CONFIRM PURCHASE ]';
+            return;
+          }
+          if (res.data.kind === 'tokens') {
+            TFL_STORE_BALANCE = res.data.balance;
+            document.querySelectorAll('.token-amount').forEach(function (el) {
+              el.textContent = res.data.balance;
+            });
+          } else {
+            TFL_STORE_VIP_EXPIRES_AT = res.data.vip_expires_at;
+          }
+          confirmBtn.textContent = '[ PURCHASE COMPLETE ]';
+          setTimeout(window.closeStoreCheckout, 1200);
+        })
+        .catch(function () {
+          errorEl.textContent = 'Purchase failed - please try again.';
+          errorEl.style.display = 'block';
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = '[ CONFIRM PURCHASE ]';
+        });
+    };
+  })();
+</script>
+{% endif %}
 
 
 <!-- ─── LIGHTBOX ─── -->
