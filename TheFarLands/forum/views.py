@@ -116,6 +116,14 @@ def forum_index_view(request):
     `highlight` template filter - see forum.templatetags.forum_extras),
     `date_from`/`date_to` narrow by when a post was made, and `sort`
     flips the feed between newest-first (default) and oldest-first.
+
+    `view` ('all', default, or 'exclusive') is the Forum/Exclusive VIP
+    switch (templates/forum/index.html) - 'exclusive' shows ONLY
+    Post.is_vip_exclusive posts, 'all' shows only the non-exclusive
+    ones, never both at once. Forced back to 'all' here for anyone who
+    isn't a currently-active VIP (CustomUser.is_vip), even on a
+    hand-edited URL - the template only ever lets a VIP account's click
+    reach ?view=exclusive in the first place, but this is the real gate.
     """
     ban = _active_ban(request.user)
     if ban:
@@ -144,8 +152,12 @@ def forum_index_view(request):
     sort = request.GET.get('sort', 'new')
     if sort not in ('new', 'old'):
         sort = 'new'
+    is_vip = request.user.is_authenticated and request.user.is_vip
+    content_view = request.GET.get('view', 'all')
+    if content_view not in ('all', 'exclusive') or (content_view == 'exclusive' and not is_vip):
+        content_view = 'all'
 
-    posts = Post.objects.filter(is_deleted=False).select_related('author')
+    posts = Post.objects.filter(is_deleted=False, is_vip_exclusive=(content_view == 'exclusive')).select_related('author')
     if search_query:
         posts = posts.filter(body__icontains=search_query)
     parsed_from = parse_date(date_from) if date_from else None
@@ -178,6 +190,8 @@ def forum_index_view(request):
         'date_from': date_from,
         'date_to': date_to,
         'sort': sort,
+        'content_view': content_view,
+        'is_vip': is_vip,
     })
 
 

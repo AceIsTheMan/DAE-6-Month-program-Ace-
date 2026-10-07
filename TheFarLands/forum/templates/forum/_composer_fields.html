@@ -44,4 +44,13 @@
   {% for error in form.link_label.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
 </div>
 
+<div class="composer-section">
+  <div class="composer-section-title">// VIP</div>
+  <label class="composer-checkbox-label">
+    {{ form.is_vip_exclusive }} {{ form.fields.is_vip_exclusive.label }}
+  </label>
+  <span class="field-help">Hidden from the normal Forum feed - only visible to VIP members who flip to the Exclusive side of the Forum/Exclusive switch.</span>
+  {% for error in form.is_vip_exclusive.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+</div>
+
 {% for error in form.non_field_errors %}<div class="field-error">{{ error }}</div>{% endfor %}

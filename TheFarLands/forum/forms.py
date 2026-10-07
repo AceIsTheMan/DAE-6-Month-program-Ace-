@@ -9,11 +9,12 @@ MAX_MEDIA_BYTES = 25 * 1024 * 1024  # 25MB - images and short video clips only
 class PostForm(forms.ModelForm):
     class Meta:
         model = Post
-        fields = ['body', 'media', 'link_url', 'link_label']
+        fields = ['body', 'media', 'link_url', 'link_label', 'is_vip_exclusive']
         labels = {
             # Field is named `media` (image or video) but stays "Image" in
             # the UI - see forum.models.Post.media.
             'media': 'Image',
+            'is_vip_exclusive': 'Mark as VIP Exclusive',
         }
         widgets = {
             # Plain textarea - the poster types the formatting markers
@@ -26,6 +27,7 @@ class PostForm(forms.ModelForm):
             'media': forms.ClearableFileInput(attrs={'accept': 'image/*,video/*'}),
             'link_url': forms.URLInput(attrs={'placeholder': 'https://... (can point to footage)'}),
             'link_label': forms.TextInput(attrs={'placeholder': 'Optional link text'}),
+            'is_vip_exclusive': forms.CheckboxInput(),
         }
         help_texts = {
             'media': 'Upload an image or a short video from your computer.',

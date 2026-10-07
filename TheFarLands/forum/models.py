@@ -49,6 +49,17 @@ class Post(models.Model):
     link_url = models.URLField(blank=True)
     link_label = models.CharField(max_length=200, blank=True)
 
+    # VIP-only content - set by the Director in the composer (there's no
+    # separate "VIP poster" role; posting is still Director-only, this
+    # just marks who a given post is FOR). Hidden from the normal Forum
+    # feed entirely and only surfaced via the "Exclusive" side of the
+    # Forum/Exclusive switch (forum/templates/forum/index.html), which
+    # only an active VIP account (CustomUser.is_vip) can actually toggle
+    # to - see forum.views.forum_index_view's `view` query param
+    # handling for the server-side enforcement (non-VIP can't reach this
+    # even by hand-editing the URL).
+    is_vip_exclusive = models.BooleanField(default=False)
+
     # Soft delete - see forum.views.forum_delete_post_view. Every normal
     # feed query excludes is_deleted=True; the Director-only Chat Logs
     # panel is the only place a "deleted" post is still visible, and the

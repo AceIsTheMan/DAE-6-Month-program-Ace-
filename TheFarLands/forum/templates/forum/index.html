@@ -78,6 +78,65 @@
     text-shadow: 0 0 6px var(--red);
   }
   .post-date { color: var(--dim-white); font-size: 0.72rem; letter-spacing: 1px; display: flex; align-items: center; gap: 0.6rem; }
+
+  /* Forum/Exclusive VIP switch - a real toggle for an active VIP
+     account, a locked/chained decoration for everyone else (see
+     forum.views.forum_index_view's `view` query param). */
+  .vip-switch-wrap { display: flex; align-items: center; gap: 0.5rem; }
+  .vip-switch-label {
+    font-size: 0.68rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--dim-white);
+  }
+  .vip-switch-label.active { color: var(--red-bright); text-shadow: 0 0 4px var(--red); }
+  .vip-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 22px;
+    border: 1px solid var(--red-dim);
+    background: #1a0000;
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .vip-switch-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: var(--silver);
+    transition: left 0.2s, background 0.2s;
+  }
+  .vip-switch.on { background: rgba(204,0,0,0.25); border-color: var(--red-bright); }
+  .vip-switch.on .vip-switch-knob { left: 24px; background: var(--red-bright); box-shadow: 0 0 6px var(--red-bright); }
+  .vip-switch.locked { opacity: 0.65; cursor: not-allowed; border-color: #444; background: #0a0a0a; }
+  .vip-switch.locked .vip-switch-knob { background: #555; }
+  .vip-switch-chain-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1rem;
+    color: #888;
+    pointer-events: none;
+  }
+
+  .post-exclusive-tag {
+    display: inline-block;
+    font-family: 'VT323', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--red), var(--red-bright));
+    border: 1px solid #ff6666;
+    padding: 0.1em 0.5em;
+    margin-left: 0.5em;
+    vertical-align: middle;
+    box-shadow: 0 0 6px rgba(255,26,26,0.5);
+  }
   .edited-marker { color: var(--red-dim); cursor: help; }
   .delete-form { display: inline-block; }
   .delete-btn, .edit-btn {
@@ -264,6 +323,21 @@
     <button type="submit">[ SEARCH ]</button>
     {% if search_query or date_from or date_to %}<a href="{% url 'forum' %}" class="search-clear">[ CLEAR ]</a>{% endif %}
   </form>
+  <div class="vip-switch-wrap" title="{% if is_vip %}Toggle VIP Exclusive content{% else %}VIP members only{% endif %}">
+    <span class="vip-switch-label {% if content_view == 'all' %}active{% endif %}">Forum</span>
+    {% if is_vip %}
+    <a href="{% url 'forum' %}?view={% if content_view == 'exclusive' %}all{% else %}exclusive{% endif %}{% if sort == 'old' %}&sort=old{% endif %}"
+       class="vip-switch {% if content_view == 'exclusive' %}on{% endif %}" aria-label="Toggle Exclusive content">
+      <span class="vip-switch-knob"></span>
+    </a>
+    {% else %}
+    <span class="vip-switch locked" aria-disabled="true">
+      <span class="vip-switch-knob"></span>
+      <span class="vip-switch-chain-icon">&#9939;</span>
+    </span>
+    {% endif %}
+    <span class="vip-switch-label {% if content_view == 'exclusive' %}active{% endif %}">Exclusive</span>
+  </div>
 </div>
 <div class="section-divider"></div>
 
@@ -287,7 +361,7 @@
   {% for post in posts %}
   <div class="card post-card" id="post-{{ post.id }}">
     <div class="post-meta">
-      <span class="post-author">// {% include "_vip_name.html" with vip_user=post.author %}{% include "_vip_badge.html" with vip_user=post.author %}</span>
+      <span class="post-author">// {% include "_vip_name.html" with vip_user=post.author %}{% include "_vip_badge.html" with vip_user=post.author %}{% if post.is_vip_exclusive %}<span class="post-exclusive-tag">EXCLUSIVE</span>{% endif %}</span>
       <div class="post-meta-actions">
         <span class="post-date">
           {{ post.created_at|date:"m/d/Y g:i A" }}
