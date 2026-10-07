@@ -8,7 +8,7 @@
     <a href="{% url 'user_profile' c.author.username %}" title="View {{ c.author.username }}'s profile">
       {% if c.author.profile_picture %}<img src="{{ c.author.profile_picture.url }}" alt="" class="comment-avatar">{% endif %}
     </a>
-    <a href="{% url 'user_profile' c.author.username %}" class="comment-author">{{ c.author.username }}</a>
+    <a href="{% url 'user_profile' c.author.username %}" class="comment-author">{{ c.author.username }}</a>{% include "_vip_badge.html" with vip_user=c.author %}
     <span class="comment-date">{{ c.created_at|date:"m/d/Y g:i A" }}</span>
     {% include "_dots_menu.html" with target_type="comment" target_id=c.id post_id=post_id show_delete_comment=c.author_id|eq:user.id|or_:can_delete_comments show_report=c.author_id|ne:user.id show_share_comment=True show_copy=True %}
   </div>

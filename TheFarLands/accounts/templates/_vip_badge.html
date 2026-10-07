@@ -1,0 +1,22 @@
+{% comment %}
+Small sparkling "VIP" badge rendered next to an account's name wherever
+it appears - nav (base.html/home.html), the profile dossier (profile.html),
+forum post/comment authorship, and Mail message senders. One shared
+partial so every spot stays visually/behaviorally identical and a future
+change (new expiry copy, new animation) only has to happen once.
+
+Usage: {% include "_vip_badge.html" with vip_user=some_user %}
+`vip_user` must be a CustomUser instance (or None/AnonymousUser - this
+silently renders nothing then, since AnonymousUser has no is_vip).
+Sized in `em` so it scales with whatever font-size surrounds it (a 2rem
+nav username vs. a small forum byline) without needing a size variant
+per call site.
+
+CSS lives in base.html's <style> (covers every template that extends
+it: profile/forum/mail/settings) AND is duplicated in home.html's own
+<style>, same split as the nav itself - home.html doesn't extend
+base.html, so it can't share base.html's copy.
+{% endcomment %}
+{% if vip_user.is_vip %}
+<span class="vip-name-badge" title="VIP Member{% if vip_user.vip_expires_at %} — expires {{ vip_user.vip_expires_at|date:'M j, Y' }}{% endif %}">VIP<span class="vip-name-badge-sparkle s1">✦</span><span class="vip-name-badge-sparkle s2">✧</span></span>
+{% endif %}

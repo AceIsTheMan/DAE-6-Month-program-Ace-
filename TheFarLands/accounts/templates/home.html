@@ -84,6 +84,46 @@
       flex-shrink: 0;
     }
 
+    /* ─── VIP NAME BADGE (see _vip_badge.html) - duplicated from
+       base.html, same reason the nav itself is duplicated here: this
+       page doesn't extend base.html. ─── */
+    .vip-name-badge {
+      display: inline-flex;
+      align-items: center;
+      position: relative;
+      font-family: 'VT323', monospace;
+      font-size: 0.6em;
+      letter-spacing: 1px;
+      line-height: 1;
+      color: #fff;
+      background: linear-gradient(135deg, var(--red), var(--red-bright));
+      border: 1px solid #ff6666;
+      padding: 0.2em 0.45em;
+      margin-left: 0.45em;
+      vertical-align: middle;
+      box-shadow: 0 0 6px rgba(255,26,26,0.6);
+      animation: vipNameBadgePulse 2s ease-in-out infinite;
+      text-shadow: none;
+    }
+    .vip-name-badge-sparkle {
+      position: absolute;
+      font-size: 1em;
+      color: #fff;
+      text-shadow: 0 0 4px #fff, 0 0 8px var(--red-bright);
+      pointer-events: none;
+      animation: vipNameSparkle 1.4s ease-in-out infinite;
+    }
+    .vip-name-badge-sparkle.s1 { top: -0.6em; right: -0.5em; animation-delay: 0s; }
+    .vip-name-badge-sparkle.s2 { bottom: -0.6em; left: -0.5em; font-size: 0.7em; animation-delay: 0.6s; }
+    @keyframes vipNameBadgePulse {
+      0%, 100% { box-shadow: 0 0 6px rgba(255,26,26,0.5); }
+      50% { box-shadow: 0 0 12px rgba(255,26,26,0.9); }
+    }
+    @keyframes vipNameSparkle {
+      0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+      50% { opacity: 1; transform: scale(1.2) rotate(25deg); }
+    }
+
     .nav-links {
       display: flex;
       gap: 0.2rem;
@@ -1548,7 +1588,7 @@
 
 <!-- ─── NAV ─── -->
 <nav>
-  <div class="nav-logo" id="nav-logo">{% if user.is_authenticated and user.profile_picture %}<img src="{{ user.profile_picture.url }}" alt="" class="nav-avatar">{% endif %}// {% if user.is_authenticated %}{{ user.username }}{% else %}UnknownUser{% endif %}</div>
+  <div class="nav-logo" id="nav-logo">{% if user.is_authenticated and user.profile_picture %}<img src="{{ user.profile_picture.url }}" alt="" class="nav-avatar">{% endif %}// {% if user.is_authenticated %}{{ user.username }}{% include "_vip_badge.html" with vip_user=user %}{% else %}UnknownUser{% endif %}</div>
   <ul class="nav-links">
     <li><a href="#" class="active" onclick="showPage('home', this)">HOME</a></li>
     <li><a href="{% url 'forum' %}">FORUM</a></li>

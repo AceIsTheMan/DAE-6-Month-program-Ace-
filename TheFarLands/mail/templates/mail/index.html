@@ -502,7 +502,7 @@
           {% for message in thread_messages %}
           <div class="message-bubble {% if message.sender_id == user.id %}mine{% else %}theirs{% endif %}">
             <div class="message-bubble-meta">
-              <span class="message-sender">{{ message.sender.username }}</span>
+              <span class="message-sender">{{ message.sender.username }}{% include "_vip_badge.html" with vip_user=message.sender %}</span>
               <span>{{ message.created_at|date:"m/d/Y g:i A" }}</span>
               {% include "_dots_menu.html" with target_type="message" target_id=message.id target_username=message.sender.username show_report=message.sender_id|ne:user.id show_friend=message.sender_id|ne:user.id show_mute=message.sender_id|ne:user.id show_message=False show_block=message.sender_id|ne:user.id show_forward=True show_save=True is_saved=active_category|eq:'saved' show_delete_message=message|can_delete_message:user %}
             </div>
