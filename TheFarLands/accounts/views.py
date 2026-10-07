@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 
 from django.conf import settings
@@ -509,6 +510,13 @@ def settings_view(request):
         on/off for "C1", the secret breach cutscene (CustomUser.
         secret_cutscene_enabled - see accounts/templates/
         _secret_cutscene.html and settings_toggle_secret_cutscene).
+      - vip: VIP-only (gated server-side, not just hidden in the tab
+        strip) - site theme (CustomUser.site_theme, re-skins this
+        account's own view of the site, see _vip_theme_override.html)
+        and a custom name color (CustomUser.name_color, changes how
+        this account's username displays to everyone, see
+        _vip_name.html). Two of the six perks listed on the Store's VIP
+        cards, made real.
     """
     active_tab = request.GET.get('tab', 'settings')
     if active_tab == 'dashboard' and not request.user.is_moderator:
@@ -519,7 +527,10 @@ def settings_view(request):
     context = {'active_tab': active_tab}
     if active_tab == 'settings':
         active_sub_tab = request.GET.get('sub', 'profile')
-        if active_sub_tab not in ('profile', 'blocked', 'notifications', 'cutscenes'):
+        valid_sub_tabs = ['profile', 'blocked', 'notifications', 'cutscenes']
+        if request.user.is_vip:
+            valid_sub_tabs.append('vip')
+        if active_sub_tab not in valid_sub_tabs:
             active_sub_tab = 'profile'
         context['active_sub_tab'] = active_sub_tab
         context['cutscene_mode_choices'] = CustomUser.CUTSCENE_MODE_CHOICES
@@ -539,6 +550,32 @@ def settings_view(request):
                 .select_related('to_user')
                 .order_by('to_user__username')
             )
+        elif active_sub_tab == 'vip':
+            if request.method == 'POST':
+                update_fields = []
+                # Checked with `in request.POST`, not a blanket .get(...,
+                # ''), since the theme-only form and the name-color-only
+                # form each omit the other field entirely - a plain
+                # .get() default would silently wipe out whichever one
+                # wasn't actually submitted this time.
+                if 'site_theme' in request.POST:
+                    site_theme = request.POST.get('site_theme', '')
+                    if site_theme in dict(CustomUser.SITE_THEME_CHOICES):
+                        request.user.site_theme = site_theme
+                        update_fields.append('site_theme')
+                if 'name_color' in request.POST:
+                    name_color = request.POST.get('name_color', '').strip()
+                    # Blank clears it back to the default text color;
+                    # anything else must be a real #rrggbb or it's
+                    # silently dropped rather than saving a value CSS
+                    # can't use.
+                    if name_color == '' or re.fullmatch(r'#[0-9a-fA-F]{6}', name_color):
+                        request.user.name_color = name_color
+                        update_fields.append('name_color')
+                if update_fields:
+                    request.user.save(update_fields=update_fields)
+                return redirect(f"{reverse('settings_page')}?tab=settings&sub=vip")
+            context['site_theme_choices'] = CustomUser.SITE_THEME_CHOICES
     elif active_tab == 'dashboard':
         context.update({
             'total_accounts': CustomUser.objects.count(),

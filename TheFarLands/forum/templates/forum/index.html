@@ -287,7 +287,7 @@
   {% for post in posts %}
   <div class="card post-card" id="post-{{ post.id }}">
     <div class="post-meta">
-      <span class="post-author">// {{ post.author.username }}{% include "_vip_badge.html" with vip_user=post.author %}</span>
+      <span class="post-author">// {% include "_vip_name.html" with vip_user=post.author %}{% include "_vip_badge.html" with vip_user=post.author %}</span>
       <div class="post-meta-actions">
         <span class="post-date">
           {{ post.created_at|date:"m/d/Y g:i A" }}

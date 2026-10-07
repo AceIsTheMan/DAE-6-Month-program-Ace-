@@ -97,6 +97,30 @@
   .cutscene-options { display: flex; flex-direction: column; gap: 0.7rem; }
   .cutscene-option { display: flex; align-items: center; gap: 0.6rem; font-size: 0.88rem; color: var(--silver); cursor: pointer; }
   .cutscene-option input { accent-color: var(--red-bright); }
+
+  /* VIP sub-tab - site theme swatches + name color picker */
+  .settings-subtab-vip { color: var(--red-bright); }
+  .vip-theme-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 1px solid rgba(255,255,255,0.3);
+    flex-shrink: 0;
+  }
+  .vip-theme-swatch-classic_red { background: #cc0000; }
+  .vip-theme-swatch-toxic_green { background: #00cc44; }
+  .vip-theme-swatch-cyber_blue { background: #0066cc; }
+  .vip-theme-swatch-royal_purple { background: #7700cc; }
+  .vip-theme-swatch-gold { background: #cc9900; }
+  .vip-name-color-form { display: flex; align-items: center; gap: 0.7rem; }
+  .vip-name-color-form input[type="color"] {
+    width: 48px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid var(--red-dim);
+    background: transparent;
+    cursor: pointer;
+  }
 </style>
 {% endblock %}
 
@@ -529,6 +553,9 @@
   <a href="{% url 'settings_page' %}?tab=settings&sub=blocked" class="settings-subtab{% if active_sub_tab == 'blocked' %} active{% endif %}">Blocked</a>
   <a href="{% url 'settings_page' %}?tab=settings&sub=notifications" class="settings-subtab{% if active_sub_tab == 'notifications' %} active{% endif %}">Notifications</a>
   <a href="{% url 'settings_page' %}?tab=settings&sub=cutscenes" class="settings-subtab{% if active_sub_tab == 'cutscenes' %} active{% endif %}">Cutscenes</a>
+  {% if user.is_vip %}
+  <a href="{% url 'settings_page' %}?tab=settings&sub=vip" class="settings-subtab settings-subtab-vip{% if active_sub_tab == 'vip' %} active{% endif %}">VIP</a>
+  {% endif %}
 </div>
 
 {% if active_sub_tab == 'blocked' %}
@@ -608,6 +635,46 @@
       {% if user.secret_cutscene_enabled %}[ TURN C1 OFF ]{% else %}[ TURN C1 ON ]{% endif %}
     </button>
   </form>
+</div>
+{% elif active_sub_tab == 'vip' %}
+<div class="card">
+  <p class="field-help" style="margin-bottom: 1rem;">
+    Custom Theme - re-skins the site's colors for your own view only. Nobody else sees it when they visit your
+    profile or posts; it's a personal preference, same as picking a light/dark mode elsewhere.
+  </p>
+  <form method="post" action="{% url 'settings_page' %}?tab=settings&sub=vip" class="cutscene-options">
+    {% csrf_token %}
+    {% for value, label in site_theme_choices %}
+    <label class="cutscene-option vip-theme-option">
+      <input type="radio" name="site_theme" value="{{ value }}" {% if user.site_theme == value %}checked{% endif %} onchange="this.form.submit()">
+      <span class="vip-theme-swatch vip-theme-swatch-{{ value }}"></span>
+      {{ label }}
+    </label>
+    {% endfor %}
+  </form>
+</div>
+<div class="card" style="margin-top: 1rem;">
+  <p class="field-help" style="margin-bottom: 1rem;">
+    Custom Name Color - changes how your username displays everywhere it appears (nav, profile, forum posts and
+    comments, Mail) for everyone who sees it.
+  </p>
+  <form method="post" action="{% url 'settings_page' %}?tab=settings&sub=vip" class="vip-name-color-form">
+    {% csrf_token %}
+    <input type="color" name="name_color" value="{{ user.name_color|default:'#ff1a1a' }}">
+    <button type="submit" class="donate-btn" style="font-size: 0.85rem;">[ SAVE COLOR ]</button>
+  </form>
+  {% if user.name_color %}
+  <form method="post" action="{% url 'settings_page' %}?tab=settings&sub=vip" style="display:inline-block; margin-top: 0.6rem;">
+    {% csrf_token %}
+    <input type="hidden" name="name_color" value="">
+    <button type="submit" class="donate-btn" style="font-size: 0.85rem;">[ RESET TO DEFAULT ]</button>
+  </form>
+  {% endif %}
+  {% if user.name_color %}
+  <p class="field-help" style="margin-top: 0.8rem;">
+    Preview: <span style="color: {{ user.name_color }};">{{ user.username }}</span>
+  </p>
+  {% endif %}
 </div>
 {% else %}
 <div class="card">

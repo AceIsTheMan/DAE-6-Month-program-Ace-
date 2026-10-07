@@ -407,13 +407,14 @@
 
 </style>
 {% block extra_head %}{% endblock %}
+{% include "_vip_theme_override.html" %}
 </head>
 <body>
 {% include "_cutscene_engine.html" %}
 {% include "_secret_cutscene.html" %}
 {% include "_role_cutscenes.html" %}
 <nav>
-  <a href="{% url 'home' %}" class="nav-logo">{% if user.is_authenticated and user.profile_picture %}<img src="{{ user.profile_picture.url }}" alt="" class="nav-avatar">{% endif %}// {% if user.is_authenticated %}{{ user.username }}{% include "_vip_badge.html" with vip_user=user %}{% else %}UnknownUser{% endif %}</a>
+  <a href="{% url 'home' %}" class="nav-logo">{% if user.is_authenticated and user.profile_picture %}<img src="{{ user.profile_picture.url }}" alt="" class="nav-avatar">{% endif %}// {% if user.is_authenticated %}{% include "_vip_name.html" with vip_user=user %}{% include "_vip_badge.html" with vip_user=user %}{% else %}UnknownUser{% endif %}</a>
   <ul class="nav-links">
     <li><a href="{% url 'home' %}">HOME</a></li>
     <li><a href="{% url 'forum' %}"{% if request.resolver_match.url_name == 'forum' %} class="active"{% endif %}>FORUM</a></li>

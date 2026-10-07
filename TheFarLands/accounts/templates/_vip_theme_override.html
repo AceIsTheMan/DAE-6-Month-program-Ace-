@@ -1,0 +1,41 @@
+{% comment %}
+VIP "Custom Theme" perk - re-skins the site's --red/--red-bright/--red-dim
+CSS variables for the CURRENTLY SIGNED-IN account's own view only (every
+other visitor still sees Classic Red regardless of whose profile/post/
+page they're looking at). A personal display preference, not something
+that changes how this account's content looks to anyone else - see
+accounts.models.CustomUser.site_theme and settings_view's 'vip' sub-tab.
+
+Included at the end of <head>, after the page's own main <style> block,
+in both base.html and home.html (home.html doesn't extend base.html, so
+it needs its own include, same split as _vip_badge.html/_vip_name.html).
+CSS custom properties cascade by source order for equal specificity, so
+appearing later than the base :root block is what lets this win.
+
+Set has no visual effect at all unless the account is a currently-active
+VIP (is_vip) AND picked something other than the default - most accounts
+hit neither condition and this renders nothing.
+{% endcomment %}
+{% if user.is_authenticated and user.is_vip and user.site_theme and user.site_theme != 'classic_red' %}
+<style>
+  :root {
+    {% if user.site_theme == 'toxic_green' %}
+    --red: #00cc44;
+    --red-bright: #1aff6a;
+    --red-dim: #006622;
+    {% elif user.site_theme == 'cyber_blue' %}
+    --red: #0066cc;
+    --red-bright: #1a8cff;
+    --red-dim: #003366;
+    {% elif user.site_theme == 'royal_purple' %}
+    --red: #7700cc;
+    --red-bright: #a64dff;
+    --red-dim: #330066;
+    {% elif user.site_theme == 'gold' %}
+    --red: #cc9900;
+    --red-bright: #ffcc1a;
+    --red-dim: #665000;
+    {% endif %}
+  }
+</style>
+{% endif %}

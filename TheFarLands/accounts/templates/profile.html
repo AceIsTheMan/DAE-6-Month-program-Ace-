@@ -177,7 +177,7 @@
             </div>
 
             <div class="dossier-id">
-                <div class="dossier-name">{{ profile_user.username }}{% include "_vip_badge.html" with vip_user=profile_user %}</div>
+                <div class="dossier-name">{% include "_vip_name.html" with vip_user=profile_user %}{% include "_vip_badge.html" with vip_user=profile_user %}</div>
                 <div class="dossier-alias">// alias: {{ profile_user.alias|default:"—" }} //</div>
 
                 <div class="dossier-field">

@@ -63,6 +63,30 @@ class CustomUser(AbstractUser):
     # already a VIP never shortens what they already paid for.
     vip_expires_at = models.DateTimeField(null=True, blank=True)
 
+    # Two of the six perks listed on the Store's VIP cards (see home.html)
+    # made real - both gated to is_vip in settings_view's 'vip' sub-tab,
+    # not just hidden in the template (same "server checks it too"
+    # convention as every other gated tab here).
+    SITE_THEME_CHOICES = [
+        ('classic_red', 'Classic Red'),
+        ('toxic_green', 'Toxic Green'),
+        ('cyber_blue', 'Cyber Blue'),
+        ('royal_purple', 'Royal Purple'),
+        ('gold', 'Gold'),
+    ]
+    # Re-skins the site's --red/--red-bright/--red-dim CSS variables for
+    # THIS account's own view only (see accounts/templates/
+    # _vip_theme_override.html, included in both base.html and home.html
+    # right after their own :root block) - a personal display
+    # preference, not something other visitors see.
+    site_theme = models.CharField(max_length=20, choices=SITE_THEME_CHOICES, default='classic_red')
+    # Hex color (e.g. "#ff6600"), applied to how THIS account's username
+    # is displayed to everyone, everywhere it appears (see
+    # accounts/templates/_vip_name.html, used alongside _vip_badge.html
+    # at every username call site). Blank = no override, falls back to
+    # the site's normal text color.
+    name_color = models.CharField(max_length=7, blank=True)
+
     @property
     def is_vip(self):
         return self.vip_expires_at is not None and self.vip_expires_at > timezone.now()

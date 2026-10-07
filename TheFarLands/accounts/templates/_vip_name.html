@@ -1,0 +1,12 @@
+{% comment %}
+VIP "Custom Name Color" perk - renders just the username text, colored
+if this account is an active VIP with a name_color set, plain otherwise.
+Drop-in replacement for a bare {{ X.username }} at every spot a username
+is DISPLAYED (nav, profile dossier, forum post/comment author, Mail
+sender) - always paired with {% include "_vip_badge.html" %} right after
+it at the same call sites. Deliberately NOT used inside href=/title=/
+other attribute contexts, which need the plain string, not this HTML.
+
+Usage: {% include "_vip_name.html" with vip_user=some_user %}
+{% endcomment %}
+{% if vip_user.is_vip and vip_user.name_color %}<span style="color: {{ vip_user.name_color }};">{{ vip_user.username }}</span>{% else %}{{ vip_user.username }}{% endif %}

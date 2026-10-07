@@ -1325,6 +1325,7 @@
       .vip-price { font-size: 2.4rem; }
     }
   </style>
+  {% include "_vip_theme_override.html" %}
 </head>
 <body>
 {% include "_cutscene_engine.html" %}
@@ -1588,7 +1589,7 @@
 
 <!-- ─── NAV ─── -->
 <nav>
-  <div class="nav-logo" id="nav-logo">{% if user.is_authenticated and user.profile_picture %}<img src="{{ user.profile_picture.url }}" alt="" class="nav-avatar">{% endif %}// {% if user.is_authenticated %}{{ user.username }}{% include "_vip_badge.html" with vip_user=user %}{% else %}UnknownUser{% endif %}</div>
+  <div class="nav-logo" id="nav-logo">{% if user.is_authenticated and user.profile_picture %}<img src="{{ user.profile_picture.url }}" alt="" class="nav-avatar">{% endif %}// {% if user.is_authenticated %}{% include "_vip_name.html" with vip_user=user %}{% include "_vip_badge.html" with vip_user=user %}{% else %}UnknownUser{% endif %}</div>
   <ul class="nav-links">
     <li><a href="#" class="active" onclick="showPage('home', this)">HOME</a></li>
     <li><a href="{% url 'forum' %}">FORUM</a></li>
