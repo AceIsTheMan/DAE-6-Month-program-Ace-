@@ -31,6 +31,7 @@ from .models import CustomUser, GuestArchive, TokenGrantLog, TokenTransaction
 # rounding on money math.
 STORE_CATALOG = {
     'vip_month': {'label': 'VIP Membership', 'kind': 'vip', 'unit_price_cents': 500, 'unit_days': 30},
+    'vip_year': {'label': 'VIP Membership (Annual)', 'kind': 'vip', 'unit_price_cents': 2000, 'unit_days': 365},
     'tokens_4': {'label': '4 Tokens', 'kind': 'tokens', 'unit_price_cents': 100, 'unit_tokens': 4},
     'tokens_40': {'label': '40 Tokens', 'kind': 'tokens', 'unit_price_cents': 1000, 'unit_tokens': 40},
     'tokens_400': {'label': '400 Tokens', 'kind': 'tokens', 'unit_price_cents': 10000, 'unit_tokens': 400},

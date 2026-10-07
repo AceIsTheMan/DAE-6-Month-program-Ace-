@@ -1912,6 +1912,38 @@
         {% endif %}
       </div>
 
+      <div class="vip-card">
+        <div class="vip-sparkle s1">✦</div>
+        <div class="vip-sparkle s2">✧</div>
+        <div class="vip-sparkle s3">✦</div>
+        <div class="vip-sparkle s4">✧</div>
+        <div class="vip-sparkle s5">✦</div>
+        <div class="vip-sparkle s6">✧</div>
+
+        <div class="vip-badge">VIP</div>
+
+        <div class="vip-title">VIP Membership — Annual</div>
+        <div class="vip-price">$20<span>/ year</span></div>
+
+        <ul class="vip-perks">
+          <li>Exclusive VIP tag</li>
+          <li>Name color change</li>
+          <li>Profile cosmetics</li>
+          <li>Custom theme</li>
+          <li>Exclusive emoji's and stickers</li>
+          <li>Early access content</li>
+        </ul>
+
+        {% if user.is_authenticated and not user.is_guest %}
+        <button type="button" class="vip-btn" onclick="openStoreCheckout(this)"
+          data-item="vip_year" data-label="VIP Membership (Annual)" data-icon=""
+          data-unit-price-cents="2000" data-unit-days="365">[ GET ANNUAL VIP ]</button>
+        {% else %}
+        <a href="{% url 'login' %}" class="vip-btn">[ GET ANNUAL VIP ]</a>
+        {% endif %}
+        <div class="vip-note">// Billed yearly — cancel anytime //</div>
+      </div>
+
     </div>
   </div>
 </div>
