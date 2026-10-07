@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import CustomUser, GuestArchive, TokenGrantLog, TokenTransaction
+from .models import CustomUser, GuestArchive, PurchaseLog, TokenGrantLog, TokenTransaction
 
 
 class CustomUserAdmin(UserAdmin):
@@ -42,6 +42,22 @@ class TokenTransactionAdmin(admin.ModelAdmin):
     search_fields = ('user__username', 'note')
     ordering = ('-created_at',)
     readonly_fields = [f.name for f in TokenTransaction._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(PurchaseLog)
+class PurchaseLogAdmin(admin.ModelAdmin):
+    """Read-only record of real (fake-money) Store spending - backs the
+    Top Donators leaderboard on the Socials & Support page."""
+    list_display = ('user', 'label', 'quantity', 'amount_cents', 'created_at')
+    search_fields = ('user__username', 'label')
+    ordering = ('-created_at',)
+    readonly_fields = [f.name for f in PurchaseLog._meta.fields]
 
     def has_add_permission(self, request):
         return False

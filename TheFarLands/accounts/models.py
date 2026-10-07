@@ -302,3 +302,35 @@ class TokenTransaction(models.Model):
     def __str__(self):
         sign = '+' if self.amount >= 0 else ''
         return f'{self.user.username} {sign}{self.amount} ({self.get_kind_display()})'
+
+
+class PurchaseLog(models.Model):
+    """
+    One real (fake-money) Store transaction - VIP purchases, token pack
+    purchases, and "buy new tokens to gift" sends each log one row here,
+    credited to the PAYING account regardless of who the tokens/VIP
+    ultimately went to. Backs the "Top Donators" leaderboard on the
+    Socials & Support page (home.html's page-socials section, see
+    accounts.views.home_view) - ranked by a Sum of amount_cents.
+
+    Deliberately separate from TokenTransaction: that's a per-user
+    currency ledger (what changed someone's balance and why). This is
+    purely "how much fake money did this account spend in the Store" -
+    VIP purchases never touch currency at all, and "gift from my own
+    balance" (TokenTransaction.SPENT) is moving tokens that were already
+    paid for once, not new spending, so neither should (and neither
+    does) create a row here. See accounts.views.store_purchase/
+    store_gift - every write path to this model.
+    """
+    user = models.ForeignKey('CustomUser', on_delete=models.CASCADE, related_name='purchase_logs')
+    item_key = models.CharField(max_length=20)
+    label = models.CharField(max_length=100)
+    quantity = models.PositiveIntegerField()
+    amount_cents = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.user.username} - ${self.amount_cents / 100:.2f} ({self.label})'

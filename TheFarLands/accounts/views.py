@@ -7,7 +7,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
 from django.core.exceptions import PermissionDenied
 from django.core.mail import send_mail
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Sum
 from django.http import Http404, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -22,7 +22,7 @@ from mail.models import FriendRequest, Message, ModerationAction, Report, RoleCh
 from mail.views import _get_or_create_dm
 
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
-from .models import CustomUser, GuestArchive, TokenGrantLog, TokenTransaction
+from .models import CustomUser, GuestArchive, PurchaseLog, TokenGrantLog, TokenTransaction
 
 # Store catalog - the one source of truth for what each Store button
 # actually buys, keyed to match each button's `data-item` in home.html's
@@ -230,6 +230,13 @@ def home_view(request):
     login just queued admin_login - the real Director's picture (there's
     only ever one), for the simulated "Director pfp" chat message that
     cutscene shows.
+
+    top_donators backs the leaderboard below the donation box on the
+    Socials & Support tab - the 10 accounts with the highest total real
+    (fake-money) Store spending (accounts.models.PurchaseLog), VIP and
+    token purchases/gifts alike. Computed unconditionally (cheap - one
+    aggregate query, capped at 10 rows) since every page tab's markup
+    renders on every load here, the JS just toggles which one shows.
     """
     force_rules_gate = request.session.pop('force_rules_gate', False)
     role_cutscene = request.session.pop('role_cutscene', '')
@@ -248,11 +255,19 @@ def home_view(request):
         if director and director.profile_picture:
             director_profile_picture_url = director.profile_picture.url
 
+    top_donators = [
+        {'user': u, 'total_donated': u.total_donated_cents / 100}
+        for u in CustomUser.objects.filter(purchase_logs__isnull=False)
+        .annotate(total_donated_cents=Sum('purchase_logs__amount_cents'))
+        .order_by('-total_donated_cents')[:10]
+    ]
+
     return render(request, 'home.html', {
         'force_rules_gate': force_rules_gate,
         'role_cutscene_to_play': role_cutscene,
         'director_profile_picture_url': director_profile_picture_url,
         'guest_trial_remaining': guest_trial_remaining,
+        'top_donators': top_donators,
     })
 
 
@@ -789,6 +804,13 @@ def store_purchase(request):
         'total_price_cents': total_price_cents,
     }
 
+    # Every STORE_CATALOG item has a real price, so every store_purchase
+    # call is real (fake-money) spending - counts toward the Top
+    # Donators leaderboard regardless of whether it bought tokens or VIP.
+    PurchaseLog.objects.create(
+        user=request.user, item_key=item_key, label=item['label'], quantity=quantity, amount_cents=total_price_cents,
+    )
+
     if item['kind'] == 'tokens':
         total_tokens = item['unit_tokens'] * quantity
         request.user.currency += total_tokens
@@ -930,6 +952,19 @@ def store_gift(request):
         response['total_days'] = total_days
         response['total_price_cents'] = item['unit_price_cents'] * quantity
         gift_desc = f'{total_days} day{"s" if total_days != 1 else ""} of VIP Membership'
+
+    # Only a real (fake-money) spend counts toward the Top Donators
+    # leaderboard - "gift from my own balance" paid $0 (response['total_
+    # price_cents'] is 0 in that branch above), so it correctly logs
+    # nothing here.
+    if response['total_price_cents'] > 0:
+        PurchaseLog.objects.create(
+            user=request.user,
+            item_key=item_key,
+            label=f'Gift: {item["label"]}',
+            quantity=quantity,
+            amount_cents=response['total_price_cents'],
+        )
 
     body_lines = [f'\U0001f381 You received a gift from {request.user.username}: {gift_desc}.']
     if note:

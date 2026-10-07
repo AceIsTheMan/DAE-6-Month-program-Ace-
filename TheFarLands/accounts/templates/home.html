@@ -891,6 +891,64 @@
       transform: scale(1.04);
     }
 
+    /* ─── TOP DONATORS LEADERBOARD ─── */
+    .donor-leaderboard {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .donor-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      border: 1px solid var(--red-dim);
+      padding: 0.7rem 1.1rem;
+      background: #0a0000;
+    }
+
+    .donor-rank {
+      font-family: 'VT323', monospace;
+      font-size: 1.3rem;
+      color: var(--dim-white);
+      width: 2.2rem;
+      flex-shrink: 0;
+      text-align: center;
+    }
+
+    .donor-row.donor-rank-1 { border-color: var(--red); box-shadow: 0 0 14px rgba(204,0,0,0.35); }
+    .donor-row.donor-rank-1 .donor-rank { color: #ffd700; text-shadow: 0 0 6px #ffd700; font-size: 1.6rem; }
+    .donor-row.donor-rank-2 .donor-rank { color: #c0c0c0; text-shadow: 0 0 6px #c0c0c0; }
+    .donor-row.donor-rank-3 .donor-rank { color: #cd7f32; text-shadow: 0 0 6px #cd7f32; }
+
+    .donor-name {
+      flex: 1;
+      min-width: 0;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.95rem;
+      overflow-wrap: anywhere;
+    }
+    .donor-name a { color: var(--silver); text-decoration: none; }
+    .donor-name a:hover { color: var(--red-bright); text-decoration: underline; }
+
+    .donor-amount {
+      font-family: 'VT323', monospace;
+      font-size: 1.3rem;
+      color: var(--red-bright);
+      text-shadow: 0 0 4px var(--red);
+      flex-shrink: 0;
+    }
+
+    .donor-leaderboard-empty {
+      font-size: 0.75rem;
+      color: var(--dim-white);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      border: 1px dashed var(--red-dim);
+      padding: 1rem;
+      text-align: center;
+    }
+
     /* ─── STORE PAGE ─── */
     .store-wrap {
       padding: 4rem 2rem;
@@ -1773,6 +1831,26 @@
           // Link your donation platform above //
         </div>
       </div>
+
+      <!-- Top Donators -->
+      <div class="section-label" style="margin-top:3rem;">// TOP DONATORS</div>
+      <div class="section-divider"></div>
+
+      {% if top_donators %}
+      <div class="donor-leaderboard">
+        {% for entry in top_donators %}
+        <div class="donor-row donor-rank-{{ forloop.counter }}">
+          <div class="donor-rank">#{{ forloop.counter }}</div>
+          <div class="donor-name">
+            <a href="{% url 'user_profile' entry.user.username %}">{% include "_vip_name.html" with vip_user=entry.user %}</a>{% include "_vip_badge.html" with vip_user=entry.user %}
+          </div>
+          <div class="donor-amount">${{ entry.total_donated|floatformat:2 }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="donor-leaderboard-empty">No donations yet — be the first in the Store.</div>
+      {% endif %}
 
     </div>
   </div>
