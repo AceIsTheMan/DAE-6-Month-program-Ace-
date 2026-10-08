@@ -814,6 +814,20 @@
   </form>
 </div>
 {% else %}
+{% if user.is_director %}
+<div class="card" style="margin-bottom: 1rem;">
+  <p class="field-help" style="margin-bottom: 1rem;">
+    VIP Access - turn your own VIP access off to see the site the way a non-VIP member does, without touching your
+    actual VIP time. Turn it back on to restore it exactly as it was.
+  </p>
+  <form method="post" action="{% url 'settings_toggle_vip_access' %}">
+    {% csrf_token %}
+    <button type="submit" class="donate-btn" style="font-size: 0.9rem;">
+      {% if user.vip_access_enabled %}[ TURN VIP ACCESS OFF ]{% else %}[ TURN VIP ACCESS ON ]{% endif %}
+    </button>
+  </form>
+</div>
+{% endif %}
 <div class="card">
   <div class="settings-profile-preview">
     <div class="settings-profile-photo">
