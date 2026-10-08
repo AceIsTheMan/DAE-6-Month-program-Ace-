@@ -96,7 +96,7 @@
     width: 44px;
     height: 22px;
     border: 1px solid var(--red-dim);
-    background: #1a0000;
+    background: var(--black);
     text-decoration: none;
     flex-shrink: 0;
     transition: background 0.2s, border-color 0.2s;
@@ -112,7 +112,7 @@
   }
   .vip-switch.on { background: rgba(204,0,0,0.25); border-color: var(--red-bright); }
   .vip-switch.on .vip-switch-knob { left: 24px; background: var(--red-bright); box-shadow: 0 0 6px var(--red-bright); }
-  .vip-switch.locked { opacity: 0.65; cursor: not-allowed; border-color: #444; background: #0a0a0a; }
+  .vip-switch.locked { opacity: 0.65; cursor: not-allowed; border-color: #444; background: var(--black); }
   .vip-switch.locked .vip-switch-knob { background: #555; }
   .vip-switch-chain-icon {
     position: absolute;
@@ -177,7 +177,7 @@
     -webkit-user-drag: none;
     user-select: none;
   }
-  .post-media video { max-height: 480px; background: #000; }
+  .post-media video { max-height: 480px; background: var(--deep-black); }
   .post-link {
     display: inline-block;
     margin-top: 0.6rem;

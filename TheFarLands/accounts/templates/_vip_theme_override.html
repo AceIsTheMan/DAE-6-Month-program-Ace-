@@ -1,23 +1,65 @@
+{% load static %}
 {% comment %}
-VIP "Custom Theme" perk - re-skins the site's --red/--red-bright/--red-dim
-CSS variables for the CURRENTLY SIGNED-IN account's own view only (every
-other visitor still sees Classic Red regardless of whose profile/post/
-page they're looking at). A personal display preference, not something
-that changes how this account's content looks to anyone else - see
-accounts.models.CustomUser.site_theme and settings_view's 'vip' sub-tab.
+VIP "Custom Theme" / "Background Themes" perks - re-skins the site's
+--red/--red-bright/--red-dim CSS variables (and, for Background Themes,
+the page background itself) for the CURRENTLY SIGNED-IN account's own
+view only. Every other visitor still sees Classic Red / the normal black
+background regardless of whose profile/post/page they're looking at - a
+personal display preference, not something that changes how this
+account's content looks to anyone else. See accounts.models.CustomUser.
+site_theme/background_theme and settings_view's 'vip' sub-tab.
 
 Included at the end of <head>, after the page's own main <style> block,
 in both base.html and home.html (home.html doesn't extend base.html, so
 it needs its own include, same split as _vip_badge.html/_vip_name.html).
-CSS custom properties cascade by source order for equal specificity, so
-appearing later than the base :root block is what lets this win.
+CSS custom properties/later rules cascade by source order for equal
+specificity, so appearing later than the base :root/body block is what
+lets this win.
+
+`is_home` - pass `with is_home=True` from home.html's own include only.
+Background Themes behaves differently there on purpose (see Kitty
+Background below): home.html includes an image-heavy featured section
+of its own, so a tiled background pattern competes with it in a way it
+doesn't on every other (mostly text/card) page - the plain white body
+keeps Home readable while every other page gets the actual pattern.
 
 Set has no visual effect at all unless the account is a currently-active
-VIP (is_vip) AND picked something other than the default - most accounts
-hit neither condition and this renders nothing.
+VIP (is_vip) AND picked something other than each perk's default - most
+accounts hit neither condition and this renders nothing.
 {% endcomment %}
-{% if user.is_authenticated and user.is_vip and user.site_theme and user.site_theme != 'classic_red' %}
+{% if user.is_authenticated and user.is_vip %}
 <style>
+  {% if user.background_theme == 'kitty' %}
+  /* Kitty Background forces its own full soft-pink-and-white palette,
+     taking precedence over Custom Theme (site_theme) below by sheer
+     source order - whatever site_theme is set to, this still wins.
+     Beyond the usual --red family, this also flips every "black panel"
+     surface (--black/--deep-black, used by .card and nearly every box/
+     input/avatar-blank across the site) and the semi-transparent nav/
+     dropdown/modal overlays (--overlay-rgb) light, then darkens the
+     text colors (--silver/--white/--dim-white) to match - without that
+     last part, the existing light-gray/white text would be unreadable
+     against its own now-light background. */
+  :root {
+    --red: #ff6fa5;
+    --red-bright: #ff9dc4;
+    --red-dim: #b8577e;
+    --black: #ffe6f0;
+    --deep-black: #ffffff;
+    --silver: #5c2e45;
+    --white: #3d1f2e;
+    --dim-white: #a9678a;
+    --overlay-rgb: 255,255,255;
+  }
+  body {
+    {% if is_home %}
+    background: #fff;
+    {% else %}
+    background: #fff url('{% static "accounts/kitty_paw_bg.png" %}') repeat;
+    {% endif %}
+    color: #6b3850;
+  }
+  {% elif user.site_theme and user.site_theme != 'classic_red' %}
   :root {
     {% if user.site_theme == 'toxic_green' %}
     --red: #00cc44;
@@ -37,5 +79,6 @@ hit neither condition and this renders nothing.
     --red-dim: #665000;
     {% endif %}
   }
+  {% endif %}
 </style>
 {% endif %}

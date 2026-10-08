@@ -23,7 +23,7 @@
   #crop-box {
     position: absolute;
     border: 2px solid var(--red-bright);
-    box-shadow: 0 0 0 9999px rgba(0,0,0,0.6);
+    box-shadow: 0 0 0 9999px rgba(var(--overlay-rgb),0.6);
     cursor: move;
   }
   #crop-handle {
@@ -33,10 +33,10 @@
     width: 14px;
     height: 14px;
     background: var(--red-bright);
-    border: 1px solid #000;
+    border: 1px solid var(--deep-black);
     cursor: nwse-resize;
   }
-  .crop-live canvas { border: 1px solid var(--red-dim); background: #1a0000; display: block; }
+  .crop-live canvas { border: 1px solid var(--red-dim); background: var(--black); display: block; }
 </style>
 <div class="edit-section-body">
     <form method="post" enctype="multipart/form-data" novalidate>
