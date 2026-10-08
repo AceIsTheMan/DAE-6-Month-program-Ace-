@@ -10,6 +10,7 @@ from django.core.mail import send_mail
 from django.db.models import Count, Q, Sum
 from django.http import Http404, HttpResponseNotAllowed, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.templatetags.static import static
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -22,7 +23,7 @@ from mail.models import FriendRequest, Message, ModerationAction, Report, RoleCh
 from mail.views import _get_or_create_dm
 
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
-from .models import CustomUser, GuestArchive, PurchaseLog, TokenGrantLog, TokenTransaction
+from .models import BannerLoadout, CustomUser, GuestArchive, PurchaseLog, TokenGrantLog, TokenTransaction
 
 # Store catalog - the one source of truth for what each Store button
 # actually buys, keyed to match each button's `data-item` in home.html's
@@ -237,6 +238,12 @@ def home_view(request):
     token purchases/gifts alike. Computed unconditionally (cheap - one
     aggregate query, capped at 10 rows) since every page tab's markup
     renders on every load here, the JS just toggles which one shows.
+
+    top_banner_url/bottom_banner_url are the currently-active
+    BannerLoadout's images (Settings > Banners, Director-only, see
+    settings_view) - a true site-wide setting, not a per-account
+    preference like VIP Background Themes. Falls back to the original
+    static banner files if the active loadout leaves either blank.
     """
     force_rules_gate = request.session.pop('force_rules_gate', False)
     role_cutscene = request.session.pop('role_cutscene', '')
@@ -262,12 +269,29 @@ def home_view(request):
         .order_by('-total_donated_cents')[:10]
     ]
 
+    # Site-wide Home page banners (Settings > Banners, Director-only -
+    # see settings_view). Whichever BannerLoadout is_active=True wins; a
+    # blank top/bottom banner on it (including "Regular", which ships
+    # with both left blank on purpose) falls back to the site's
+    # original static banner images rather than a broken <img>.
+    active_loadout = BannerLoadout.objects.filter(is_active=True).first()
+    top_banner_url = (
+        active_loadout.top_banner.url if active_loadout and active_loadout.top_banner
+        else static('accounts/Banner 2.jpg')
+    )
+    bottom_banner_url = (
+        active_loadout.bottom_banner.url if active_loadout and active_loadout.bottom_banner
+        else static('accounts/Banners.jpg')
+    )
+
     return render(request, 'home.html', {
         'force_rules_gate': force_rules_gate,
         'role_cutscene_to_play': role_cutscene,
         'director_profile_picture_url': director_profile_picture_url,
         'guest_trial_remaining': guest_trial_remaining,
         'top_donators': top_donators,
+        'top_banner_url': top_banner_url,
+        'bottom_banner_url': bottom_banner_url,
     })
 
 
@@ -495,17 +519,20 @@ def settings_view(request):
     Notifications/Cutscenes sub-tabs, see below), Dashboard (Admin/
     Director-only entry point into moderator tools, including a
     by-username account search with warn/mute/ban counts and the
-    expired-guest archive - see accounts.models.GuestArchive), and three
+    expired-guest archive - see accounts.models.GuestArchive), and four
     Director-only tabs: Chat Logs (the soft-deleted Post/Comment/Message
     queue, Re-Send/Purge, by default - or, once a keyword/username/date
     filter is used, a search across ALL Post/Comment/Message content,
     deleted or not - see _chat_log_matches), Admin Logs (an audit trail
     of what Admin-role accounts have done - see
-    _admin_activity_entries), and All Users (every account on the site
-    with its full account info). Every gated tab is checked server-side,
-    not just hidden by the tab UI - same convention as every other
-    moderator-only view (see accounts.models.CustomUser.is_moderator/
-    is_director).
+    _admin_activity_entries), All Users (every account on the site
+    with its full account info), and Banners (accounts.models.
+    BannerLoadout - manages the Home page's top/bottom banner images
+    site-wide for every visitor, not a per-account preference like VIP
+    Background Themes; whichever loadout is_active=True wins, see
+    home_view). Every gated tab is checked server-side, not just hidden
+    by the tab UI - same convention as every other moderator-only view
+    (see accounts.models.CustomUser.is_moderator/is_director).
 
     The Settings tab itself has its own row of sub-tabs (`sub` query
     param, defaults to 'profile'):
@@ -538,7 +565,7 @@ def settings_view(request):
     active_tab = request.GET.get('tab', 'settings')
     if active_tab == 'dashboard' and not request.user.is_moderator:
         active_tab = 'settings'
-    if active_tab in ('logs', 'admin_logs', 'users') and not request.user.is_director:
+    if active_tab in ('logs', 'admin_logs', 'users', 'banners') and not request.user.is_director:
         active_tab = 'settings'
 
     context = {'active_tab': active_tab}
@@ -639,6 +666,43 @@ def settings_view(request):
         context['log_entries'] = entries
     elif active_tab == 'admin_logs':
         context['admin_log_entries'] = _admin_activity_entries()
+    elif active_tab == 'banners':
+        if request.method == 'POST':
+            action = request.POST.get('action', '')
+            loadout_id = request.POST.get('loadout_id', '')
+            loadout = BannerLoadout.objects.filter(pk=loadout_id).first() if loadout_id else None
+
+            if action == 'activate' and loadout:
+                BannerLoadout.objects.exclude(pk=loadout.pk).update(is_active=False)
+                loadout.is_active = True
+                loadout.save(update_fields=['is_active'])
+            elif action == 'upload' and loadout:
+                update_fields = []
+                if request.FILES.get('top_banner'):
+                    loadout.top_banner = request.FILES['top_banner']
+                    update_fields.append('top_banner')
+                if request.FILES.get('bottom_banner'):
+                    loadout.bottom_banner = request.FILES['bottom_banner']
+                    update_fields.append('bottom_banner')
+                if update_fields:
+                    loadout.updated_by = request.user
+                    loadout.save(update_fields=update_fields + ['updated_by', 'updated_at'])
+            elif action == 'reset_top' and loadout:
+                loadout.top_banner = None
+                loadout.updated_by = request.user
+                loadout.save(update_fields=['top_banner', 'updated_by', 'updated_at'])
+            elif action == 'reset_bottom' and loadout:
+                loadout.bottom_banner = None
+                loadout.updated_by = request.user
+                loadout.save(update_fields=['bottom_banner', 'updated_by', 'updated_at'])
+            elif action == 'create':
+                name = request.POST.get('name', '').strip()[:50]
+                if name:
+                    BannerLoadout.objects.create(name=name, updated_by=request.user)
+            elif action == 'delete' and loadout and not loadout.is_active:
+                loadout.delete()
+            return redirect(f"{reverse('settings_page')}?tab=banners")
+        context['banner_loadouts'] = BannerLoadout.objects.all()
     return render(request, 'settings.html', context)
 
 

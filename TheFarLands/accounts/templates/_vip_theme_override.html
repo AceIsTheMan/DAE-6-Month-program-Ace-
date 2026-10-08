@@ -17,11 +17,12 @@ specificity, so appearing later than the base :root/body block is what
 lets this win.
 
 `is_home` - pass `with is_home=True` from home.html's own include only.
-Background Themes behaves differently there on purpose (see Kitty/Panda
-Background below): home.html includes an image-heavy featured section
+Background Themes behaves differently there on purpose (see Kitty/Panda/
+Raging Crest below): home.html includes an image-heavy featured section
 of its own, so a tiled background pattern competes with it in a way it
-doesn't on every other (mostly text/card) page - the plain white body
-keeps Home readable while every other page gets the actual pattern.
+doesn't on every other (mostly text/card) page - Home keeps its own
+plain background (white for Kitty/Panda, the site's normal black for
+Raging Crest) while every other page gets the actual pattern.
 
 Set has no visual effect at all unless the account is a currently-active
 VIP (is_vip) AND picked something other than each perk's default - most
@@ -90,6 +91,22 @@ accounts hit neither condition and this renders nothing.
     {% endif %}
     color: #1a1a1a;
   }
+  {% elif user.background_theme == 'raging_crest' %}
+  /* The Raging Crest - unlike Kitty/Panda, this does NOT flip the site
+     to a light palette: the crest art is itself black-with-red, so it
+     just drops into the site's existing classic red/black look as a
+     textured body instead of flat black. No :root overrides at all -
+     being its own elif branch (ahead of site_theme below) is what
+     resets color to the TRUE defaults, taking precedence over Custom
+     Theme the same way Kitty/Panda do ("coloring will go back to red
+     and black like the default" - explicitly requested, not an
+     oversight). Home gets no body override at all - plain black is
+     already its default, exactly what this theme wants there too. */
+  {% if not is_home %}
+  body {
+    background: var(--deep-black) url('{% static "accounts/raging_crest_bg.png" %}') repeat;
+  }
+  {% endif %}
   {% elif user.site_theme and user.site_theme != 'classic_red' %}
   :root {
     {% if user.site_theme == 'toxic_green' %}

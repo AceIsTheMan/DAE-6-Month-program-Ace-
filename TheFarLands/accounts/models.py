@@ -1,6 +1,12 @@
 from django.contrib.auth.models import AbstractUser
+from django.core.validators import FileExtensionValidator
 from django.db import models
 from django.utils import timezone
+
+#: Shared with forum.models.IMAGE_EXTENSIONS in spirit (kept separate,
+#: not imported, to avoid accounts <-> forum coupling) - what SiteBanner
+#: accepts for the Director-only top/bottom Home page banner uploads.
+BANNER_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp']
 
 
 class CustomUser(AbstractUser):
@@ -99,6 +105,7 @@ class CustomUser(AbstractUser):
         ('none', 'None (Default)'),
         ('kitty', 'Kitty Background'),
         ('panda', 'Panda Background'),
+        ('raging_crest', 'The Raging Crest'),
     ]
     background_theme = models.CharField(max_length=30, choices=BACKGROUND_THEME_CHOICES, default='none')
 
@@ -349,3 +356,51 @@ class PurchaseLog(models.Model):
 
     def __str__(self):
         return f'{self.user.username} - ${self.amount_cents / 100:.2f} ({self.label})'
+
+
+class BannerLoadout(models.Model):
+    """
+    A named top+bottom Home page banner pairing - Director-only, managed
+    via Settings > Banners (accounts.views.settings_view's 'banners'
+    tab). Unlike VIP Background Themes (a per-account personal
+    preference), whichever loadout has is_active=True is what the Home
+    page's banners actually are for EVERY visitor - switched instantly
+    site-wide the moment the Director activates a different one. See
+    accounts.views.home_view for how it's read.
+
+    Exactly one row should ever have is_active=True; enforced in the
+    view (activating one deactivates all others), not a DB constraint -
+    same "keep it simple" choice as everywhere else in this app that
+    doesn't reach for one.
+
+    A blank top_banner/bottom_banner on the ACTIVE loadout falls back to
+    the site's original static banner images (accounts/static/accounts/
+    Banner 2.jpg and Banners.jpg) rather than rendering broken <img>
+    tags - see home_view. Ships with three rows out of the gate
+    ("Regular" - the site's original banners, both left blank so they
+    use that same fallback; "Snow" - a winter-themed top banner;
+    "Custom" - blank, meant for the Director's own free use) but the
+    Director can add more the same way ("+ New Loadout" in the tab) -
+    these three aren't special-cased in code beyond being pre-created.
+    """
+    name = models.CharField(max_length=50)
+    top_banner = models.ImageField(
+        upload_to='site_banners/', blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=BANNER_IMAGE_EXTENSIONS)],
+    )
+    bottom_banner = models.ImageField(
+        upload_to='site_banners/', blank=True, null=True,
+        validators=[FileExtensionValidator(allowed_extensions=BANNER_IMAGE_EXTENSIONS)],
+    )
+    is_active = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        'CustomUser', on_delete=models.SET_NULL, null=True, blank=True, related_name='+',
+    )
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f'{self.name}{" (active)" if self.is_active else ""}'
