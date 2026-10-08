@@ -45,8 +45,14 @@
   .rc-overlay.rc-fade { opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
   .rc-box {
     font-family: 'Share Tech Mono', monospace;
-    color: var(--red-bright);
-    text-shadow: 0 0 8px var(--red), 0 0 16px var(--red-dim);
+    /* Fixed, not var(--red-bright) - a Background Theme (e.g. Panda)
+       can turn that variable near-black, which combined with this
+       overlay's always-black background (see .rc-overlay above) would
+       make the text unreadable. Every text color/glow in this file is
+       deliberately a fixed value for the same reason - cutscene text
+       must never go dark, under any theme. */
+    color: #ff1a1a;
+    text-shadow: 0 0 8px #cc0000, 0 0 16px #660000;
     max-width: 640px;
     width: 100%;
     font-size: 1.5rem;
@@ -75,7 +81,7 @@
     align-items: center;
     justify-content: center;
     background: #1a0000;
-    color: var(--red-dim);
+    color: #ff6666;
     font-size: 0.9rem;
   }
 
@@ -108,10 +114,10 @@
   }
   .rc-help-title {
     font-family: 'VT323', monospace;
-    color: var(--red-bright);
+    color: #ff1a1a;
     font-size: 1.6rem;
     letter-spacing: 3px;
-    text-shadow: 0 0 6px var(--red);
+    text-shadow: 0 0 6px #cc0000;
     margin-bottom: 1rem;
   }
   .rc-help-row { padding: 0.5rem 0; border-bottom: 1px dashed var(--red-dim); }
@@ -119,14 +125,14 @@
   .rc-help-code {
     display: block;
     font-family: 'Share Tech Mono', monospace;
-    color: var(--red-bright);
+    color: #ff1a1a;
     font-size: 0.9rem;
     letter-spacing: 1px;
   }
   .rc-help-desc {
     display: block;
     font-family: 'Share Tech Mono', monospace;
-    color: var(--dim-white);
+    color: #aaaaaa;
     font-size: 0.78rem;
     margin-top: 0.15rem;
   }
@@ -148,8 +154,8 @@
     font-family: 'VT323', monospace;
     font-size: 1.3rem;
     letter-spacing: 2px;
-    color: var(--red-bright);
-    text-shadow: 0 0 6px var(--red);
+    color: #ff1a1a;
+    text-shadow: 0 0 6px #cc0000;
     white-space: nowrap;
     opacity: 0;
     pointer-events: none;
@@ -338,8 +344,11 @@
                         finalEl.innerHTML = '';
                         typeLine(finalEl, '?: "You have in total of 07:00:00"', 25, function () {
                           setTimeout(function () {
-                            finalEl.style.color = 'var(--red-bright)';
-                            finalEl.style.textShadow = '0 0 8px var(--red), 0 0 16px var(--red-dim)';
+                            // Fixed hex, not var(--red-bright)/var(--red)/
+                            // var(--red-dim) - see .rc-box's comment above
+                            // on why cutscene text never follows the theme.
+                            finalEl.style.color = '#ff1a1a';
+                            finalEl.style.textShadow = '0 0 8px #cc0000, 0 0 16px #660000';
                             // Instant swap, not typed - the hold ends and
                             // the new value is just already there.
                             finalEl.textContent = '?: "You have in total of 06:23:59:59"';
