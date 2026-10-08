@@ -676,6 +676,20 @@
   </p>
   {% endif %}
 </div>
+<div class="card" style="margin-top: 1rem;">
+  <p class="field-help" style="margin-bottom: 1rem;">
+    Background Themes - a custom background for VIP Exclusive content. More themes will be added over time.
+  </p>
+  <form method="post" action="{% url 'settings_page' %}?tab=settings&sub=vip" class="cutscene-options">
+    {% csrf_token %}
+    {% for value, label in background_theme_choices %}
+    <label class="cutscene-option">
+      <input type="radio" name="background_theme" value="{{ value }}" {% if user.background_theme == value %}checked{% endif %} onchange="this.form.submit()">
+      {{ label }}
+    </label>
+    {% endfor %}
+  </form>
+</div>
 {% else %}
 <div class="card">
   <div class="settings-profile-preview">

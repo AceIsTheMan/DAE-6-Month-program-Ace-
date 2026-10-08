@@ -527,11 +527,13 @@ def settings_view(request):
         _secret_cutscene.html and settings_toggle_secret_cutscene).
       - vip: VIP-only (gated server-side, not just hidden in the tab
         strip) - site theme (CustomUser.site_theme, re-skins this
-        account's own view of the site, see _vip_theme_override.html)
-        and a custom name color (CustomUser.name_color, changes how
-        this account's username displays to everyone, see
-        _vip_name.html). Two of the six perks listed on the Store's VIP
-        cards, made real.
+        account's own view of the site, see _vip_theme_override.html),
+        a custom name color (CustomUser.name_color, changes how this
+        account's username displays to everyone, see _vip_name.html),
+        and Background Themes (CustomUser.background_theme, a custom
+        background for VIP Exclusive content - only 'none' exists for
+        now, more get added as their art is provided). Perks listed on
+        the Store's VIP cards, made real.
     """
     active_tab = request.GET.get('tab', 'settings')
     if active_tab == 'dashboard' and not request.user.is_moderator:
@@ -587,10 +589,16 @@ def settings_view(request):
                     if name_color == '' or re.fullmatch(r'#[0-9a-fA-F]{6}', name_color):
                         request.user.name_color = name_color
                         update_fields.append('name_color')
+                if 'background_theme' in request.POST:
+                    background_theme = request.POST.get('background_theme', '')
+                    if background_theme in dict(CustomUser.BACKGROUND_THEME_CHOICES):
+                        request.user.background_theme = background_theme
+                        update_fields.append('background_theme')
                 if update_fields:
                     request.user.save(update_fields=update_fields)
                 return redirect(f"{reverse('settings_page')}?tab=settings&sub=vip")
             context['site_theme_choices'] = CustomUser.SITE_THEME_CHOICES
+            context['background_theme_choices'] = CustomUser.BACKGROUND_THEME_CHOICES
     elif active_tab == 'dashboard':
         context.update({
             'total_accounts': CustomUser.objects.count(),

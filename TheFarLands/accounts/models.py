@@ -87,6 +87,19 @@ class CustomUser(AbstractUser):
     # the site's normal text color.
     name_color = models.CharField(max_length=7, blank=True)
 
+    # A third VIP perk, its own category below Custom Name Color in the
+    # 'vip' settings sub-tab - a custom background image for VIP
+    # Exclusive content (the Forum/Exclusive switch, see forum.models.
+    # Post.is_vip_exclusive). Only 'none' exists for now; more themes
+    # (kitty/soft-pink planned first) get appended here as their actual
+    # background art is provided - adding one is just a new choices
+    # entry plus whatever CSS/asset backs it, same pattern as
+    # SITE_THEME_CHOICES above.
+    BACKGROUND_THEME_CHOICES = [
+        ('none', 'None (Default)'),
+    ]
+    background_theme = models.CharField(max_length=30, choices=BACKGROUND_THEME_CHOICES, default='none')
+
     @property
     def is_vip(self):
         return self.vip_expires_at is not None and self.vip_expires_at > timezone.now()
