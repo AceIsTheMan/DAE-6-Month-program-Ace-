@@ -109,8 +109,22 @@ class CustomUser(AbstractUser):
     ]
     background_theme = models.CharField(max_length=30, choices=BACKGROUND_THEME_CHOICES, default='none')
 
+    # Settings tab, Profile sub-tab - Director-only switch (see
+    # settings_view's 'settings' tab / accounts.views.
+    # settings_toggle_vip_access). Lets the Director hide their own real
+    # VIP access on demand (e.g. to see the site the way a non-VIP
+    # member does) without touching vip_expires_at or any purchase
+    # history - flipping it back on simply lets that real status take
+    # effect again, exactly as it was. Only ever consulted for
+    # is_director accounts (see is_vip below); defaults True so it's a
+    # no-op for everyone, including a Director, until explicitly turned
+    # off.
+    vip_access_enabled = models.BooleanField(default=True)
+
     @property
     def is_vip(self):
+        if self.is_director and not self.vip_access_enabled:
+            return False
         return self.vip_expires_at is not None and self.vip_expires_at > timezone.now()
 
     @property

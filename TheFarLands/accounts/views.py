@@ -751,6 +751,23 @@ def settings_toggle_secret_cutscene(request):
 
 
 @login_required
+def settings_toggle_vip_access(request):
+    """Settings tab, Profile sub-tab - Director-only. Flips CustomUser.
+    vip_access_enabled, which is_vip checks only for is_director
+    accounts (see accounts.models.CustomUser.is_vip) - lets the
+    Director hide their own real VIP access on demand without touching
+    vip_expires_at/purchase history, then restore it exactly as it was
+    by flipping it back on."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    if not request.user.is_director:
+        return redirect(f"{reverse('settings_page')}?tab=settings")
+    request.user.vip_access_enabled = not request.user.vip_access_enabled
+    request.user.save(update_fields=['vip_access_enabled'])
+    return redirect(f"{reverse('settings_page')}?tab=settings&sub=profile")
+
+
+@login_required
 def chat_log_resend(request, kind, obj_id):
     """Un-delete a soft-deleted Post/Comment/Message from the Director-only
     Chat Logs panel - flips is_deleted back to False, nothing else ever
