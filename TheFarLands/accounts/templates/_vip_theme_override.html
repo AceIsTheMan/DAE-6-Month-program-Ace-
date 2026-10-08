@@ -17,7 +17,7 @@ specificity, so appearing later than the base :root/body block is what
 lets this win.
 
 `is_home` - pass `with is_home=True` from home.html's own include only.
-Background Themes behaves differently there on purpose (see Kitty
+Background Themes behaves differently there on purpose (see Kitty/Panda
 Background below): home.html includes an image-heavy featured section
 of its own, so a tiled background pattern competes with it in a way it
 doesn't on every other (mostly text/card) page - the plain white body
@@ -65,6 +65,30 @@ accounts hit neither condition and this renders nothing.
     background: #fff url('{% static "accounts/kitty_paw_bg.png" %}') repeat;
     {% endif %}
     color: #6b3850;
+  }
+  {% elif user.background_theme == 'panda' %}
+  /* Panda Background - same "light panel + patterned body" mechanism
+     as Kitty above, but grayscale/black instead of pink: accents go
+     black-on-white rather than pink-on-white. Contrast-checked against
+     white: red-bright 17.4:1, red 12.63:1, red-dim 4.95:1. */
+  :root {
+    --red: #333333;
+    --red-bright: #1a1a1a;
+    --red-dim: #707070;
+    --black: #f2f2f2;
+    --deep-black: #ffffff;
+    --silver: #2b2b2b;
+    --white: #111111;
+    --dim-white: #6e6e6e;
+    --overlay-rgb: 255,255,255;
+  }
+  body {
+    {% if is_home %}
+    background: #fff;
+    {% else %}
+    background: #fff url('{% static "accounts/panda_bg.png" %}') repeat;
+    {% endif %}
+    color: #1a1a1a;
   }
   {% elif user.site_theme and user.site_theme != 'classic_red' %}
   :root {

@@ -98,6 +98,7 @@ class CustomUser(AbstractUser):
     BACKGROUND_THEME_CHOICES = [
         ('none', 'None (Default)'),
         ('kitty', 'Kitty Background'),
+        ('panda', 'Panda Background'),
     ]
     background_theme = models.CharField(max_length=30, choices=BACKGROUND_THEME_CHOICES, default='none')
 
