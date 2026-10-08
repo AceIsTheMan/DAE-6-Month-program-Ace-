@@ -41,9 +41,16 @@ accounts hit neither condition and this renders nothing.
      last part, the existing light-gray/white text would be unreadable
      against its own now-light background. */
   :root {
-    --red: #ff6fa5;
-    --red-bright: #ff9dc4;
-    --red-dim: #b8577e;
+    /* Against the new white/light-pink panels below, --red-bright is the
+       one used for most actual TEXT (headings, active nav, glows), so
+       it needs to be the most saturated/darkest of the three for
+       legibility - the reverse of the dark theme's "bright = lightest,
+       pops off black" relationship. Contrast-checked against white:
+       red-bright 6.3:1, red 4.62:1, red-dim 3.17:1 (border-only use, so
+       the lower bar is fine). */
+    --red: #d6336c;
+    --red-bright: #b8185f;
+    --red-dim: #e0689a;
     --black: #ffe6f0;
     --deep-black: #ffffff;
     --silver: #5c2e45;
