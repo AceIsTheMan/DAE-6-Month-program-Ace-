@@ -30,7 +30,7 @@
           <img src="{% static 'accounts/fred_icon.png' %}" alt="">
         </button>
         <button type="button" class="ai-persona-option" data-persona="david" aria-label="David">
-          <img src="{% static 'accounts/david_paw.png' %}" alt="">
+          <img src="{% static 'accounts/david_paw.png' %}?v=2" alt="">
         </button>
       </div>
       <div id="ai-assistant-chat" class="ai-assistant-chat" hidden>
@@ -121,12 +121,14 @@
   .ai-assistant-close:hover { color: var(--red-bright); }
   .ai-assistant-body {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
   }
   .ai-assistant-picker {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
   }
@@ -138,7 +140,9 @@
     display: none !important;
   }
   .ai-persona-option {
-    flex: 1;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -147,15 +151,23 @@
     border-bottom: 1px solid var(--red-dim);
     cursor: pointer;
     padding: 1.25rem;
+    box-sizing: border-box;
     transition: background 0.2s ease;
   }
   .ai-persona-option:last-child { border-bottom: none; }
-  .ai-persona-option:hover { background: rgba(204, 0, 0, 0.12); }
+  .ai-persona-option:hover img { filter: drop-shadow(0 0 20px rgba(255, 26, 26, 0.7)); }
   .ai-persona-option img {
-    max-width: 70%;
-    max-height: 70%;
+    max-width: 88%;
+    max-height: 88%;
     object-fit: contain;
     filter: drop-shadow(0 0 14px rgba(255, 26, 26, 0.4));
+  }
+  .ai-persona-option[data-persona="fred"] {
+    padding: 0.5rem;
+  }
+  .ai-persona-option[data-persona="fred"] img {
+    max-width: 96%;
+    max-height: 96%;
   }
   .ai-assistant-chat {
     flex: 1;
