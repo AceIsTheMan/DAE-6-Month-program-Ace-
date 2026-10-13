@@ -1,0 +1,155 @@
+{% comment %}
+  Site-wide floating AI assistant widget (David the Dog / F.R.E.D.) -
+  included at the end of <body> in both base.html and home.html (home.html
+  doesn't extend base.html, same duplication every other site-wide partial
+  here needs - see _vip_theme_override.html's doc comment for why).
+
+  This is the UI shell only for now: a toggle button fixed bottom-right
+  that expands a chat panel anchored to that same corner (transform-origin:
+  bottom right, so it visually grows out of the button rather than
+  appearing from nowhere). No persona art, no category Q&A, and no real
+  chat backend yet - those land once the character images and content are
+  ready. z-index 9000 - below the Exclusive-content guard overlay's 99999
+  (forum/templates/forum/index.html) so that full-screen takeover still
+  wins if both were ever somehow visible at once, but above everything
+  else on the page (nav is 3000).
+{% endcomment %}
+<div id="ai-assistant-widget" class="ai-assistant-widget">
+  <button type="button" id="ai-assistant-toggle" class="ai-assistant-toggle" aria-label="Open assistant chat" aria-expanded="false">
+    <span class="ai-assistant-toggle-label">// CHAT</span>
+  </button>
+  <div id="ai-assistant-panel" class="ai-assistant-panel" role="dialog" aria-label="Assistant chat" aria-hidden="true">
+    <div class="ai-assistant-header">
+      <span class="ai-assistant-title">// ASSISTANT</span>
+      <button type="button" id="ai-assistant-close" class="ai-assistant-close" aria-label="Close chat">&times;</button>
+    </div>
+    <div class="ai-assistant-body">
+      <p class="ai-assistant-placeholder">David and F.R.E.D. are still getting wired up - check back soon.</p>
+    </div>
+  </div>
+</div>
+<style>
+  .ai-assistant-widget {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    z-index: 9000;
+  }
+  .ai-assistant-toggle {
+    display: block;
+    width: min(340px, calc(100vw - 2.5rem));
+    box-sizing: border-box;
+    padding: 0.7rem 0;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    border-radius: 0;
+    color: var(--red-bright);
+    box-shadow: 0 0 12px rgba(204, 0, 0, 0.45);
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .ai-assistant-toggle-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+  }
+  .ai-assistant-toggle:hover {
+    border-color: var(--red-bright);
+    box-shadow: 0 0 20px rgba(255, 26, 26, 0.6);
+  }
+  .ai-assistant-widget.open .ai-assistant-toggle {
+    display: none;
+  }
+  .ai-assistant-panel {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: min(340px, calc(100vw - 2.5rem));
+    height: min(460px, calc(100vh - 7rem));
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    box-shadow: 0 0 28px rgba(204, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform-origin: bottom right;
+    transform: scale(0.15);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.25s ease, opacity 0.2s ease;
+  }
+  .ai-assistant-widget.open .ai-assistant-panel {
+    transform: scale(1);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .ai-assistant-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--red-dim);
+    flex-shrink: 0;
+  }
+  .ai-assistant-title {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--red-bright);
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+  }
+  .ai-assistant-close {
+    background: none;
+    border: none;
+    color: var(--dim-white);
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.2rem;
+  }
+  .ai-assistant-close:hover { color: var(--red-bright); }
+  .ai-assistant-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ai-assistant-placeholder {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--dim-white);
+    font-size: 0.85rem;
+    text-align: center;
+    line-height: 1.5;
+  }
+</style>
+<script>
+  (function () {
+    var widget = document.getElementById('ai-assistant-widget');
+    var toggle = document.getElementById('ai-assistant-toggle');
+    var closeBtn = document.getElementById('ai-assistant-close');
+    var panel = document.getElementById('ai-assistant-panel');
+    if (!widget || !toggle || !panel) return;
+
+    function setOpen(open) {
+      widget.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+    }
+
+    toggle.addEventListener('click', function () {
+      setOpen(!widget.classList.contains('open'));
+    });
+    closeBtn.addEventListener('click', function () {
+      setOpen(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') setOpen(false);
+    });
+    document.addEventListener('click', function (e) {
+      if (!widget.classList.contains('open')) return;
+      if (widget.contains(e.target)) return;
+      setOpen(false);
+    });
+  })();
+</script>
