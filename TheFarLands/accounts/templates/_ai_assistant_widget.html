@@ -1,3 +1,4 @@
+{% load static %}
 {% comment %}
   Site-wide floating AI assistant widget (David the Dog / F.R.E.D.) -
   included at the end of <body> in both base.html and home.html (home.html
@@ -24,7 +25,18 @@
       <button type="button" id="ai-assistant-close" class="ai-assistant-close" aria-label="Close chat">&times;</button>
     </div>
     <div class="ai-assistant-body">
-      <p class="ai-assistant-placeholder">David and F.R.E.D. are still getting wired up - check back soon.</p>
+      <div id="ai-assistant-picker" class="ai-assistant-picker">
+        <button type="button" class="ai-persona-option" data-persona="fred" aria-label="F.R.E.D.">
+          <img src="{% static 'accounts/fred_icon.png' %}" alt="">
+        </button>
+        <button type="button" class="ai-persona-option" data-persona="david" aria-label="David">
+          <img src="{% static 'accounts/david_paw.png' %}" alt="">
+        </button>
+      </div>
+      <div id="ai-assistant-chat" class="ai-assistant-chat" hidden>
+        <button type="button" id="ai-assistant-back" class="ai-assistant-back">&larr; back</button>
+        <p class="ai-assistant-placeholder">David and F.R.E.D. are still getting wired up - check back soon.</p>
+      </div>
     </div>
   </div>
 </div>
@@ -110,10 +122,62 @@
   .ai-assistant-body {
     flex: 1;
     overflow-y: auto;
-    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+  }
+  .ai-assistant-picker {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  /* .ai-assistant-picker/.ai-assistant-chat both set their own `display`
+     below, which (equal specificity, author stylesheet) beats the
+     browser default `[hidden] { display: none }` - without this, toggling
+     the `hidden` attribute in JS does nothing visible. */
+  #ai-assistant-picker[hidden], #ai-assistant-chat[hidden] {
+    display: none !important;
+  }
+  .ai-persona-option {
+    flex: 1;
     display: flex;
     align-items: center;
     justify-content: center;
+    background: var(--black);
+    border: none;
+    border-bottom: 1px solid var(--red-dim);
+    cursor: pointer;
+    padding: 1.25rem;
+    transition: background 0.2s ease;
+  }
+  .ai-persona-option:last-child { border-bottom: none; }
+  .ai-persona-option:hover { background: rgba(204, 0, 0, 0.12); }
+  .ai-persona-option img {
+    max-width: 70%;
+    max-height: 70%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 14px rgba(255, 26, 26, 0.4));
+  }
+  .ai-assistant-chat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem 1rem 1rem;
+  }
+  .ai-assistant-back {
+    align-self: flex-start;
+    background: none;
+    border: none;
+    color: var(--dim-white);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 0.75rem;
+  }
+  .ai-assistant-back:hover { color: var(--red-bright); }
+  .ai-assistant-chat .ai-assistant-placeholder {
+    margin: auto;
   }
   .ai-assistant-placeholder {
     font-family: 'Share Tech Mono', monospace;
@@ -129,12 +193,33 @@
     var toggle = document.getElementById('ai-assistant-toggle');
     var closeBtn = document.getElementById('ai-assistant-close');
     var panel = document.getElementById('ai-assistant-panel');
+    var picker = document.getElementById('ai-assistant-picker');
+    var chatView = document.getElementById('ai-assistant-chat');
+    var backBtn = document.getElementById('ai-assistant-back');
     if (!widget || !toggle || !panel) return;
 
     function setOpen(open) {
       widget.classList.toggle('open', open);
       toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
       panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+      if (!open && picker && chatView) {
+        // always land back on persona selection next time it's opened
+        chatView.hidden = true;
+        picker.hidden = false;
+      }
+    }
+
+    document.querySelectorAll('.ai-persona-option').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        if (picker) picker.hidden = true;
+        if (chatView) chatView.hidden = false;
+      });
+    });
+    if (backBtn) {
+      backBtn.addEventListener('click', function () {
+        if (chatView) chatView.hidden = true;
+        if (picker) picker.hidden = false;
+      });
     }
 
     toggle.addEventListener('click', function () {
