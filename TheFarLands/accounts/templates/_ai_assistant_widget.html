@@ -29,8 +29,8 @@
         <button type="button" class="ai-persona-option" data-persona="fred" data-avatar-src="{% static 'accounts/fred_idle.gif' %}?v=2" aria-label="F.R.E.D.">
           <img src="{% static 'accounts/fred_icon.png' %}" alt="">
         </button>
-        <button type="button" class="ai-persona-option" data-persona="david" data-avatar-src="{% static 'accounts/david_paw.png' %}?v=3" aria-label="David">
-          <img src="{% static 'accounts/david_paw.png' %}?v=3" alt="">
+        <button type="button" class="ai-persona-option" data-persona="david" data-avatar-src="{% static 'accounts/david_idle.gif' %}" aria-label="David">
+          <img src="{% static 'accounts/david_frame1.png' %}" alt="">
         </button>
       </div>
       <div id="ai-assistant-chat" class="ai-assistant-chat" hidden>
@@ -234,7 +234,7 @@
     gap: 0.4rem;
     max-width: 85%;
   }
-  .ai-chat-msg.fred { align-self: flex-start; }
+  .ai-chat-msg.assistant { align-self: flex-start; }
   .ai-chat-msg.user { align-self: flex-end; flex-direction: row-reverse; }
   .ai-chat-msg-pfp {
     width: 26px;
@@ -326,9 +326,24 @@
       "Logged. My response systems aren't fully wired up yet, but I'm listening.",
     ];
 
+    var DAVID_IDLE_SRC = "{% static 'accounts/david_idle.gif' %}";
+    var DAVID_FRAME1_SRC = "{% static 'accounts/david_frame1.png' %}";
+    var DAVID_FRAME3_SRC = "{% static 'accounts/david_frame3.png' %}";
+    var DAVID_FRAME4_SRC = "{% static 'accounts/david_frame4.png' %}";
+    var DAVID_PLACEHOLDER_REPLIES = [
+      "Woof!",
+      "Bark bark - noted!",
+      "Roof! Still getting my paws under me here, full replies coming soon.",
+      "Woof woof - give me another minute to get set up properly.",
+      "Roof roof! Hang tight a little longer - I'm still booting up my full conversation abilities, almost there, promise!",
+    ];
+
     var activePersona = null;
     var fredReplyTimer = null;
     var fredFrame3Timer = null;
+    var davidReplyTimer = null;
+    var davidFrame3Timer = null;
+    var davidTalkInterval = null;
 
     function clearFredTimers() {
       clearTimeout(fredReplyTimer);
@@ -337,8 +352,18 @@
       fredFrame3Timer = null;
     }
 
+    function clearDavidTimers() {
+      clearTimeout(davidReplyTimer);
+      clearTimeout(davidFrame3Timer);
+      clearInterval(davidTalkInterval);
+      davidReplyTimer = null;
+      davidFrame3Timer = null;
+      davidTalkInterval = null;
+    }
+
     function resetChat() {
       clearFredTimers();
+      clearDavidTimers();
       activePersona = null;
       if (chatThread) chatThread.innerHTML = '';
       if (chatInput) chatInput.value = '';
@@ -383,8 +408,38 @@
         }, 4000);
       }
       fredReplyTimer = setTimeout(function () {
-        appendMessage('fred', reply);
+        appendMessage('assistant', reply);
         if (chatAvatar) chatAvatar.src = FRED_IDLE_SRC;
+      }, typingMs);
+    }
+
+    function playDavidReply() {
+      clearDavidTimers();
+      var reply = DAVID_PLACEHOLDER_REPLIES[Math.floor(Math.random() * DAVID_PLACEHOLDER_REPLIES.length)];
+      // simulated "typing" duration until a real reply-latency source
+      // exists to drive this instead
+      var typingMs = Math.min(9000, Math.max(1500, reply.length * 60));
+      // "talking": alternate frame1/frame4 every 350ms until either the
+      // reply lands or the 5s mark hands off to frame3
+      var talkFrames = [DAVID_FRAME1_SRC, DAVID_FRAME4_SRC];
+      var talkIdx = 0;
+      if (chatAvatar) chatAvatar.src = talkFrames[talkIdx];
+      davidTalkInterval = setInterval(function () {
+        talkIdx = 1 - talkIdx;
+        if (chatAvatar) chatAvatar.src = talkFrames[talkIdx];
+      }, 350);
+      if (typingMs > 5000) {
+        davidFrame3Timer = setTimeout(function () {
+          clearInterval(davidTalkInterval);
+          davidTalkInterval = null;
+          if (chatAvatar) chatAvatar.src = DAVID_FRAME3_SRC;
+        }, 5000);
+      }
+      davidReplyTimer = setTimeout(function () {
+        clearInterval(davidTalkInterval);
+        davidTalkInterval = null;
+        appendMessage('assistant', reply);
+        if (chatAvatar) chatAvatar.src = DAVID_IDLE_SRC;
       }, typingMs);
     }
 
@@ -394,6 +449,7 @@
       appendMessage('user', text);
       if (chatInput) chatInput.value = '';
       if (activePersona === 'fred') playFredReply();
+      else if (activePersona === 'david') playDavidReply();
     }
 
     if (chatForm) {
