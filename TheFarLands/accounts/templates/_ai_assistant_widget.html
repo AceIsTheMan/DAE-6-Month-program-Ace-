@@ -26,16 +26,24 @@
     </div>
     <div class="ai-assistant-body">
       <div id="ai-assistant-picker" class="ai-assistant-picker">
-        <button type="button" class="ai-persona-option" data-persona="fred" aria-label="F.R.E.D.">
+        <button type="button" class="ai-persona-option" data-persona="fred" data-avatar-src="{% static 'accounts/fred_idle.gif' %}?v=2" aria-label="F.R.E.D.">
           <img src="{% static 'accounts/fred_icon.png' %}" alt="">
         </button>
-        <button type="button" class="ai-persona-option" data-persona="david" aria-label="David">
+        <button type="button" class="ai-persona-option" data-persona="david" data-avatar-src="{% static 'accounts/david_paw.png' %}?v=3" aria-label="David">
           <img src="{% static 'accounts/david_paw.png' %}?v=3" alt="">
         </button>
       </div>
       <div id="ai-assistant-chat" class="ai-assistant-chat" hidden>
-        <button type="button" id="ai-assistant-back" class="ai-assistant-back">&larr; back</button>
-        <p class="ai-assistant-placeholder">David and F.R.E.D. are still getting wired up - check back soon.</p>
+        <div class="ai-assistant-chat-top">
+          <button type="button" id="ai-assistant-back" class="ai-assistant-back">&larr; back</button>
+          <img id="ai-assistant-chat-avatar" class="ai-assistant-chat-avatar" src="" alt="">
+        </div>
+        <div id="ai-chat-thread" class="ai-chat-thread"></div>
+        <form id="ai-chat-form" class="ai-chat-form" data-user-pfp="{% if user.is_authenticated and user.profile_picture %}{{ user.profile_picture.url }}{% endif %}">
+          {% csrf_token %}
+          <input type="text" id="ai-chat-input" class="ai-chat-input" placeholder="Type a message..." autocomplete="off" maxlength="500">
+          <button type="submit" class="ai-chat-send" aria-label="Send">&gt;</button>
+        </form>
       </div>
     </div>
   </div>
@@ -171,12 +179,19 @@
   }
   .ai-assistant-chat {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
-    padding: 0.75rem 1rem 1rem;
+    padding: 0.6rem 0.75rem 0.75rem;
+  }
+  .ai-assistant-chat-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    margin-bottom: 0.4rem;
   }
   .ai-assistant-back {
-    align-self: flex-start;
     background: none;
     border: none;
     color: var(--dim-white);
@@ -185,11 +200,13 @@
     letter-spacing: 1px;
     cursor: pointer;
     padding: 0;
-    margin-bottom: 0.75rem;
   }
   .ai-assistant-back:hover { color: var(--red-bright); }
-  .ai-assistant-chat .ai-assistant-placeholder {
-    margin: auto;
+  .ai-assistant-chat-avatar {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 10px rgba(255, 26, 26, 0.45));
   }
   .ai-assistant-placeholder {
     font-family: 'Share Tech Mono', monospace;
@@ -198,6 +215,85 @@
     text-align: center;
     line-height: 1.5;
   }
+
+  /* -- chat thread: F.R.E.D. left (no avatar - his face is already
+     shown above), user right (their real profile picture, or a "?"
+     placeholder if they have none) -- */
+  .ai-chat-thread {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.25rem 0.1rem;
+  }
+  .ai-chat-msg {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.4rem;
+    max-width: 85%;
+  }
+  .ai-chat-msg.fred { align-self: flex-start; }
+  .ai-chat-msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .ai-chat-msg-pfp {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid var(--red-dim);
+  }
+  .ai-chat-msg-pfp.no-pic {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--deep-black);
+    color: var(--dim-white);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+  }
+  .ai-chat-bubble {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--red-dim);
+    color: var(--white);
+    word-wrap: break-word;
+    white-space: pre-wrap;
+  }
+  .ai-chat-msg.user .ai-chat-bubble {
+    background: rgba(204, 0, 0, 0.12);
+    border-color: var(--red-bright);
+  }
+  .ai-chat-form {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+    flex-shrink: 0;
+  }
+  .ai-chat-input {
+    flex: 1;
+    min-width: 0;
+    background: var(--deep-black);
+    border: 1px solid var(--red-dim);
+    color: var(--white);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    padding: 0.5rem 0.6rem;
+    box-sizing: border-box;
+  }
+  .ai-chat-input:focus { outline: none; border-color: var(--red-bright); }
+  .ai-chat-send {
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--red-bright);
+    font-family: 'Share Tech Mono', monospace;
+    padding: 0 0.9rem;
+    cursor: pointer;
+  }
+  .ai-chat-send:hover { border-color: var(--red-bright); }
 </style>
 <script>
   (function () {
@@ -207,8 +303,105 @@
     var panel = document.getElementById('ai-assistant-panel');
     var picker = document.getElementById('ai-assistant-picker');
     var chatView = document.getElementById('ai-assistant-chat');
+    var chatAvatar = document.getElementById('ai-assistant-chat-avatar');
+    var chatThread = document.getElementById('ai-chat-thread');
+    var chatForm = document.getElementById('ai-chat-form');
+    var chatInput = document.getElementById('ai-chat-input');
     var backBtn = document.getElementById('ai-assistant-back');
     if (!widget || !toggle || !panel) return;
+
+    var userPfpUrl = chatForm ? chatForm.getAttribute('data-user-pfp') : '';
+    var FRED_IDLE_SRC = "{% static 'accounts/fred_idle.gif' %}?v=2";
+    var FRED_FRAME2_SRC = "{% static 'accounts/fred_frame2.png' %}";
+    var FRED_FRAME3_SRC = "{% static 'accounts/fred_frame3.png' %}";
+    // Placeholder replies until a real backend is wired up - swapping
+    // these for an actual API call later is a drop-in replacement for
+    // playFredReply()'s body; the frame2/frame3 timing contract around
+    // it stays the same either way.
+    var FRED_PLACEHOLDER_REPLIES = [
+      "Acknowledged.",
+      "Noted. Standing by.",
+      "Still coming online, operative. Full capability isn't live yet - try me again soon.",
+      "Channel's quiet on my end right now. Give it another shot shortly.",
+      "Logged. My response systems aren't fully wired up yet, but I'm listening.",
+    ];
+
+    var activePersona = null;
+    var fredReplyTimer = null;
+    var fredFrame3Timer = null;
+
+    function clearFredTimers() {
+      clearTimeout(fredReplyTimer);
+      clearTimeout(fredFrame3Timer);
+      fredReplyTimer = null;
+      fredFrame3Timer = null;
+    }
+
+    function resetChat() {
+      clearFredTimers();
+      activePersona = null;
+      if (chatThread) chatThread.innerHTML = '';
+      if (chatInput) chatInput.value = '';
+    }
+
+    function appendMessage(sender, text) {
+      if (!chatThread) return;
+      var msg = document.createElement('div');
+      msg.className = 'ai-chat-msg ' + sender;
+      if (sender === 'user') {
+        var pfp;
+        if (userPfpUrl) {
+          pfp = document.createElement('img');
+          pfp.className = 'ai-chat-msg-pfp';
+          pfp.src = userPfpUrl;
+          pfp.alt = '';
+        } else {
+          pfp = document.createElement('div');
+          pfp.className = 'ai-chat-msg-pfp no-pic';
+          pfp.textContent = '?';
+        }
+        msg.appendChild(pfp);
+      }
+      var bubble = document.createElement('div');
+      bubble.className = 'ai-chat-bubble';
+      bubble.textContent = text;
+      msg.appendChild(bubble);
+      chatThread.appendChild(msg);
+      chatThread.scrollTop = chatThread.scrollHeight;
+    }
+
+    function playFredReply() {
+      clearFredTimers();
+      var reply = FRED_PLACEHOLDER_REPLIES[Math.floor(Math.random() * FRED_PLACEHOLDER_REPLIES.length)];
+      // simulated "typing" duration until a real reply-latency source
+      // exists to drive this instead
+      var typingMs = Math.min(7000, Math.max(1500, reply.length * 60));
+      if (chatAvatar) chatAvatar.src = FRED_FRAME2_SRC;
+      if (typingMs > 4000) {
+        fredFrame3Timer = setTimeout(function () {
+          if (chatAvatar) chatAvatar.src = FRED_FRAME3_SRC;
+        }, 4000);
+      }
+      fredReplyTimer = setTimeout(function () {
+        appendMessage('fred', reply);
+        if (chatAvatar) chatAvatar.src = FRED_IDLE_SRC;
+      }, typingMs);
+    }
+
+    function sendMessage(text) {
+      text = text.trim();
+      if (!text) return;
+      appendMessage('user', text);
+      if (chatInput) chatInput.value = '';
+      if (activePersona === 'fred') playFredReply();
+    }
+
+    if (chatForm) {
+      chatForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        sendMessage(chatInput ? chatInput.value : '');
+      });
+    }
 
     function setOpen(open) {
       widget.classList.toggle('open', open);
@@ -218,19 +411,29 @@
         // always land back on persona selection next time it's opened
         chatView.hidden = true;
         picker.hidden = false;
+        resetChat();
       }
     }
 
     document.querySelectorAll('.ai-persona-option').forEach(function (btn) {
       btn.addEventListener('click', function () {
+        resetChat();
+        activePersona = btn.getAttribute('data-persona');
+        var avatarSrc = btn.getAttribute('data-avatar-src');
+        // re-assigning .src (even to the same URL) restarts a GIF's
+        // animation from its first frame - desirable here, so F.R.E.D.
+        // always starts his idle loop fresh when you switch to him
+        if (chatAvatar && avatarSrc) chatAvatar.src = avatarSrc;
         if (picker) picker.hidden = true;
         if (chatView) chatView.hidden = false;
+        if (chatInput) chatInput.focus();
       });
     });
     if (backBtn) {
       backBtn.addEventListener('click', function () {
         if (chatView) chatView.hidden = true;
         if (picker) picker.hidden = false;
+        resetChat();
       });
     }
 
