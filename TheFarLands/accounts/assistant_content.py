@@ -101,6 +101,31 @@ QA_ENTRIES = [
             "Settings - Edit Profile. Swap the picture, rewrite the bio, done. Nothing complicated about it.",
         ],
     },
+    {
+        'id': 'can_i_delete_comment',
+        'triggers': [
+            'can i delete my comment',
+            'can i delete my post',
+            'how do i delete my comment',
+            'how do i delete my post',
+            'can i delete a comment',
+            'how to delete my comment',
+            'how to delete a comment',
+            'can i remove my comment',
+        ],
+        'david': [
+            "Yep! Just find the 3-dot menu on your comment or post and hit delete. Woof! Easy to clean up after yourself!",
+            "You can delete your own comments anytime from that little menu on them. Woof! Posts are Director-only though, so that part's not on you!",
+            "There's a delete option right on your comments - just look for the 3 dots. Woof! Gone in a click!",
+            "Your own comments, sure, delete whenever! Just use the menu on the comment itself. Woof! Posting's Director-only, but your comments are all yours to manage!",
+        ],
+        'fred': [
+            "Your own comments, yes - 3-dot menu, delete. Posts are Director-only, so that's not available to you.",
+            "Comments you've written can be deleted from their menu. Posting itself is Director-only, separate matter.",
+            "Delete option's on the comment's menu. Works for your own comments only. Posts aren't something you can remove - Director-only content.",
+            "Yes, for comments. 3 dots, delete, done. Posts are a different story - Director-only, can't touch those.",
+        ],
+    },
 ]
 
 
