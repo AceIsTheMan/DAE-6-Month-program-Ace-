@@ -304,21 +304,37 @@ def _normalize(text):
     return text
 
 
+def _contains_word_sequence(haystack_words, needle_words):
+    """True if needle_words appears as a contiguous run inside
+    haystack_words. Word-level, not character-level - "hi" must not
+    match inside "this" just because the letters happen to appear in
+    that order (t-HI-s)."""
+    n = len(needle_words)
+    if n == 0 or n > len(haystack_words):
+        return False
+    return any(haystack_words[i:i + n] == needle_words for i in range(len(haystack_words) - n + 1))
+
+
 def match_question(message):
     """Return the QA_ENTRIES entry that best matches the user's message,
-    or None if nothing matches closely enough. Exact/substring match
+    or None if nothing matches closely enough. Word-sequence match
     against an entry's trigger phrases only - deliberately simple, not
     fuzzy/keyword-scored, so it never confidently answers the wrong
     question."""
     normalized = _normalize(message)
     if not normalized:
         return None
+    input_words = normalized.split()
     for entry in QA_ENTRIES:
         max_length = entry.get('max_length')
         if max_length and len(normalized) > max_length:
             continue
         for trigger in entry['triggers']:
-            trigger = _normalize(trigger)
-            if normalized == trigger or trigger in normalized or normalized in trigger:
+            trigger_words = _normalize(trigger).split()
+            if (
+                input_words == trigger_words
+                or _contains_word_sequence(input_words, trigger_words)
+                or _contains_word_sequence(trigger_words, input_words)
+            ):
                 return entry
     return None
