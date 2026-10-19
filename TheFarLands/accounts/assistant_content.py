@@ -10,8 +10,12 @@ open-ended conversation.
 
 Adding a new question: append an entry to QA_ENTRIES with a few trigger
 phrasings, 3-4 answer variants per persona (same facts, different
-wording/voice), and an optional 'guest_tail' per persona for the one
-line that should only show up for a guest/no-account asker (see
+wording/voice), an optional 'guest_tail' per persona for the one line
+that should only show up for a guest/no-account asker, and an optional
+'max_length' - caps how long the typed message can be for this entry to
+match at all. Needed for short/common triggers like "hi" or "hey",
+which would otherwise match as a substring of an unrelated longer
+message ("hi, how do I block someone" containing "hi"). See
 match_question's caller in accounts.views.assistant_reply for how that
 gets appended).
 """
@@ -230,6 +234,66 @@ QA_ENTRIES = [
             "Search bar, keywords, optional date range. That's the full extent of it.",
         ],
     },
+    {
+        'id': 'how_turn_off_notifications',
+        'triggers': [
+            'how do i turn off notifications',
+            'how to turn off notifications',
+            'how do i disable notifications',
+            'how to disable notifications',
+            'can i turn off notifications',
+            'how do i stop notifications',
+            'turn off notifications',
+            'disable notifications',
+        ],
+        'david': [
+            "Head to Settings, Notifications tab, and flip the switch! Your messages still come in either way, it just stops the little badge from showing. Woof! Totally up to you!",
+            "There's a notifications toggle in Settings - turning it off just hides the badge, your mail still works the same. Woof! Peace and quiet if you want it!",
+            "Settings > Notifications has an on/off switch for that. Woof! Doesn't affect your messages at all, just the little alert badge!",
+            "You can turn that off in Settings under Notifications. Woof! Everything still arrives, you just won't see the badge pop up!",
+        ],
+        'fred': [
+            "Settings, Notifications tab. One toggle. Turns off the badge only - messages still arrive and get tracked normally.",
+            "Notifications toggle is in Settings. Disabling it hides the badge, nothing else changes.",
+            "Settings > Notifications. Flip it off. Purely cosmetic - doesn't affect message delivery.",
+            "One switch in Settings handles it. Badge only. Your mail keeps working the same either way.",
+        ],
+    },
+    {
+        'id': 'greeting',
+        'max_length': 20,
+        'triggers': [
+            'hi',
+            'hello',
+            'hey',
+            'sup',
+            'yo',
+            'greetings',
+            'hiya',
+            'hey there',
+            'hello there',
+        ],
+        'david': [
+            "Hey there! Woof! Great to see you, what can I help with?",
+            "Hi! Woof woof! What's up?",
+            "Hello! Woof! Good to have you here, need anything?",
+            "Heya! Woof! What can I do for you today?",
+            "Oh, hi! Roof! Didn't see you come in, what's going on?",
+            "Hey hey! Bark! Always happy when someone stops by!",
+            "Hello, hello! Woof! What brings you here today?",
+            "Hi there! Tail's wagging, Woof! What do you need?",
+        ],
+        'fred': [
+            "Acknowledged. What do you need?",
+            "You're here. What can I do for you?",
+            "Standing by. Go ahead.",
+            "Status: ready. What's the question?",
+            "Noted your arrival. Proceed.",
+            "Channel open. What's this about?",
+            "I'm listening. State your business.",
+            "Confirmed, you're online. What do you need from me?",
+        ],
+    },
 ]
 
 
@@ -250,6 +314,9 @@ def match_question(message):
     if not normalized:
         return None
     for entry in QA_ENTRIES:
+        max_length = entry.get('max_length')
+        if max_length and len(normalized) > max_length:
+            continue
         for trigger in entry['triggers']:
             trigger = _normalize(trigger)
             if normalized == trigger or trigger in normalized or normalized in trigger:
