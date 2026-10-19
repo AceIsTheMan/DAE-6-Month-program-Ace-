@@ -151,6 +151,32 @@ QA_ENTRIES = [
             "Report from the message menu. It's logged and reviewed. Use it when something's actually wrong, not casually.",
         ],
     },
+    {
+        'id': 'why_no_vip_tab',
+        'triggers': [
+            'why dont i see the vip tab',
+            'why can i not see the vip tab',
+            'where is the vip tab',
+            'i dont have a vip tab',
+            'why is there no vip tab',
+            'how do i get the vip tab',
+            'why dont i have vip tab',
+            'vip tab missing',
+            'why is there no vip settings',
+        ],
+        'david': [
+            "That tab only shows up once you've got active VIP! Head to the Store and grab a membership, and it'll appear right away. Woof! Hope to see you in there soon!",
+            "VIP tab's hidden until you actually have VIP active. Grab it from the Store and it pops right up! Woof! Worth checking out!",
+            "You'll need an active VIP membership for that tab to show. Store's got monthly and annual options! Woof! Totally your call though!",
+            "That one only appears for VIP members. Visit the Store if you want in - it shows up the second you're active! Woof!",
+        ],
+        'fred': [
+            "VIP tab only appears with an active VIP membership. Get one in the Store. It'll show immediately after.",
+            "That's gated behind VIP status. No membership, no tab. Store has the options if you want it.",
+            "Requires active VIP. Purchase one in the Store - tab appears right away, no delay.",
+            "VIP tab is conditional on VIP status. Not active, not visible. Check the Store if that's something you want.",
+        ],
+    },
 ]
 
 
