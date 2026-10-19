@@ -578,11 +578,15 @@
       btn.addEventListener('click', function () {
         resetChat();
         activePersona = btn.getAttribute('data-persona');
-        var avatarSrc = btn.getAttribute('data-avatar-src');
-        // re-assigning .src (even to the same URL) restarts a GIF's
-        // animation from its first frame - desirable here, so F.R.E.D.
-        // always starts his idle loop fresh when you switch to him
-        if (chatAvatar && avatarSrc) chatAvatar.src = avatarSrc;
+        if (activePersona === 'fred') {
+          startFredIdle();
+        } else {
+          var avatarSrc = btn.getAttribute('data-avatar-src');
+          // re-assigning .src (even to the same URL) restarts a GIF's
+          // animation from its first frame - desirable here, so David
+          // always starts his idle loop fresh when you switch to him
+          if (chatAvatar && avatarSrc) chatAvatar.src = avatarSrc;
+        }
         if (picker) picker.hidden = true;
         if (chatView) chatView.hidden = false;
         if (chatInput) chatInput.focus();
