@@ -75,6 +75,32 @@ QA_ENTRIES = [
             "Go to their profile, use the block option. Messaging, friend requests, search - all severed. Your call to reverse it later if you want.",
         ],
     },
+    {
+        'id': 'how_change_profile',
+        'triggers': [
+            'how do i change my profile picture',
+            'how do i change my pfp',
+            'how do i change my bio',
+            'how do i change my profile',
+            'how to change profile picture',
+            'how to change my pfp',
+            'how to change my bio',
+            'how do i edit my profile',
+            'how to edit my profile',
+        ],
+        'david': [
+            "Head to Settings and look for Edit Profile! You can swap your picture and update your bio right there. Woof! Make it your own!",
+            "It's all in Settings, under your profile - upload a new picture, write a new bio, whatever you like! Woof! Show off a little!",
+            "Go to Settings, find the profile edit section, and you can change your picture and bio anytime. Woof! Easy as that!",
+            "Settings has an Edit Profile spot for exactly that - new picture, new bio, update whenever you want. Woof! Love seeing people personalize their page!",
+        ],
+        'fred': [
+            "Settings, Edit Profile. Picture and bio, both editable there. Update whenever you need.",
+            "Go to Settings. Profile edit panel handles your picture and bio. Straightforward.",
+            "Your profile picture and bio are both changeable in Settings. No restrictions on how often.",
+            "Settings - Edit Profile. Swap the picture, rewrite the bio, done. Nothing complicated about it.",
+        ],
+    },
 ]
 
 
