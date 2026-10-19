@@ -126,6 +126,31 @@ QA_ENTRIES = [
             "Yes, for comments. 3 dots, delete, done. Posts are a different story - Director-only, can't touch those.",
         ],
     },
+    {
+        'id': 'how_do_i_report',
+        'triggers': [
+            'how do i report a message',
+            'how do i report someone',
+            'how to report a message',
+            'how to report someone',
+            'can i report a message',
+            'how do i report',
+            'how to report',
+            'how do i report a user',
+        ],
+        'david': [
+            "There's a report option on any message - just find the 3-dot menu and hit report! Woof! We take that stuff seriously, don't worry!",
+            "You can report any message straight from its menu. Woof! If something's not right, flag it and the team will look into it!",
+            "Look for the 3 dots on the message and choose report. Woof! Thanks for keeping things safe around here!",
+            "Reporting's built right into Mail - 3-dot menu, report, done. Woof! Never hesitate to use it if you need to!",
+        ],
+        'fred': [
+            "3-dot menu on the message, report option. It goes to the moderation queue from there.",
+            "Report option is on every message's menu. Flagged items go to Admin/Director review.",
+            "Use the message's 3-dot menu to report it. Handled by moderation after that - no further action needed from you.",
+            "Report from the message menu. It's logged and reviewed. Use it when something's actually wrong, not casually.",
+        ],
+    },
 ]
 
 
