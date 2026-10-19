@@ -1,0 +1,76 @@
+"""
+Scripted Q&A content for the David/F.R.E.D. site assistant widget
+(accounts/templates/_ai_assistant_widget.html). No real AI involved -
+QA_ENTRIES is a hand-written list of common questions, each with a few
+phrasings a user might actually type ('triggers') and a few differently-
+worded answers per persona ('david'/'fred') so repeat questions don't
+feel robotic. match_question() does simple phrase matching, not NLP -
+good enough for a fixed set of known questions, not meant to handle
+open-ended conversation.
+
+Adding a new question: append an entry to QA_ENTRIES with a few trigger
+phrasings, 3-4 answer variants per persona (same facts, different
+wording/voice), and an optional 'guest_tail' per persona for the one
+line that should only show up for a guest/no-account asker (see
+match_question's caller in accounts.views.assistant_reply for how that
+gets appended).
+"""
+import re
+
+QA_ENTRIES = [
+    {
+        'id': 'what_is_far_lands',
+        'triggers': [
+            'what is the far lands',
+            'what is this website',
+            'what is this site',
+            'what is this',
+            'whats this',
+            'whats this website',
+            'whats this site',
+            'what is this place',
+            'whats this place',
+            'what is far lands',
+            'what is this app',
+        ],
+        'david': [
+            "This site's where it all happens for The Far Lands - that's the actual game we're building, Woof! It's still cooking behind the scenes, so stick around, more's coming soon!",
+            "We're the home base for The Far Lands, the game! You'll catch every update as it drops. Woof! It's still being built, but that just means more surprises later!",
+            "Think of this as basecamp for The Far Lands - the game, not the site! It's still in the works, but Woof! getting closer every day!",
+            "This website is all about The Far Lands, the game that's coming! Woof! It's still in development, but that's half the fun of being here early!",
+        ],
+        'fred': [
+            "The Far Lands is a game. Still in development - nothing's live yet. This site is your access point for intel as it drops. Updates, previews, whatever's been cleared for release. Stay sharp.",
+            "This site exists for one purpose: tracking The Far Lands, the game currently in development. You get access to updates and previews as they're cleared. Nothing's released yet. That will change.",
+            "The Far Lands - a game, in active development. You're looking at its intelligence hub. Updates get cleared for release here. Patience required.",
+            "This isn't the game. It's the staging ground for it. The Far Lands is still being built. You get every update the moment it's cleared. Stay tuned.",
+        ],
+        'guest_tail': {
+            'david': "Make an account so you don't miss anything - Woof!",
+            'fred': "Create an account for clearance to this intel.",
+        },
+    },
+]
+
+
+def _normalize(text):
+    text = text.lower().strip()
+    text = re.sub(r'[^a-z0-9\s]', '', text)
+    text = re.sub(r'\s+', ' ', text)
+    return text
+
+
+def match_question(message):
+    """Return the QA_ENTRIES entry that best matches the user's message,
+    or None if nothing matches closely enough. Exact/substring match
+    against an entry's trigger phrases only - deliberately simple, not
+    fuzzy/keyword-scored, so it never confidently answers the wrong
+    question."""
+    normalized = _normalize(message)
+    if not normalized:
+        return None
+    for entry in QA_ENTRIES:
+        for trigger in entry['triggers']:
+            if normalized == trigger or trigger in normalized or normalized in trigger:
+                return entry
+    return None

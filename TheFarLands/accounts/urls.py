@@ -32,6 +32,7 @@ urlpatterns = [
     path('settings/cutscenes/update/', views.settings_update_cutscene_mode, name='settings_update_cutscene_mode'),
     path('settings/cutscenes/c1/toggle/', views.settings_toggle_secret_cutscene, name='settings_toggle_secret_cutscene'),
     path('settings/vip-access/toggle/', views.settings_toggle_vip_access, name='settings_toggle_vip_access'),
+    path('assistant/reply/', views.assistant_reply, name='assistant_reply'),
     path('settings/director/grant-tokens/', views.director_grant_tokens, name='director_grant_tokens'),
     path('store/purchase/', views.store_purchase, name='store_purchase'),
     path('store/gift/', views.store_gift, name='store_gift'),

@@ -314,10 +314,33 @@
     var FRED_IDLE_SRC = "{% static 'accounts/fred_idle.gif' %}?v=2";
     var FRED_FRAME2_SRC = "{% static 'accounts/fred_frame2.png' %}";
     var FRED_FRAME3_SRC = "{% static 'accounts/fred_frame3.png' %}";
-    // Placeholder replies until a real backend is wired up - swapping
-    // these for an actual API call later is a drop-in replacement for
-    // playFredReply()'s body; the frame2/frame3 timing contract around
-    // it stays the same either way.
+
+    function getCookie(name) {
+      var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+
+    // accounts.views.assistant_reply - scripted Q&A matching against
+    // accounts.assistant_content.QA_ENTRIES. Resolves to a matched
+    // reply string, or null if nothing matched / the request failed -
+    // callers fall back to their own FRED_/DAVID_PLACEHOLDER_REPLIES in
+    // that case, same as if this endpoint didn't exist.
+    function fetchAssistantReply(persona, message) {
+      return fetch("{% url 'assistant_reply' %}", {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({ persona: persona, message: message }),
+      })
+        .then(function (r) { return r.ok ? r.json() : { reply: null }; })
+        .then(function (data) { return data && data.reply ? data.reply : null; })
+        .catch(function () { return null; });
+    }
+
+    // Fallback lines only - used when assistant_reply finds no scripted
+    // match for what was typed, or the request itself fails.
     var FRED_PLACEHOLDER_REPLIES = [
       "Acknowledged.",
       "Noted. Standing by.",
@@ -344,6 +367,12 @@
     var davidReplyTimer = null;
     var davidFrame3Timer = null;
     var davidTalkInterval = null;
+    // Bumped on every send and captured per-call so a reply fetch that's
+    // still in flight when a newer message is sent (or the chat is
+    // reset/closed) knows it's stale and quietly does nothing instead of
+    // appending a late, out-of-order message.
+    var fredRequestSeq = 0;
+    var davidRequestSeq = 0;
 
     function clearFredTimers() {
       clearTimeout(fredReplyTimer);
@@ -364,6 +393,8 @@
     function resetChat() {
       clearFredTimers();
       clearDavidTimers();
+      fredRequestSeq++;
+      davidRequestSeq++;
       activePersona = null;
       if (chatThread) chatThread.innerHTML = '';
       if (chatInput) chatInput.value = '';
@@ -395,32 +426,39 @@
       chatThread.scrollTop = chatThread.scrollHeight;
     }
 
-    function playFredReply() {
+    function playFredReply(userText) {
       clearFredTimers();
-      var reply = FRED_PLACEHOLDER_REPLIES[Math.floor(Math.random() * FRED_PLACEHOLDER_REPLIES.length)];
-      // simulated "typing" duration until a real reply-latency source
-      // exists to drive this instead
-      var typingMs = Math.min(7000, Math.max(1500, reply.length * 60));
+      var requestId = ++fredRequestSeq;
+      // start the "replying" animation right away - don't wait on the
+      // fetch, which should resolve near-instantly anyway (local
+      // scripted matching, not a real network-bound AI call)
       if (chatAvatar) chatAvatar.src = FRED_FRAME2_SRC;
-      if (typingMs > 4000) {
-        fredFrame3Timer = setTimeout(function () {
-          if (chatAvatar) chatAvatar.src = FRED_FRAME3_SRC;
-        }, 4000);
-      }
-      fredReplyTimer = setTimeout(function () {
-        appendMessage('assistant', reply);
-        if (chatAvatar) chatAvatar.src = FRED_IDLE_SRC;
-      }, typingMs);
+      fetchAssistantReply('fred', userText).then(function (matched) {
+        if (requestId !== fredRequestSeq) return; // superseded or reset
+        var reply = matched || FRED_PLACEHOLDER_REPLIES[Math.floor(Math.random() * FRED_PLACEHOLDER_REPLIES.length)];
+        // simulated "typing" duration, scaled to reply length, so the
+        // frame2 -> frame3 handoff is actually visible rather than
+        // instant every time
+        var typingMs = Math.min(7000, Math.max(1500, reply.length * 60));
+        if (typingMs > 4000) {
+          fredFrame3Timer = setTimeout(function () {
+            if (requestId !== fredRequestSeq) return;
+            if (chatAvatar) chatAvatar.src = FRED_FRAME3_SRC;
+          }, 4000);
+        }
+        fredReplyTimer = setTimeout(function () {
+          if (requestId !== fredRequestSeq) return;
+          appendMessage('assistant', reply);
+          if (chatAvatar) chatAvatar.src = FRED_IDLE_SRC;
+        }, typingMs);
+      });
     }
 
-    function playDavidReply() {
+    function playDavidReply(userText) {
       clearDavidTimers();
-      var reply = DAVID_PLACEHOLDER_REPLIES[Math.floor(Math.random() * DAVID_PLACEHOLDER_REPLIES.length)];
-      // simulated "typing" duration until a real reply-latency source
-      // exists to drive this instead
-      var typingMs = Math.min(9000, Math.max(1500, reply.length * 60));
-      // "talking": alternate frame1/frame4 every 350ms until either the
-      // reply lands or the 5s mark hands off to frame3
+      var requestId = ++davidRequestSeq;
+      // "talking" starts right away, same reasoning as F.R.E.D.'s
+      // frame2 - don't wait on the fetch to start the animation
       var talkFrames = [DAVID_FRAME1_SRC, DAVID_FRAME4_SRC];
       var talkIdx = 0;
       if (chatAvatar) chatAvatar.src = talkFrames[talkIdx];
@@ -428,19 +466,30 @@
         talkIdx = 1 - talkIdx;
         if (chatAvatar) chatAvatar.src = talkFrames[talkIdx];
       }, 350);
-      if (typingMs > 5000) {
-        davidFrame3Timer = setTimeout(function () {
+
+      fetchAssistantReply('david', userText).then(function (matched) {
+        if (requestId !== davidRequestSeq) return; // superseded or reset
+        var reply = matched || DAVID_PLACEHOLDER_REPLIES[Math.floor(Math.random() * DAVID_PLACEHOLDER_REPLIES.length)];
+        // simulated "typing" duration, scaled to reply length, so the
+        // frame1/4 -> frame3 handoff is actually visible rather than
+        // instant every time
+        var typingMs = Math.min(9000, Math.max(1500, reply.length * 60));
+        if (typingMs > 5000) {
+          davidFrame3Timer = setTimeout(function () {
+            if (requestId !== davidRequestSeq) return;
+            clearInterval(davidTalkInterval);
+            davidTalkInterval = null;
+            if (chatAvatar) chatAvatar.src = DAVID_FRAME3_SRC;
+          }, 5000);
+        }
+        davidReplyTimer = setTimeout(function () {
+          if (requestId !== davidRequestSeq) return;
           clearInterval(davidTalkInterval);
           davidTalkInterval = null;
-          if (chatAvatar) chatAvatar.src = DAVID_FRAME3_SRC;
-        }, 5000);
-      }
-      davidReplyTimer = setTimeout(function () {
-        clearInterval(davidTalkInterval);
-        davidTalkInterval = null;
-        appendMessage('assistant', reply);
-        if (chatAvatar) chatAvatar.src = DAVID_IDLE_SRC;
-      }, typingMs);
+          appendMessage('assistant', reply);
+          if (chatAvatar) chatAvatar.src = DAVID_IDLE_SRC;
+        }, typingMs);
+      });
     }
 
     function sendMessage(text) {
@@ -448,8 +497,8 @@
       if (!text) return;
       appendMessage('user', text);
       if (chatInput) chatInput.value = '';
-      if (activePersona === 'fred') playFredReply();
-      else if (activePersona === 'david') playDavidReply();
+      if (activePersona === 'fred') playFredReply(text);
+      else if (activePersona === 'david') playDavidReply(text);
     }
 
     if (chatForm) {

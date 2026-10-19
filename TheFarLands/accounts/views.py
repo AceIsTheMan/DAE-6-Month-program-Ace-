@@ -1,3 +1,4 @@
+import random
 import re
 from datetime import timedelta
 
@@ -22,6 +23,7 @@ from mail.forms import _is_blocked_pair
 from mail.models import FriendRequest, Message, ModerationAction, Report, RoleChangeLog, UserRelationship, Warning
 from mail.views import _get_or_create_dm
 
+from .assistant_content import match_question
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
 from .models import BannerLoadout, CustomUser, GuestArchive, PurchaseLog, TokenGrantLog, TokenTransaction
 
@@ -765,6 +767,41 @@ def settings_toggle_vip_access(request):
     request.user.vip_access_enabled = not request.user.vip_access_enabled
     request.user.save(update_fields=['vip_access_enabled'])
     return redirect(f"{reverse('settings_page')}?tab=settings&sub=profile")
+
+
+def assistant_reply(request):
+    """Backend for the David/F.R.E.D. chat widget (accounts/templates/
+    _ai_assistant_widget.html) - scripted Q&A, no real AI. Looks up the
+    posted message against accounts.assistant_content.QA_ENTRIES; if it
+    matches a known question, picks one of that persona's answer
+    variants at random (for wording variety across repeat asks) and, if
+    the asker has no real account (anonymous, or a guest "Hacker" trial
+    account), appends that entry's one-line account-creation nudge.
+    {'reply': None} means no match - the widget's JS falls back to its
+    own small set of generic placeholder lines in that case, same as it
+    does on a network error."""
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    persona = request.POST.get('persona', '')
+    message = request.POST.get('message', '')
+    if persona not in ('fred', 'david'):
+        return JsonResponse({'reply': None})
+
+    entry = match_question(message)
+    if not entry:
+        return JsonResponse({'reply': None})
+
+    variants = entry.get(persona) or []
+    if not variants:
+        return JsonResponse({'reply': None})
+
+    reply = random.choice(variants)
+    is_guest_asker = not request.user.is_authenticated or getattr(request.user, 'is_guest', False)
+    if is_guest_asker:
+        tail = entry.get('guest_tail', {}).get(persona)
+        if tail:
+            reply = reply + ' ' + tail
+    return JsonResponse({'reply': reply})
 
 
 @login_required
