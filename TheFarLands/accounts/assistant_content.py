@@ -50,6 +50,31 @@ QA_ENTRIES = [
             'fred': "Create an account for clearance to this intel.",
         },
     },
+    {
+        'id': 'how_do_i_block',
+        'triggers': [
+            'how do i block someone',
+            'how do i block a user',
+            'how to block someone',
+            'how to block a user',
+            'how do i block',
+            'how to block',
+            'can i block someone',
+            'how do i block people',
+        ],
+        'david': [
+            "Head to their profile and look for the block option! Once blocked, they can't message you, friend-request you, or find you in Mail search. Woof! Your space, your rules!",
+            "There's a block button right on their profile's menu. After that, no more messages or friend requests from them, and they won't even see you in search. Woof! Easy peace of mind!",
+            "Go to their profile, find the 3-dot menu, hit block. Woof! They're locked out of messaging and finding you after that - simple as that!",
+            "You can block anyone straight from their profile. It stops their messages, friend requests, and search results involving you. Woof! Nobody should have to deal with someone they don't want around!",
+        ],
+        'fred': [
+            "Block them from their profile's menu. After that: no messages, no friend requests, no appearing in their Mail search. Done.",
+            "Profile page, 3-dot menu, block. It cuts off messaging, friend requests, and search visibility both ways. Effective immediately.",
+            "Blocking is on their profile. Once active, they lose all contact channels to you. No further action needed on your end.",
+            "Go to their profile, use the block option. Messaging, friend requests, search - all severed. Your call to reverse it later if you want.",
+        ],
+    },
 ]
 
 

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{% if verified %}Verified{% else %}Verification Failed{% endif %} // The Far Lands{% endblock %}
+{% block content %}
+<div class="section-label">// {% if verified %}EMAIL VERIFIED{% else %}VERIFICATION FAILED{% endif %}</div>
+<div class="section-divider"></div>
+
+<div class="card" style="max-width: 480px; margin: 0 auto; text-align: center;">
+  {% if verified %}
+    <p style="font-size: 0.95rem; line-height: 1.7;">
+      Your email is verified and your account is active.
+    </p>
+    <div style="margin-top: 1.2rem;">
+      <a href="{% url 'login' %}" class="donate-btn" style="display:inline-block; text-decoration:none;">[ LOG IN ]</a>
+    </div>
+  {% else %}
+    <p style="font-size: 0.95rem; line-height: 1.7;">
+      This verification link is invalid or has expired.
+    </p>
+    <p style="font-size: 0.85rem; color: var(--dim-white); margin-top: 0.8rem;">
+      Try <a href="{% url 'register' %}" class="inline-link">registering again</a>, or reach out if you keep hitting this.
+    </p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>{% block title %}The Far Lands{% endblock %}</title>
+<link href="https://fonts.googleapis.com/css2?family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --black: #0a0a0a;
+    --deep-black: #000000;
+    --red: #cc0000;
+    --red-bright: #ff1a1a;
+    --red-dim: #660000;
+    --silver: #c0c0c0;
+    --white: #e8e8e8;
+    --dim-white: #aaaaaa;
+    --scan-line: rgba(255,255,255,0.02);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--deep-black);
+    color: var(--silver);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    padding-top: 56px;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, var(--scan-line) 2px, var(--scan-line) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 1000;
+    background: rgba(0,0,0,0.92);
+    border-bottom: 2px solid var(--red);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    height: 56px;
+    box-shadow: 0 0 20px rgba(204,0,0,0.4);
+  }
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: 'VT323', monospace;
+    font-size: 2rem;
+    color: var(--red-bright);
+    text-shadow: 0 0 8px var(--red), 0 0 20px var(--red-dim);
+    letter-spacing: 4px;
+    text-decoration: none;
+    animation: flicker 6s infinite;
+  }
+  .nav-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--red-dim);
+    box-shadow: 0 0 6px var(--red-dim);
+    flex-shrink: 0;
+  }
+  @keyframes flicker {
+    0%, 95%, 100% { opacity: 1; }
+    96% { opacity: 0.4; }
+    97% { opacity: 1; }
+    98% { opacity: 0.2; }
+    99% { opacity: 1; }
+  }
+  /* Nav link styling matches home.html's nav exactly, so the bar looks
+     and feels the same everywhere on the site instead of switching
+     styles when you leave the home page. */
+  .nav-links {
+    display: flex;
+    gap: 0.2rem;
+    list-style: none;
+  }
+  .nav-links li a {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--silver);
+    text-decoration: none;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 0.4rem 1rem;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .nav-links li a:hover {
+    color: var(--red-bright);
+    border-color: var(--red);
+    background: rgba(204,0,0,0.1);
+    text-shadow: 0 0 6px var(--red);
+  }
+  /* Auth links (LOGIN / REGISTER / PROFILE / LOGOUT) get their own
+     treatment: a thin divider to set them apart, and REGISTER as the
+     filled CTA - same as home.html. */
+  .nav-auth-link {
+    margin-left: 0.6rem;
+    padding-left: 0.8rem;
+    border-left: 1px solid var(--red-dim);
+  }
+  .nav-auth-link:first-of-type { margin-left: 0.8rem; }
+  .nav-auth-link a, .nav-auth-link button.nav-logout-btn { border-color: var(--red-dim) !important; }
+  .nav-auth-link a[href*="register"] {
+    background: var(--red-dim);
+    color: var(--white) !important;
+  }
+  .nav-auth-link a[href*="register"]:hover {
+    background: var(--red);
+    border-color: var(--red-bright) !important;
+    text-shadow: none;
+  }
+  .nav-logout-btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    color: var(--silver);
+    background: none;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 0.4rem 1rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .nav-logout-btn:hover {
+    color: var(--red-bright);
+    border-color: var(--red);
+    background: rgba(204,0,0,0.1);
+    text-shadow: 0 0 6px var(--red);
+  }
+  main.page-main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 3rem 2rem 5rem;
+  }
+  .section-label {
+    font-family: 'VT323', monospace;
+    font-size: 2rem;
+    color: var(--red-bright);
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 0 8px var(--red);
+  }
+  .section-divider {
+    height: 2px;
+    background: linear-gradient(90deg, var(--red), transparent);
+    margin-bottom: 2rem;
+  }
+  .card {
+    background: #0d0000;
+    border: 1px solid var(--red);
+    padding: 2rem;
+    box-shadow: 0 0 20px rgba(204,0,0,0.2);
+  }
+  label {
+    display: block;
+    font-family: 'VT323', monospace;
+    letter-spacing: 2px;
+    color: var(--dim-white);
+    text-transform: uppercase;
+    margin-top: 1rem;
+    margin-bottom: 0.3rem;
+  }
+  input[type="text"], input[type="email"], input[type="password"], input[type="file"], input[type="url"], textarea {
+    width: 100%;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--white);
+    padding: 0.6rem 0.8rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.95rem;
+  }
+  input:focus, textarea:focus { outline: none; border-color: var(--red-bright); }
+  .field-error {
+    color: var(--red-bright);
+    font-size: 0.8rem;
+    margin-top: 0.3rem;
+    letter-spacing: 1px;
+  }
+  .field-help { color: var(--dim-white); font-size: 0.75rem; margin-top: 0.3rem; }
+  .checkbox-row { display: flex; align-items: flex-start; gap: 0.6rem; margin-top: 1.2rem; }
+  .checkbox-row label { margin: 0; text-transform: none; font-family: 'Share Tech Mono', monospace; color: var(--silver); letter-spacing: 0; }
+  .checkbox-row input { margin-top: 0.2rem; }
+  .donate-btn, button.action-btn {
+    display: inline-block;
+    background: var(--red-dim);
+    border: 1px solid var(--red-bright);
+    color: var(--white);
+    font-family: 'VT323', monospace;
+    letter-spacing: 3px;
+    padding: 0.7rem 1.6rem;
+    font-size: 1.1rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background 0.2s;
+  }
+  .donate-btn:hover, button.action-btn:hover { background: var(--red); }
+  .stamp {
+    display: inline-block;
+    border: 2px solid var(--red-bright);
+    color: var(--red-bright);
+    font-family: 'VT323', monospace;
+    letter-spacing: 4px;
+    padding: 0.3rem 1rem;
+    transform: rotate(-3deg);
+    text-shadow: 0 0 8px var(--red);
+    margin-bottom: 1rem;
+  }
+  .messages { list-style: none; margin-bottom: 1.5rem; }
+  .messages li {
+    border: 1px solid var(--red);
+    color: var(--white);
+    padding: 0.6rem 1rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+  }
+  a.inline-link { color: var(--red-bright); }
+  .pw-field { position: relative; }
+  .pw-field input { padding-right: 4.5rem; }
+  .pw-toggle {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(calc(-50% + 0.5rem));
+    background: none;
+    border: 1px solid var(--red-dim);
+    color: var(--dim-white);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+  .pw-toggle:hover { color: var(--red-bright); border-color: var(--red-bright); }
+</style>
+{% block extra_head %}{% endblock %}
+</head>
+<body>
+<nav>
+  <a href="{% url 'home' %}" class="nav-logo">{% if user.is_authenticated and user.profile_picture %}<img src="{{ user.profile_picture.url }}" alt="" class="nav-avatar">{% endif %}// {% if user.is_authenticated %}{{ user.username }}{% else %}UnknownUser{% endif %}</a>
+  <ul class="nav-links">
+    <li><a href="{% url 'home' %}">HOME</a></li>
+    <li><a href="{% url 'forum' %}">FORUM</a></li>
+    <li><a href="{% url 'home' %}?page=updates">UPDATES</a></li>
+    <li><a href="{% url 'home' %}?page=socials">SOCIALS &amp; SUPPORT</a></li>
+    {% if user.is_authenticated %}
+    <li class="nav-auth-link"><a href="{% url 'profile' %}">PROFILE</a></li>
+    <li class="nav-auth-link">
+      <form action="{% url 'logout' %}" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you WANT to logout?');">
+        {% csrf_token %}
+        <button type="submit" class="nav-logout-btn">LOGOUT</button>
+      </form>
+    </li>
+    {% else %}
+    <li class="nav-auth-link"><a href="{% url 'login' %}">LOGIN</a></li>
+    <li class="nav-auth-link"><a href="{% url 'register' %}">REGISTER</a></li>
+    {% endif %}
+  </ul>
+</nav>
+<main class="page-main">
+  {% if messages %}
+  <ul class="messages">
+    {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  {% block content %}{% endblock %}
+</main>
+<script>
+  // Shared show/hide toggle for any password field. Call with the input's
+  // id and the button that was clicked.
+  function togglePasswordVisibility(inputId, btn) {
+    var input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === 'password') {
+      input.type = 'text';
+      btn.textContent = '[ HIDE ]';
+    } else {
+      input.type = 'password';
+      btn.textContent = '[ SHOW ]';
+    }
+  }
+</script>
+</body>
+</html>
