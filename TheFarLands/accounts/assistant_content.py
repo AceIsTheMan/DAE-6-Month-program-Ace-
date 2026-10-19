@@ -177,6 +177,34 @@ QA_ENTRIES = [
             "VIP tab is conditional on VIP status. Not active, not visible. Check the Store if that's something you want.",
         ],
     },
+    {
+        'id': 'role_hierarchy',
+        'triggers': [
+            "what's the difference between hacker agent admin and director",
+            'whats the difference between the roles',
+            'what are the different roles',
+            'what are the account types',
+            'what are the account roles',
+            'what is a hacker account',
+            'what is an agent account',
+            'what is an admin account',
+            'what is a director account',
+            'what roles are there',
+            'whats the role hierarchy',
+        ],
+        'david': [
+            "Hacker's a 7-day guest trial, Agent's a regular full account, Admin helps moderate, and Director runs the whole show! Woof! Most folks start as Agent once they sign up properly!",
+            "There's a ladder: Hacker (guest trial), Agent (regular account), Admin (moderation), Director (the big boss). Woof! Everyone starts around Agent level once they're official!",
+            "Hacker's just a trial run, Agent's everyone's normal account, Admin keeps things in order, and Director's at the top. Woof! Hope you stick around past the Hacker stage!",
+            "Four tiers: Hacker, Agent, Admin, Director, lowest to highest. Agent's the standard account once you're not a guest anymore. Woof! Pretty simple once you see it laid out!",
+        ],
+        'fred': [
+            "Four roles, ascending: Hacker (guest trial, 7 days), Agent (standard account), Admin (moderation access), Director (full control). Most users are Agent-level.",
+            "Hacker is a temporary guest account. Agent is standard. Admin moderates. Director has final authority. That's the hierarchy.",
+            "Ranked lowest to highest: Hacker, Agent, Admin, Director. A regular registered account is Agent. Everything above that is granted, not self-selected.",
+            "Hacker: guest trial. Agent: standard account. Admin: moderation tools. Director: top authority. Hierarchy's fixed.",
+        ],
+    },
 ]
 
 
@@ -198,6 +226,7 @@ def match_question(message):
         return None
     for entry in QA_ENTRIES:
         for trigger in entry['triggers']:
+            trigger = _normalize(trigger)
             if normalized == trigger or trigger in normalized or normalized in trigger:
                 return entry
     return None
