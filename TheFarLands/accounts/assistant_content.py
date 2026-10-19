@@ -205,6 +205,31 @@ QA_ENTRIES = [
             "Hacker: guest trial. Agent: standard account. Admin: moderation tools. Director: top authority. Hierarchy's fixed.",
         ],
     },
+    {
+        'id': 'how_forum_search_works',
+        'triggers': [
+            'how do i search',
+            'how does search work',
+            'is there a search feature',
+            'how do i find a post',
+            'how do i search the forum',
+            'how do i look for posts',
+            'how do i find posts',
+            'how do i search for something',
+        ],
+        'david': [
+            "Just type keywords into the search bar up top and hit search! You can even filter by date posted. Woof! Great for finding old stuff!",
+            "There's a search bar right on the Forum page - type what you're looking for, pick a date range if you want. Woof! Pretty handy!",
+            "Search box up top, type your keywords, optionally narrow it by date. Woof! Finds posts fast!",
+            "You can search the Forum by keyword and even a date range if you remember roughly when something was posted. Woof! Clear button's right there too if you want to start over!",
+        ],
+        'fred': [
+            "Keyword search bar on the Forum page. Optional date range filter. Straightforward.",
+            "Type keywords into the search bar. Date filters are available if you need to narrow it down.",
+            "Forum search: keywords plus optional date-from/date-to filters. Clear button resets it.",
+            "Search bar, keywords, optional date range. That's the full extent of it.",
+        ],
+    },
 ]
 
 
