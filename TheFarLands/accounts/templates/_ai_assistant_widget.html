@@ -26,7 +26,7 @@
     </div>
     <div class="ai-assistant-body">
       <div id="ai-assistant-picker" class="ai-assistant-picker">
-        <button type="button" class="ai-persona-option" data-persona="fred" data-avatar-src="{% static 'accounts/fred_idle.gif' %}?v=2" aria-label="F.R.E.D.">
+        <button type="button" class="ai-persona-option" data-persona="fred" aria-label="F.R.E.D.">
           <img src="{% static 'accounts/fred_icon.png' %}" alt="">
         </button>
         <button type="button" class="ai-persona-option" data-persona="david" data-avatar-src="{% static 'accounts/david_idle.gif' %}" aria-label="David">
@@ -311,9 +311,71 @@
     if (!widget || !toggle || !panel) return;
 
     var userPfpUrl = chatForm ? chatForm.getAttribute('data-user-pfp') : '';
-    var FRED_IDLE_SRC = "{% static 'accounts/fred_idle.gif' %}?v=2";
+    var FRED_FRAME1_SRC = "{% static 'accounts/fred_frame1.png' %}";
     var FRED_FRAME2_SRC = "{% static 'accounts/fred_frame2.png' %}";
     var FRED_FRAME3_SRC = "{% static 'accounts/fred_frame3.png' %}";
+    var FRED_FRAME5_SRC = "{% static 'accounts/fred_frame5.png' %}";
+
+    // F.R.E.D.'s whole animation is a sequence of discrete frames with
+    // per-step durations (ms) - not a baked GIF - so both idle and
+    // "replying" can share one generic sequencer (playFredSequence
+    // below). Idle loops forever; the reply sequence plays once and
+    // gets cut short whenever the actual reply finishes (see
+    // playFredReply) - its total (13s) comfortably covers typingMs's
+    // max (7s) so it's never seen running out mid-reply in practice.
+    var FRED_IDLE_SEQUENCE = [
+      { src: FRED_FRAME1_SRC, duration: 3000 },
+      { src: FRED_FRAME2_SRC, duration: 3000 },
+      { src: FRED_FRAME3_SRC, duration: 2000 },
+      { src: FRED_FRAME5_SRC, duration: 2000 },
+      { src: FRED_FRAME3_SRC, duration: 2000 },
+      { src: FRED_FRAME5_SRC, duration: 2000 },
+      { src: FRED_FRAME3_SRC, duration: 2000 },
+      { src: FRED_FRAME5_SRC, duration: 2000 },
+    ];
+    var FRED_REPLY_SEQUENCE = [
+      { src: FRED_FRAME2_SRC, duration: 3000 },
+      { src: FRED_FRAME3_SRC, duration: 2000 },
+      { src: FRED_FRAME5_SRC, duration: 2000 },
+      { src: FRED_FRAME3_SRC, duration: 2000 },
+      { src: FRED_FRAME5_SRC, duration: 2000 },
+      { src: FRED_FRAME3_SRC, duration: 2000 },
+    ];
+
+    var fredAnimGen = 0;
+    var fredAnimTimer = null;
+
+    function stopFredAnimation() {
+      fredAnimGen++;
+      clearTimeout(fredAnimTimer);
+      fredAnimTimer = null;
+    }
+
+    // Plays `steps` ([{src, duration}, ...]) on chatAvatar in order.
+    // loop=true restarts from the first step after the last; loop=false
+    // just stops after the last step. Guarded by fredAnimGen so an
+    // older sequence's pending setTimeout can never clobber a newer one
+    // (switching persona, resetting the chat, or a reply landing all
+    // bump the generation).
+    function playFredSequence(steps, loop) {
+      var gen = ++fredAnimGen;
+      var i = 0;
+      function step() {
+        if (gen !== fredAnimGen) return;
+        if (i >= steps.length) {
+          if (!loop) return;
+          i = 0;
+        }
+        var s = steps[i++];
+        if (chatAvatar) chatAvatar.src = s.src;
+        fredAnimTimer = setTimeout(step, s.duration);
+      }
+      step();
+    }
+
+    function startFredIdle() {
+      playFredSequence(FRED_IDLE_SEQUENCE, true);
+    }
 
     function getCookie(name) {
       var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
@@ -363,7 +425,6 @@
 
     var activePersona = null;
     var fredReplyTimer = null;
-    var fredFrame3Timer = null;
     var davidReplyTimer = null;
     var davidFrame3Timer = null;
     var davidTalkInterval = null;
@@ -376,9 +437,8 @@
 
     function clearFredTimers() {
       clearTimeout(fredReplyTimer);
-      clearTimeout(fredFrame3Timer);
       fredReplyTimer = null;
-      fredFrame3Timer = null;
+      stopFredAnimation();
     }
 
     function clearDavidTimers() {
@@ -429,27 +489,21 @@
     function playFredReply(userText) {
       clearFredTimers();
       var requestId = ++fredRequestSeq;
-      // start the "replying" animation right away - don't wait on the
+      // start the "replying" sequence right away - don't wait on the
       // fetch, which should resolve near-instantly anyway (local
       // scripted matching, not a real network-bound AI call)
-      if (chatAvatar) chatAvatar.src = FRED_FRAME2_SRC;
+      playFredSequence(FRED_REPLY_SEQUENCE, false);
       fetchAssistantReply('fred', userText).then(function (matched) {
         if (requestId !== fredRequestSeq) return; // superseded or reset
         var reply = matched || FRED_PLACEHOLDER_REPLIES[Math.floor(Math.random() * FRED_PLACEHOLDER_REPLIES.length)];
-        // simulated "typing" duration, scaled to reply length, so the
-        // frame2 -> frame3 handoff is actually visible rather than
-        // instant every time
+        // simulated "typing" duration, scaled to reply length, well
+        // under the reply sequence's 13s total so it always cuts the
+        // sequence short rather than running past the end of it
         var typingMs = Math.min(7000, Math.max(1500, reply.length * 60));
-        if (typingMs > 4000) {
-          fredFrame3Timer = setTimeout(function () {
-            if (requestId !== fredRequestSeq) return;
-            if (chatAvatar) chatAvatar.src = FRED_FRAME3_SRC;
-          }, 4000);
-        }
         fredReplyTimer = setTimeout(function () {
           if (requestId !== fredRequestSeq) return;
           appendMessage('assistant', reply);
-          if (chatAvatar) chatAvatar.src = FRED_IDLE_SRC;
+          startFredIdle();
         }, typingMs);
       });
     }
