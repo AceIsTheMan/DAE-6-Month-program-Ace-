@@ -421,6 +421,30 @@ QA_ENTRIES = [
             "Classified. Don't ask again.",
         ],
     },
+    {
+        # No password-change/reset feature exists anywhere on the site
+        # (verified - no Settings option, no forgot-password flow).
+        # Deliberately a flat, identical, personality-free line for both
+        # personas rather than the usual in-character variants - this
+        # is a real gap being honestly disclosed, not something to spin.
+        'id': 'how_change_password',
+        'triggers': [
+            'how do i change my password',
+            'how to change my password',
+            'how do i reset my password',
+            'how to reset my password',
+            'can i change my password',
+            'where do i change my password',
+            'how do i update my password',
+            'how to update my password',
+        ],
+        'david': [
+            "This feature is not up yet. We will do our best until further noticed.",
+        ],
+        'fred': [
+            "This feature is not up yet. We will do our best until further noticed.",
+        ],
+    },
 ]
 
 
