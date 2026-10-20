@@ -107,6 +107,52 @@ accounts hit neither condition and this renders nothing.
     background: var(--deep-black) url('{% static "accounts/raging_crest_bg.png" %}') repeat;
   }
   {% endif %}
+  {% elif user.background_theme == 'galaxy_view' %}
+  /* Galaxy View - stays dark like Raging Crest (no light flip - the
+     nebula art is itself black with purple/pink glow), but unlike
+     Raging Crest it DOES override the --red accent family, to a purple
+     matching the art, taking precedence over Custom Theme the same way
+     every Background Theme does. Panels (--black/--deep-black/--silver/
+     --white/--dim-white) are left at their normal dark defaults - only
+     the accent color changes, same values as the royal_purple Custom
+     Theme option for consistency. */
+  :root {
+    --red: #7700cc;
+    --red-bright: #a64dff;
+    --red-dim: #330066;
+  }
+  {% if not is_home %}
+  body {
+    background: var(--deep-black) url('{% static "accounts/galaxy_view_bg.png" %}') repeat;
+  }
+  {% endif %}
+  {% elif user.background_theme == 'steampunk_room' %}
+  /* Steampunk Room - same dark-panel + colored-accent mechanism as
+     Galaxy View, golden-brown/bronze instead of purple to match the
+     art. */
+  :root {
+    --red: #a6722e;
+    --red-bright: #d9a441;
+    --red-dim: #4d3212;
+  }
+  {% if not is_home %}
+  body {
+    background: var(--deep-black) url('{% static "accounts/steampunk_room_bg.png" %}') repeat;
+  }
+  {% endif %}
+  {% elif user.background_theme == 'underwater_journey' %}
+  /* Underwater Journey - same dark-panel + colored-accent mechanism as
+     Galaxy View, glowing cyan instead of purple to match the art. */
+  :root {
+    --red: #00b8cc;
+    --red-bright: #33e6ff;
+    --red-dim: #004d57;
+  }
+  {% if not is_home %}
+  body {
+    background: var(--deep-black) url('{% static "accounts/underwater_journey_bg.png" %}') repeat;
+  }
+  {% endif %}
   {% elif user.site_theme and user.site_theme != 'classic_red' %}
   :root {
     {% if user.site_theme == 'toxic_green' %}

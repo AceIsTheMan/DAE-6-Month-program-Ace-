@@ -106,6 +106,9 @@ class CustomUser(AbstractUser):
         ('kitty', 'Kitty Background'),
         ('panda', 'Panda Background'),
         ('raging_crest', 'The Raging Crest'),
+        ('galaxy_view', 'Galaxy View'),
+        ('steampunk_room', 'Steampunk Room'),
+        ('underwater_journey', 'Underwater Journey'),
     ]
     background_theme = models.CharField(max_length=30, choices=BACKGROUND_THEME_CHOICES, default='none')
 

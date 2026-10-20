@@ -27,16 +27,20 @@
     <div class="ai-assistant-body">
       <div id="ai-assistant-picker" class="ai-assistant-picker">
         <button type="button" class="ai-persona-option" data-persona="fred" aria-label="F.R.E.D.">
-          <img src="{% static 'accounts/fred_icon.png' %}" alt="">
+          <img src="{% static 'accounts/fred_frame1.png' %}" alt="">
         </button>
-        <button type="button" class="ai-persona-option" data-persona="david" data-avatar-src="{% static 'accounts/david_idle.gif' %}" aria-label="David">
-          <img src="{% static 'accounts/david_frame1.png' %}" alt="">
+        <button type="button" class="ai-persona-option" data-persona="david" data-avatar-src="{% static 'accounts/david_idle.gif' %}?v=2" aria-label="David">
+          <img src="{% static 'accounts/david_frame1.png' %}?v=2" alt="">
         </button>
       </div>
       <div id="ai-assistant-chat" class="ai-assistant-chat" hidden>
         <div class="ai-assistant-chat-top">
           <button type="button" id="ai-assistant-back" class="ai-assistant-back">&larr; back</button>
-          <img id="ai-assistant-chat-avatar" class="ai-assistant-chat-avatar" src="" alt="">
+        </div>
+        <div class="ai-assistant-chat-avatar-row">
+          <div id="ai-assistant-chat-avatar-wrap" class="ai-assistant-chat-avatar-wrap">
+            <img id="ai-assistant-chat-avatar" class="ai-assistant-chat-avatar" src="" alt="">
+          </div>
         </div>
         <div id="ai-chat-thread" class="ai-chat-thread"></div>
         <form id="ai-chat-form" class="ai-chat-form" data-user-pfp="{% if user.is_authenticated and user.profile_picture %}{{ user.profile_picture.url }}{% endif %}">
@@ -202,9 +206,48 @@
     padding: 0;
   }
   .ai-assistant-back:hover { color: var(--red-bright); }
+  .ai-assistant-chat-avatar-row {
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-bottom: 0.5rem;
+  }
+  /* The frame is a visual status indicator, not just decoration: a slow
+     pulse while idle, a steadier brighter glow while actually replying
+     - so you can tell at a glance which state the assistant is in
+     without reading the chat log. Toggled via .is-idle/.is-replying,
+     see makeFredAnimator's callers and playDavidReply/playFredReply. */
+  .ai-assistant-chat-avatar-wrap {
+    width: 120px;
+    height: 120px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--red-dim);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease, width 0.2s ease, height 0.2s ease;
+  }
+  /* David's art is a wide, short composition (ears/paws spread out) -
+     a square frame like F.R.E.D.'s skull uses would letterbox it badly.
+     Matches his actual content's aspect ratio (~1.82:1) instead. */
+  .ai-assistant-chat-avatar-wrap.persona-david {
+    width: 160px;
+    height: 88px;
+  }
+  .ai-assistant-chat-avatar-wrap.is-idle {
+    animation: ai-avatar-idle-pulse 2.4s ease-in-out infinite;
+  }
+  .ai-assistant-chat-avatar-wrap.is-replying {
+    border-color: var(--red-bright);
+    box-shadow: 0 0 20px rgba(255, 26, 26, 0.65);
+  }
+  @keyframes ai-avatar-idle-pulse {
+    0%, 100% { border-color: var(--red-dim); box-shadow: 0 0 6px rgba(204, 0, 0, 0.25); }
+    50% { border-color: var(--red-bright); box-shadow: 0 0 16px rgba(255, 26, 26, 0.5); }
+  }
   .ai-assistant-chat-avatar {
-    width: 48px;
-    height: 48px;
+    width: 88%;
+    height: 88%;
     object-fit: contain;
     filter: drop-shadow(0 0 10px rgba(255, 26, 26, 0.45));
   }
@@ -304,6 +347,7 @@
     var picker = document.getElementById('ai-assistant-picker');
     var chatView = document.getElementById('ai-assistant-chat');
     var chatAvatar = document.getElementById('ai-assistant-chat-avatar');
+    var chatAvatarWrap = document.getElementById('ai-assistant-chat-avatar-wrap');
     var chatThread = document.getElementById('ai-chat-thread');
     var chatForm = document.getElementById('ai-chat-form');
     var chatInput = document.getElementById('ai-chat-input');
@@ -314,11 +358,11 @@
     var FRED_FRAME1_SRC = "{% static 'accounts/fred_frame1.png' %}";
     var FRED_FRAME2_SRC = "{% static 'accounts/fred_frame2.png' %}";
     var FRED_FRAME3_SRC = "{% static 'accounts/fred_frame3.png' %}";
-    var FRED_FRAME5_SRC = "{% static 'accounts/fred_frame5.png' %}";
+    var FRED_FRAME5_SRC = "{% static 'accounts/fred_frame5.png' %}?v=2";
 
     // F.R.E.D.'s whole animation is a sequence of discrete frames with
     // per-step durations (ms) - not a baked GIF - so both idle and
-    // "replying" can share one generic sequencer (playFredSequence
+    // "replying" can share one generic sequencer (makeFredAnimator
     // below). Idle loops forever; the reply sequence plays once and
     // gets cut short whenever the actual reply finishes (see
     // playFredReply) - its total (13s) comfortably covers typingMs's
@@ -342,40 +386,41 @@
       { src: FRED_FRAME3_SRC, duration: 2000 },
     ];
 
-    var fredAnimGen = 0;
-    var fredAnimTimer = null;
-
-    function stopFredAnimation() {
-      fredAnimGen++;
-      clearTimeout(fredAnimTimer);
-      fredAnimTimer = null;
-    }
-
-    // Plays `steps` ([{src, duration}, ...]) on chatAvatar in order.
+    // Drives one <img> through a sequence of {src, duration} steps.
     // loop=true restarts from the first step after the last; loop=false
-    // just stops after the last step. Guarded by fredAnimGen so an
-    // older sequence's pending setTimeout can never clobber a newer one
-    // (switching persona, resetting the chat, or a reply landing all
-    // bump the generation).
-    function playFredSequence(steps, loop) {
-      var gen = ++fredAnimGen;
-      var i = 0;
-      function step() {
-        if (gen !== fredAnimGen) return;
-        if (i >= steps.length) {
-          if (!loop) return;
-          i = 0;
-        }
-        var s = steps[i++];
-        if (chatAvatar) chatAvatar.src = s.src;
-        fredAnimTimer = setTimeout(step, s.duration);
+    // just stops after the last step. Each animator has its own
+    // generation counter so an older sequence's pending setTimeout can
+    // never clobber a newer one on the SAME image - switching persona,
+    // resetting the chat, or a reply landing all bump it. Separate
+    // animator instances (picker thumbnail vs. chat avatar) are fully
+    // independent of each other.
+    function makeFredAnimator(imgEl) {
+      var gen = 0;
+      var timer = null;
+      function stop() {
+        gen++;
+        clearTimeout(timer);
+        timer = null;
       }
-      step();
+      function play(steps, loop) {
+        var myGen = ++gen;
+        var i = 0;
+        function step() {
+          if (myGen !== gen) return;
+          if (i >= steps.length) {
+            if (!loop) return;
+            i = 0;
+          }
+          var s = steps[i++];
+          if (imgEl) imgEl.src = s.src;
+          timer = setTimeout(step, s.duration);
+        }
+        step();
+      }
+      return { play: play, stop: stop };
     }
 
-    function startFredIdle() {
-      playFredSequence(FRED_IDLE_SEQUENCE, true);
-    }
+    var fredChatAnimator = makeFredAnimator(chatAvatar);
 
     function getCookie(name) {
       var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
@@ -411,10 +456,10 @@
       "Logged. My response systems aren't fully wired up yet, but I'm listening.",
     ];
 
-    var DAVID_IDLE_SRC = "{% static 'accounts/david_idle.gif' %}";
-    var DAVID_FRAME1_SRC = "{% static 'accounts/david_frame1.png' %}";
-    var DAVID_FRAME3_SRC = "{% static 'accounts/david_frame3.png' %}";
-    var DAVID_FRAME4_SRC = "{% static 'accounts/david_frame4.png' %}";
+    var DAVID_IDLE_SRC = "{% static 'accounts/david_idle.gif' %}?v=2";
+    var DAVID_FRAME1_SRC = "{% static 'accounts/david_frame1.png' %}?v=2";
+    var DAVID_FRAME3_SRC = "{% static 'accounts/david_frame3.png' %}?v=2";
+    var DAVID_FRAME4_SRC = "{% static 'accounts/david_frame4.png' %}?v=2";
     var DAVID_PLACEHOLDER_REPLIES = [
       "Woof!",
       "Bark bark - noted!",
@@ -438,7 +483,7 @@
     function clearFredTimers() {
       clearTimeout(fredReplyTimer);
       fredReplyTimer = null;
-      stopFredAnimation();
+      fredChatAnimator.stop();
     }
 
     function clearDavidTimers() {
@@ -458,6 +503,15 @@
       activePersona = null;
       if (chatThread) chatThread.innerHTML = '';
       if (chatInput) chatInput.value = '';
+      if (chatAvatarWrap) chatAvatarWrap.classList.remove('is-idle', 'is-replying', 'persona-fred', 'persona-david');
+    }
+
+    // Avatar frame doubles as a status indicator - pulsing border while
+    // idle, a steadier brighter glow while actually composing a reply.
+    function setAvatarState(state) {
+      if (!chatAvatarWrap) return;
+      chatAvatarWrap.classList.toggle('is-idle', state === 'idle');
+      chatAvatarWrap.classList.toggle('is-replying', state === 'replying');
     }
 
     function appendMessage(sender, text) {
@@ -492,7 +546,8 @@
       // start the "replying" sequence right away - don't wait on the
       // fetch, which should resolve near-instantly anyway (local
       // scripted matching, not a real network-bound AI call)
-      playFredSequence(FRED_REPLY_SEQUENCE, false);
+      fredChatAnimator.play(FRED_REPLY_SEQUENCE, false);
+      setAvatarState('replying');
       fetchAssistantReply('fred', userText).then(function (matched) {
         if (requestId !== fredRequestSeq) return; // superseded or reset
         var reply = matched || FRED_PLACEHOLDER_REPLIES[Math.floor(Math.random() * FRED_PLACEHOLDER_REPLIES.length)];
@@ -503,7 +558,8 @@
         fredReplyTimer = setTimeout(function () {
           if (requestId !== fredRequestSeq) return;
           appendMessage('assistant', reply);
-          startFredIdle();
+          fredChatAnimator.play(FRED_IDLE_SEQUENCE, true);
+          setAvatarState('idle');
         }, typingMs);
       });
     }
@@ -520,6 +576,7 @@
         talkIdx = 1 - talkIdx;
         if (chatAvatar) chatAvatar.src = talkFrames[talkIdx];
       }, 350);
+      setAvatarState('replying');
 
       fetchAssistantReply('david', userText).then(function (matched) {
         if (requestId !== davidRequestSeq) return; // superseded or reset
@@ -542,6 +599,7 @@
           davidTalkInterval = null;
           appendMessage('assistant', reply);
           if (chatAvatar) chatAvatar.src = DAVID_IDLE_SRC;
+          setAvatarState('idle');
         }, typingMs);
       });
     }
@@ -578,8 +636,12 @@
       btn.addEventListener('click', function () {
         resetChat();
         activePersona = btn.getAttribute('data-persona');
+        if (chatAvatarWrap) {
+          chatAvatarWrap.classList.toggle('persona-fred', activePersona === 'fred');
+          chatAvatarWrap.classList.toggle('persona-david', activePersona === 'david');
+        }
         if (activePersona === 'fred') {
-          startFredIdle();
+          fredChatAnimator.play(FRED_IDLE_SEQUENCE, true);
         } else {
           var avatarSrc = btn.getAttribute('data-avatar-src');
           // re-assigning .src (even to the same URL) restarts a GIF's
@@ -587,6 +649,7 @@
           // always starts his idle loop fresh when you switch to him
           if (chatAvatar && avatarSrc) chatAvatar.src = avatarSrc;
         }
+        setAvatarState('idle');
         if (picker) picker.hidden = true;
         if (chatView) chatView.hidden = false;
         if (chatInput) chatInput.focus();
