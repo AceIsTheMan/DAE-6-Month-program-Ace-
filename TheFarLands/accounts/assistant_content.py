@@ -369,6 +369,33 @@ QA_ENTRIES = [
             "Expiration means removal. That's the deal with guest trials. Upgrade in time if you want continuity.",
         ],
     },
+    {
+        'id': 'mail_cutscene_frequency',
+        'triggers': [
+            'how often does the mail cutscene play',
+            'how often does the cutscene play',
+            'how do i turn off the cutscene',
+            'how do i change cutscene settings',
+            'what is the loading screen',
+            'how often does the loading screen play',
+            'can i turn off the loading screen',
+            'how do i stop the cutscene',
+            'cutscene settings',
+            'loading screen settings',
+        ],
+        'david': [
+            "You get to pick! Settings has options for every time, a 10 minute cooldown, or never at all. Woof! I kinda like watching it myself!",
+            "Head to Settings > Cutscenes - you can set it to always play, cool down for 10 minutes between plays, or turn it off completely! Woof!",
+            "It's adjustable in Settings! Every time, every 10 minutes, or off for good. Woof! Your call!",
+            "Check Settings > Cutscenes for that - three options there, from always-on to never. Woof! Totally up to you!",
+        ],
+        'fred': [
+            "Settings > Cutscenes. Three modes: every time, 10-minute cooldown, or never. Pick one.",
+            "Configurable in Settings. Always, cooldown, or off. Your preference.",
+            "Cutscene frequency is adjustable - every time, every 10 minutes, or disabled. Settings > Cutscenes.",
+            "Three settings available: always, cooldown, never. Found under Settings > Cutscenes.",
+        ],
+    },
 ]
 
 
