@@ -294,6 +294,31 @@ QA_ENTRIES = [
             "Confirmed, you're online. What do you need from me?",
         ],
     },
+    {
+        'id': 'how_add_friend',
+        'triggers': [
+            'how do i add a friend',
+            'how to add a friend',
+            'how do i send a friend request',
+            'how to send a friend request',
+            'can i add a friend',
+            'how do i make friends',
+            'how do i friend someone',
+            'how to friend someone',
+        ],
+        'david': [
+            "Send them a friend request right from their profile! Once they accept, you're all set. Woof! Making friends here is always a good time!",
+            "Head to their profile and hit friend request - easy as that! Woof! Hope you two hit it off!",
+            "There's a friend request button on every profile. Send it, wait for them to accept, done! Woof!",
+            "Just visit their profile and send a request! Woof! Nothing better than growing your friend list around here!",
+        ],
+        'fred': [
+            "Friend request button is on their profile. Send it, they accept, you're connected. That's the whole process.",
+            "Go to their profile, send a friend request. Pending until they accept.",
+            "Profile page has the option. One click to send, their call to accept.",
+            "Send the request from their profile. Confirmation's on them, not you.",
+        ],
+    },
 ]
 
 
