@@ -396,6 +396,31 @@ QA_ENTRIES = [
             "Three settings available: always, cooldown, never. Found under Settings > Cutscenes.",
         ],
     },
+    {
+        'id': 'director_tools_classified',
+        'triggers': [
+            'what can the director do that i cant',
+            'what are the director only tools',
+            'what are director only features',
+            'can i access director tools',
+            'what is director only access',
+            'what can directors do',
+            'director only features',
+            'director tools',
+        ],
+        'david': [
+            "That's a secret! Woof! Can't say more than that.",
+            "Shh, that's classified. Woof! My lips are sealed!",
+            "Can't tell you that one - top secret! Woof!",
+            "That's need-to-know only, and you don't need to know! Woof!",
+        ],
+        'fred': [
+            "Classified.",
+            "That's a secret.",
+            "Not cleared for that information.",
+            "Classified. Don't ask again.",
+        ],
+    },
 ]
 
 
