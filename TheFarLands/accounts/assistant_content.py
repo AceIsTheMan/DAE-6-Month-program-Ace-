@@ -319,6 +319,56 @@ QA_ENTRIES = [
             "Send the request from their profile. Confirmation's on them, not you.",
         ],
     },
+    {
+        'id': 'how_check_balance',
+        'triggers': [
+            'how do i check my balance',
+            'how do i check my token balance',
+            'how do i check my cipher tokens',
+            'where is my balance',
+            'how many tokens do i have',
+            'where can i see my tokens',
+            'how do i see my currency',
+            'check my balance',
+        ],
+        'david': [
+            "It's right in the nav bar! Click the notification dropdown and you'll see your Currency listed there. Woof! Easy to keep an eye on!",
+            "Check the nav notification dropdown - your balance shows up right there. Woof! Also visible on the Store page if you're shopping!",
+            "Your balance is in the nav dropdown, and it shows up again on the Store page too. Woof! Always easy to find!",
+            "Click the notification icon up top - your Cipher Token count is right there. Woof! No digging required!",
+        ],
+        'fred': [
+            "Nav notification dropdown shows your balance. Also visible on the Store page.",
+            "Check the nav dropdown. Balance is listed under Currency. Same number shows on the Store page.",
+            "Your balance is tracked in the nav bar dropdown and on the Store page. Always current.",
+            "Nav dropdown, Currency row. That's your balance, live.",
+        ],
+    },
+    {
+        'id': 'what_happens_trial_expires',
+        'triggers': [
+            'what happens when my guest trial expires',
+            'what happens when my trial expires',
+            'what happens after 7 days',
+            'what happens to my hacker account',
+            'does my account get deleted',
+            'will my account be deleted',
+            'what happens when my guest account expires',
+            'what happens after my trial ends',
+        ],
+        'david': [
+            "Your account gets deleted after the 7 days are up, but don't worry - a record of you sticking around gets kept! Make a full account before time runs out if you want to keep going! Woof!",
+            "Once the trial ends, the guest account is removed. Upgrade to a real account before then if you want to stay! Woof! Hope you do!",
+            "After 7 days, it's gone - that's just how guest trials work. Woof! Make an account anytime before that to keep your spot!",
+            "The account gets cleaned up automatically once your week is over. Woof! Best to upgrade before the clock runs out!",
+        ],
+        'fred': [
+            "Guest accounts are deleted automatically once the 7-day trial ends. A record is kept that you existed, nothing more. Upgrade before then if you want to keep anything.",
+            "Trial expires, account's gone - no exceptions. Convert to a full account first if you intend to stay.",
+            "After 7 days, deletion is automatic. Everything tied to the guest account goes with it. Act before the deadline.",
+            "Expiration means removal. That's the deal with guest trials. Upgrade in time if you want continuity.",
+        ],
+    },
 ]
 
 
