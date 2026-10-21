@@ -445,6 +445,30 @@ QA_ENTRIES = [
             "This feature is not up yet. We will do our best until further noticed.",
         ],
     },
+    {
+        'id': 'vip_monthly_vs_annual',
+        'triggers': [
+            'whats the difference between vip monthly and annual',
+            'should i get monthly or annual vip',
+            'is annual vip cheaper',
+            'vip monthly vs annual',
+            'whats the price difference for vip',
+            'how much is vip',
+            'how much does vip cost',
+        ],
+        'david': [
+            "Monthly's $5 for 30 days, annual's $20 for 365 days - annual works out way cheaper per day if you're sticking around! Woof! Either way you get the same perks!",
+            "You can do $5 a month, or $20 for the whole year - annual saves you a bunch if you're staying awhile! Woof! Up to you!",
+            "Monthly is $5/30 days, yearly is $20/365 days. Do the math and yearly wins if you're in it for the long haul! Woof!",
+            "Five bucks gets you a month, twenty bucks gets you a whole year! Woof! Annual's the better deal by far!",
+        ],
+        'fred': [
+            "Monthly: $5, 30 days. Annual: $20, 365 days. Annual's the better value if you're committing long-term. Same perks either way.",
+            "Two options: $5 for 30 days, or $20 for 365 days. Annual costs less per day. Perks are identical.",
+            "Pricing: $5/month, $20/year. Annual is the more efficient choice if you intend to stay VIP.",
+            "$5 buys 30 days. $20 buys 365. Same benefits either way - annual is simply cheaper over time.",
+        ],
+    },
 ]
 
 
