@@ -469,6 +469,30 @@ QA_ENTRIES = [
             "$5 buys 30 days. $20 buys 365. Same benefits either way - annual is simply cheaper over time.",
         ],
     },
+    {
+        'id': 'guest_pfp_store_restriction',
+        'triggers': [
+            'can guests set a profile picture',
+            'can guest accounts use the store',
+            'can hacker accounts use the store',
+            'can guests upload a profile picture',
+            'can hacker accounts set a profile picture',
+            'can guests buy from the store',
+            'do guest accounts have store access',
+        ],
+        'david': [
+            "Guest accounts can't do either one, sorry! Make a full account and both open right up. Woof! Totally worth it!",
+            "Nope, not for guest accounts - no profile picture, no Store access. Woof! Upgrading unlocks both though!",
+            "Both are off-limits for Hacker accounts I'm afraid! Woof! A full account gets you in though!",
+            "Guests miss out on those two, unfortunately. Woof! Make a real account and you're good to go!",
+        ],
+        'fred': [
+            "No to both - guest accounts can't set a profile picture or access the Store. Full account required for either.",
+            "Negative on both. Profile pictures and the Store are blocked for guest accounts.",
+            "Guest restriction: no profile picture, no Store access. Resolved by upgrading to a full account.",
+            "Both features are gated behind a full account. Guest accounts don't qualify.",
+        ],
+    },
 ]
 
 
