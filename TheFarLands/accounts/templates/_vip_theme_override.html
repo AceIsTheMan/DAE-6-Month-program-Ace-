@@ -153,6 +153,26 @@ accounts hit neither condition and this renders nothing.
     background: var(--deep-black) url('{% static "accounts/underwater_journey_bg.png" %}') repeat;
   }
   {% endif %}
+  {% elif user.background_theme == 'moonlight' %}
+  /* Moonlight - same dark-panel + colored-accent mechanism as Galaxy
+     View, silver/moonlight-white instead of a saturated hue to match
+     the art (a bright white moon through dark clouds). Sized to the
+     full page width with height scaling proportionally (100% auto) -
+     on a page short enough that one copy covers it, that's all you
+     ever see; on a longer page, repeat-y tiles it again below so the
+     photo (not a flat --deep-black gap) keeps covering the page as you
+     scroll. Only vertical repeat - width is already an exact 100% match
+     to the body, so a horizontal copy would never be visible anyway. */
+  :root {
+    --red: #b0b0c0;
+    --red-bright: #e6e6f0;
+    --red-dim: #4a4a58;
+  }
+  {% if not is_home %}
+  body {
+    background: var(--deep-black) url('{% static "accounts/moonlight_bg.png" %}?v=3') repeat-y top center / 100% auto;
+  }
+  {% endif %}
   {% elif user.site_theme and user.site_theme != 'classic_red' %}
   :root {
     {% if user.site_theme == 'toxic_green' %}
