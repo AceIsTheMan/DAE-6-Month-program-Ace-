@@ -540,6 +540,29 @@ QA_ENTRIES = [
             "Own balance = your tokens decrease. Buy fresh = yours stay the same, new tokens generated for the recipient. VIP has no balance option.",
         ],
     },
+    {
+        'id': 'what_are_custom_themes',
+        'triggers': [
+            'what are custom themes',
+            'what is the custom theme option',
+            'how do i change my site theme',
+            'how do i change my site colors',
+            'what color themes are there',
+            'how do i recolor the site',
+        ],
+        'david': [
+            "That's a VIP perk that recolors the whole site just for you! Toxic Green, Cyber Blue, Royal Purple, or Gold. Woof! Nobody else sees it, it's just your own view!",
+            "You get to recolor your own view of the site as VIP! Pick from Toxic Green, Cyber Blue, Royal Purple, or Gold. Woof! Just for your eyes!",
+            "It's a personal color swap for VIP members - four options to choose from! Woof! Totally private to your own browser!",
+            "VIP lets you reskin the site colors just for yourself! Four choices there. Woof! Nobody else notices the change but you!",
+        ],
+        'fred': [
+            "VIP cosmetic option - recolors the site for your own view only. Choices: Toxic Green, Cyber Blue, Royal Purple, Gold. Nobody else sees your choice. Set it in Settings.",
+            "Four color options for VIP accounts. Personal display only, visible to you alone. Found in Settings.",
+            "Site re-skin, VIP-only, private to your own view. Toxic Green, Cyber Blue, Royal Purple, or Gold.",
+            "Custom Themes change your own color scheme, nobody else's. Four choices. Settings > VIP.",
+        ],
+    },
 ]
 
 
