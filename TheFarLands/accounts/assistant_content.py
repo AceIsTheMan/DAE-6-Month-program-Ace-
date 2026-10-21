@@ -517,6 +517,29 @@ QA_ENTRIES = [
             "Mail > Cipher Tokens. That's your complete record.",
         ],
     },
+    {
+        'id': 'gift_balance_vs_buy',
+        'triggers': [
+            'whats the difference between gifting from my balance and buying a gift',
+            'how does gifting from my balance work',
+            'how does buying a gift work',
+            'whats the difference between the gift options',
+            'can i gift from my own tokens',
+            'do i need tokens to gift someone',
+        ],
+        'david': [
+            "If you gift from your own balance, it comes straight out of your tokens - gotta have enough! If you buy a gift instead, it's fresh tokens just for them, your balance doesn't move. Woof! Your call which way to be generous!",
+            "Gifting from your balance takes tokens right out of your own stash! Buying a gift instead gets them brand new tokens without touching yours. Woof! Both are nice gestures!",
+            "One way spends your own tokens, the other buys new ones just for them. Woof! Depends how generous you're feeling with your own stash!",
+            "From your balance = your tokens go down. Buying fresh = yours stay the same! Woof! Either way they're happy!",
+        ],
+        'fred': [
+            "From your balance: transferred out of what you already have, you need enough to cover it. Buying a gift: fresh tokens for them, your balance untouched. VIP gifts are always bought fresh - no balance option there.",
+            "Two modes. Own balance: deducted from your tokens directly. Buy fresh: new tokens for them, yours unaffected. VIP can only be bought fresh.",
+            "Balance gifting requires sufficient tokens on your end. Buying a gift doesn't touch your balance at all. VIP gifting is buy-only.",
+            "Own balance = your tokens decrease. Buy fresh = yours stay the same, new tokens generated for the recipient. VIP has no balance option.",
+        ],
+    },
 ]
 
 
