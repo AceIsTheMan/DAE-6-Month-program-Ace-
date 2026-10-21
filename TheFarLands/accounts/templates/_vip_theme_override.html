@@ -173,6 +173,21 @@ accounts hit neither condition and this renders nothing.
     background: var(--deep-black) url('{% static "accounts/moonlight_bg.png" %}?v=3') repeat-y top center / 100% auto;
   }
   {% endif %}
+  {% elif user.background_theme == 'sunlight' %}
+  /* Sunlight - same real-photo mechanism as Moonlight (full-width fit,
+     repeat-y so a long page stays covered instead of hitting a flat
+     --deep-black gap). Gold accent, same hex as the Gold Custom Theme
+     option for consistency. */
+  :root {
+    --red: #cc9900;
+    --red-bright: #ffcc1a;
+    --red-dim: #665000;
+  }
+  {% if not is_home %}
+  body {
+    background: var(--deep-black) url('{% static "accounts/sunlight_bg.png" %}') repeat-y top center / 100% auto;
+  }
+  {% endif %}
   {% elif user.site_theme and user.site_theme != 'classic_red' %}
   :root {
     {% if user.site_theme == 'toxic_green' %}
