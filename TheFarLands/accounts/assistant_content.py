@@ -493,6 +493,30 @@ QA_ENTRIES = [
             "Both features are gated behind a full account. Guest accounts don't qualify.",
         ],
     },
+    {
+        'id': 'how_see_token_history',
+        'triggers': [
+            'how do i see my token history',
+            'how do i see my cipher token history',
+            'where can i see my token history',
+            'how do i view my transaction history',
+            'whats my token history',
+            'how do i check my token history',
+            'where is my cipher token history',
+        ],
+        'david': [
+            "Head to Mail and check the Cipher Tokens tab! Every gift, purchase, and grant shows up there, plus what you've spent each month. Woof! Good way to keep track!",
+            "It's all in Mail's Cipher Tokens tab! Gifts, purchases, grants - all logged, with your spending summarized too. Woof!",
+            "Check the Cipher Tokens tab in Mail! Full history right there, Woof! Nice to see where it's all come from!",
+            "Mail's got a Cipher Tokens tab just for this - every token in, and a monthly summary of what went out. Woof!",
+        ],
+        'fred': [
+            "Mail, Cipher Tokens tab. Full ledger - gifts, purchases, grants itemized, spending summarized monthly.",
+            "Check the Cipher Tokens tab under Mail. Every earned transaction logged individually, spending totaled monthly.",
+            "Your history is in Mail's Cipher Tokens tab. Nothing missing - gifts, purchases, grants, and spend summaries.",
+            "Mail > Cipher Tokens. That's your complete record.",
+        ],
+    },
 ]
 
 
