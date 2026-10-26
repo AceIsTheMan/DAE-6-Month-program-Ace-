@@ -36,4 +36,10 @@ function onPlayerReady(event) {
         setTimeout(() => overlay.style.display = 'none' , 500);
     });
 }
-// 
+
+//  2. Fallback protection loop for short tracks or single-video loops
+function onPlayerStateChange(event) {
+    if (event.data === YT.PlayerState.ENDED) {
+        playyer.playVideo();
+    }
+}
