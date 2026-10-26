@@ -28,6 +28,12 @@ function onPlayerReady(event) {
     const overlay = document.getElementById('welcome-overlay');
 
     startButton.addEventListener('click', () => {
-        // Play the track now that browser
-    })
+        // Play the track now that browser has tracked an explicit click gesture
+        player.playVideo();
+
+        // Hide overlay smoothly
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.style.display = 'none' , 500);
+    });
 }
+// 
