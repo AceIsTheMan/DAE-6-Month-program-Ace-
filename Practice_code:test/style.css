@@ -10,7 +10,7 @@
 
 /* Modal Overlay to force first user gesture */
 .overlay {
-    position fixed;
+    position: fixed;
     top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(20, 20, 20, 0.95);
     display: flex;
@@ -22,7 +22,7 @@
 
 .overlay-content {
     text-align: center;
-    color: #ffff
+    color: #fff;
     font-family: sans-serif;
 }
 

@@ -1,0 +1,43 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Django Site with Background Music</title>
+    <!-- Links your VSC CSS tab -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+
+    <!-- Welcome overlay that forces user interaction -->
+    <div id="welcome-overlay" class="overlay">
+        <div class="overlay-content">
+            <h1>Welcome to My Practice Site</h1>
+            <button id="start-btn">Enter Site & Play Songs</button>
+        </div>
+    </div>
+
+    <!-- The physical container the YouTube API looks for -->
+    <div id="yt-audio-container">
+        <div id="player"></div>
+    </div>
+
+    <!-- Audio Settings Panel -->
+    <div id="settings-panel" class="settings-box">
+        <h3>Audio Settings</h3>
+        <label class="switch-container">
+            <span>Background Music</span>
+            <input type="checkbox" id="music-toggle" checked>
+        </label>
+    </div>
+
+    <!-- 1. Pass Django context securely first -->
+    {{ youtube_video_id|json_script:"yt-video-id" }}
+
+    <!-- 2. Load external YouTube API second -->
+    <script src="https://youtube.com"></script>
+    
+    <!-- 3. Load your custom music.js tab last -->
+    <script src="{% static 'js/music.js' %}" defer></script>
+</body>
+</html>
