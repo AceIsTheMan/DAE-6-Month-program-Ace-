@@ -4,7 +4,7 @@ let player;
 
 // 1. This function automatically fires when the YouTube API script loads
 function onYouTubeIframeAPIReady() {
-    player = new onYouTubeIframeAPIReady.Player('player', {
+    player = new YT.Player('player', {
         height: '0',
         width: '0',
         videoId: videoId,
@@ -22,24 +22,41 @@ function onYouTubeIframeAPIReady() {
     });
 }
 
+// Append this state listener logic inside your existing music.js file
+
 function onPlayerReady(event) {
-    // Player is mounted off-screen and ready to go
     const startButton = document.getElementById('start-btn');
     const overlay = document.getElementById('welcome-overlay');
+    const musicToggle = document.getElementById('music-toggle');
 
+    // Handle initial entrance click behavior
     startButton.addEventListener('click', () => {
-        // Play the track now that browser has tracked an explicit click gesture
-        player.playVideo();
-
-        // Hide overlay smoothly
+        // If user unchecked it in the overlay settings before clicking enter
+        if (musicToggle.checked) {
+            player.playVideo();
+        }
+        
         overlay.style.opacity = '0';
-        setTimeout(() => overlay.style.display = 'none' , 500);
+        setTimeout(() => overlay.style.display = 'none', 500);
+    });
+
+    // Monitor live configuration switches in the options tab dashboard
+    musicToggle.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            // Unmute and verify the track is actively executing 
+            player.unmute();
+            player.playVideo(); 
+        } else {
+            // Mute instantly without breaking playlist position tracks
+            player.mute();
+        }
     });
 }
+
 
 //  2. Fallback protection loop for short tracks or single-video loops
 function onPlayerStateChange(event) {
     if (event.data === YT.PlayerState.ENDED) {
-        playyer.playVideo();
+        player.playVideo();
     }
 }

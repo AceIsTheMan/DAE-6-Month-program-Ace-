@@ -35,3 +35,33 @@
     border: none;
     border-radius: 5px;
 }
+
+/* Settings Dashboard Widget Box */
+.settings-box {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(30, 30, 30, 0.9);
+    color: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    font-family: sans-serif;
+    z-index: 1000;
+    border: 1px solid #444;
+}
+
+.settings-box h3 {
+    margin-top: 0;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Custom CSS Toggle Switch Design */
+.switch-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 15px;
+    cursor: pointer;
+}

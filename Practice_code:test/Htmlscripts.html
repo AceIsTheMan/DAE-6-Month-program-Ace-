@@ -21,8 +21,8 @@
         <div id="player"></div>
      </div>
 
-     <!-- Pass Django Context clearly into a JavaScript safe format -->
-     {{ youtube_video_id|json_script:"yt-video-id" }}
+     <!-- Pass Django context cleanly into a JavaScript safe format -->
+    {{ youtube_video_id|json_script:"yt-video-id" }}
 
      <!-- Load Youtube IFrame Player API -->
       <script src="https:/youtube.com"></script>
