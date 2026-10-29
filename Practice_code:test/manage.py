@@ -4,7 +4,7 @@ TEMPLATES = [
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         # Ensure DIRS points to your template folder if you keep them in a root folder
         'DIRS': [BASE_DIR / 'templates'], 
-        'APP_DIRS': True, # <--- THIS MUST BE TRUE TO AUTOMATICALLY FIND TEMPLATE FOLDERS
+        'APP_DIRS': True, # <--- THIS MUST BE TRUE TO AUTOMATICALLY FIND TEMPLATE FOLDERS!!!
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
