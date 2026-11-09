@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+{% block title %}{{ profile_user.username }} // Profile{% endblock %}
+{% block extra_head %}
+<style>
+  .dossier {
+    position: relative;
+    border: 1px solid var(--red);
+    background: linear-gradient(180deg, var(--deep-black), var(--deep-black));
+    box-shadow: 0 0 20px rgba(204,0,0,0.2);
+    padding: 2rem;
+  }
+  /* The CLASSIFIED ribbon needs its OWN clipping box, not overflow:hidden
+     on .dossier itself - that used to clip the whole card (including the
+     Moderation/Report dropdown in .profile-actions below, which needs to
+     extend past the card's edge to be visible at all). */
+  .dossier-stamp-clip {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 140px;
+    height: 90px;
+    overflow: hidden;
+    pointer-events: none;
+  }
+  .dossier-stamp {
+    position: absolute;
+    top: 1.3rem;
+    right: -2.7rem;
+    transform: rotate(35deg);
+    border: 2px solid var(--red-bright);
+    color: var(--red-bright);
+    font-family: 'VT323', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    padding: 3px 3rem;
+    opacity: 0.6;
+  }
+  .dossier-top { display: flex; gap: 2rem; align-items: flex-start; flex-wrap: wrap; }
+  .dossier-photo {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    flex-shrink: 0;
+    border: 2px solid var(--red-dim);
+    background: var(--black);
+    overflow: hidden;
+  }
+  .dossier-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .dossier-photo .no-pic {
+    width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--red-dim); font-size: 2.5rem;
+  }
+  .dossier-id { flex: 1; min-width: 220px; }
+  .dossier-name {
+    font-family: 'VT323', monospace;
+    color: var(--red-bright);
+    font-size: 2.8rem;
+    letter-spacing: 2px;
+    text-shadow: 0 0 8px var(--red);
+    line-height: 1.1;
+  }
+  .dossier-alias {
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    color: var(--dim-white);
+    margin: 0.3rem 0 1rem;
+    text-transform: uppercase;
+  }
+  .dossier-field {
+    display: flex;
+    justify-content: space-between;
+    max-width: 320px;
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    padding: 0.35rem 0;
+    border-bottom: 1px dashed var(--red-dim);
+  }
+  .dossier-field .field-key { color: var(--dim-white); text-transform: uppercase; }
+  .dossier-field .field-value { color: var(--white); }
+  .dossier-field .field-value.redacted {
+    background: var(--red-bright);
+    color: var(--red-bright);
+    padding: 0 4px;
+    user-select: none;
+  }
+  .dossier-bio {
+    margin-top: 1.5rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--red-dim);
+  }
+  .dossier-bio-label {
+    font-family: 'VT323', monospace;
+    color: var(--red-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: 1.1rem;
+    margin-bottom: 0.4rem;
+  }
+  .dossier-bio-text { color: var(--silver); line-height: 1.6; font-size: 0.9rem; }
+  .edit-section {
+    margin-top: 2rem;
+    border-top: 1px solid var(--red-dim);
+    padding-top: 1.5rem;
+  }
+  .edit-section summary {
+    cursor: pointer;
+    font-family: 'VT323', monospace;
+    color: var(--red-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: 1.2rem;
+    list-style: none;
+  }
+  .edit-section summary::-webkit-details-marker { display: none; }
+  .edit-section summary::after { content: ' [+]'; color: var(--dim-white); font-size: 0.9rem; }
+  .edit-section[open] summary::after { content: ' [\2212]'; }
+  /* Crop-tool CSS lives in _profile_edit_panel.html now - shared with
+     the Settings tab's Profile sub-tab. */
+
+  /* Visiting-another-account actions - Report/Friend/Block live in the
+     3-dot menu (see _dots_menu.html), Message gets its own primary
+     button per that component's docstring (avoids showing "Message" in
+     both places). */
+  .profile-actions { display: flex; align-items: center; gap: 0.7rem; margin-top: 1rem; }
+
+  /* Self-reported status (see accounts.models.CustomUser.status) - a
+     dot + label, colored from the same red/black palette everything
+     else uses rather than introducing green/yellow into the theme. */
+  .status-value { display: inline-flex; align-items: center; gap: 0.4rem; }
+  button.status-value {
+    background: none;
+    border: 1px solid transparent;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: inherit;
+    padding: 2px 6px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  button.status-value:hover { border-color: var(--red-dim); background: rgba(204,0,0,0.08); }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+  .status-online .status-dot, .status-active .status-dot { background: var(--red-bright); box-shadow: 0 0 6px var(--red); }
+  .status-offline .status-dot, .status-deactivated .status-dot { background: var(--dim-white); }
+  .status-offline, .status-deactivated { color: var(--dim-white); }
+  /* Mute/Ban/Perm Ban override (mail.models.ModerationAction.status_label)
+     - a stronger red than the normal Online dot, since this isn't a
+     self-reported preference, it's an active punishment. */
+  .status-punished { color: var(--red-bright); text-shadow: 0 0 4px var(--red); }
+  .status-punished .status-dot { background: var(--red-bright); box-shadow: 0 0 8px var(--red); }
+  select#id_status {
+    width: 100%;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--white);
+    padding: 0.6rem 0.8rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.95rem;
+  }
+  select#id_status:focus { outline: none; border-color: var(--red-bright); }
+</style>
+{% endblock %}
+{% block content %}
+<div style="padding-top: 40px; max-width: 800px; margin: 0 auto;">
+    <div class="section-label">// AGENT PROFILE</div>
+    <div class="section-divider"></div>
+
+    <div class="dossier">
+        <div class="dossier-stamp-clip"><div class="dossier-stamp">CLASSIFIED</div></div>
+
+        <div class="dossier-top">
+            <div class="dossier-photo" id="dossier-photo-preview">
+                {% if profile_user.profile_picture %}
+                    <img src="{{ profile_user.profile_picture.url }}" alt="Profile Picture">
+                {% else %}
+                    <div class="no-pic">?</div>
+                {% endif %}
+            </div>
+
+            <div class="dossier-id">
+                <div class="dossier-name">{% include "_vip_name.html" with vip_user=profile_user %}{% include "_vip_badge.html" with vip_user=profile_user %}</div>
+                <div class="dossier-alias">// alias: {{ profile_user.alias|default:"—" }} //</div>
+
+                <div class="dossier-field">
+                    <span class="field-key">Rank</span>
+                    <span class="field-value">{{ profile_user.rank }}</span>
+                </div>
+                <div class="dossier-field">
+                    <span class="field-key">Role</span>
+                    <span class="field-value">{{ profile_user.role|upper }}</span>
+                </div>
+                <div class="dossier-field">
+                    <span class="field-key">Status</span>
+                    {% if active_moderation %}
+                    <span class="field-value status-value status-punished" title="Overrides the normal Online/Offline/Active/Deactivated status while this is in effect">
+                        <span class="status-dot"></span>{{ active_moderation.status_label }}
+                    </span>
+                    {% elif user == profile_user %}
+                    <button type="button" id="status-toggle-btn" class="field-value status-value status-{{ profile_user.status }}" title="Click to toggle Online/Offline - optional, changes nothing unless you click it">
+                        <span class="status-dot"></span><span id="status-toggle-label">{{ profile_user.get_status_display }}</span>
+                    </button>
+                    {% else %}
+                    <span class="field-value status-value status-{{ profile_user.status }}">
+                        <span class="status-dot"></span>{{ profile_user.get_status_display }}
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="dossier-field">
+                    <span class="field-key">Origin</span>
+                    <span class="field-value redacted">[REDACTED]</span>
+                </div>
+                <div class="dossier-field">
+                    <span class="field-key">Joined</span>
+                    <span class="field-value">{{ profile_user.date_joined|date:"Y" }}</span>
+                </div>
+                {% if profile_user.is_guest %}
+                <div class="dossier-field">
+                    <span class="field-key">Trial</span>
+                    <span class="field-value">{{ profile_user.guest_days_left }} day{{ profile_user.guest_days_left|pluralize }} left</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if user != profile_user %}
+        <div class="profile-actions">
+          {% if can_use_mail_with_them %}
+          <a href="{% url 'mail_social_dm_start' profile_user.username %}" class="donate-btn" style="font-size: 0.85rem;">[ MESSAGE ]</a>
+          {% endif %}
+          {% include "_dots_menu.html" with target_type="user" target_id=profile_user.id target_username=profile_user.username show_report=user.is_authenticated show_friend=can_use_mail_with_them show_mute=can_use_mail_with_them show_block=can_use_mail_with_them show_moderation=can_moderate_them show_fan_letter=show_fan_letter friend_state=friend_state pending_request_from_them=pending_request_from_them %}
+        </div>
+        {% endif %}
+
+        <div class="dossier-bio">
+            <div class="dossier-bio-label">// File Notes</div>
+            <div class="dossier-bio-text">{{ profile_user.bio|default:"No bio provided yet." }}</div>
+        </div>
+
+        {% if user == profile_user %}
+        <details class="edit-section">
+            <summary>// EDIT PROFILE</summary>
+            {% include "_profile_edit_panel.html" %}
+        </details>
+        {% endif %}
+    </div>
+</div>
+
+{% if user == profile_user %}
+<script>
+  // Optional one-click Online/Offline toggle (see accounts.views.
+  // toggle_status) - purely cosmetic, changes nothing unless clicked.
+  // The full "// EDIT PROFILE" Status dropdown below still covers all
+  // four states (including Active/Deactivated); this button only ever
+  // flips between Online and Offline.
+  (function () {
+    var btn = document.getElementById('status-toggle-btn');
+    var label = document.getElementById('status-toggle-label');
+    if (!btn || !label) return;
+
+    function getCookie(name) {
+      var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+
+    btn.addEventListener('click', function () {
+      fetch("{% url 'toggle_status' %}", {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data) return;
+          btn.className = 'field-value status-value status-' + data.status;
+          label.textContent = data.status_display;
+        });
+    });
+  })();
+</script>
+{% endif %}
+{% endblock %}

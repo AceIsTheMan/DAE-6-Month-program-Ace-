@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Moderate {{ target.username }} // Mail{% endblock %}
+
+{% block extra_head %}
+<style>
+  .mod-kind-tabs, .mod-unit-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.2rem; flex-wrap: wrap; }
+  .mod-kind-tab, .mod-unit-tab {
+    font-family: 'Share Tech Mono', monospace;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--dim-white);
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .mod-kind-tab.active, .mod-kind-tab:hover,
+  .mod-unit-tab.active, .mod-unit-tab:hover { border-color: var(--red-bright); color: var(--red-bright); background: rgba(204,0,0,0.1); }
+  .mod-duration-row { display: flex; gap: 1.2rem; align-items: flex-start; flex-wrap: wrap; }
+  .mod-duration-row > div:first-child { width: 120px; }
+  .mod-duration-row input[type="number"] { width: 100%; }
+  .mod-permban-note { color: var(--dim-white); font-size: 0.82rem; border: 1px dashed var(--red-dim); padding: 0.7rem; }
+  .mod-target-box { display: flex; align-items: center; gap: 0.7rem; border: 1px dashed var(--red-dim); padding: 0.7rem; margin-bottom: 1.2rem; }
+  .mod-target-avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid var(--red-dim); }
+  .mod-target-avatar-blank { display: flex; align-items: center; justify-content: center; background: var(--black); color: var(--red-dim); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="section-label">// MODERATE {{ target.username|upper }}</div>
+<div class="section-divider"></div>
+
+<div class="card">
+  <div class="mod-target-box">
+    {% if target.profile_picture %}
+      <img src="{{ target.profile_picture.url }}" class="mod-target-avatar" alt="">
+    {% else %}
+      <span class="mod-target-avatar mod-target-avatar-blank">?</span>
+    {% endif %}
+    <div>
+      <div class="report-target-name" style="color:var(--red-bright); font-family:'VT323',monospace; font-size:1.1rem; letter-spacing:1px;">{{ target.username }}</div>
+      <div style="color:var(--dim-white); font-size:0.72rem;">{{ target.role|upper }}</div>
+    </div>
+  </div>
+
+  <form method="post" id="moderation-form" novalidate>
+    {% csrf_token %}
+    <label>Action</label>
+    <div class="mod-kind-tabs">
+      <button type="button" class="mod-kind-tab" data-kind="mute">Mute</button>
+      <button type="button" class="mod-kind-tab" data-kind="ban">Ban</button>
+      <button type="button" class="mod-kind-tab" data-kind="perm_ban">Perm Ban</button>
+      <button type="button" class="mod-kind-tab" data-kind="warn">Warn</button>
+    </div>
+    <input type="hidden" name="kind" id="id_kind" value="{{ form.kind.value|default:'mute' }}">
+
+    <div id="mod-duration-fields" class="mod-duration-row">
+      <div>
+        <label for="id_duration_amount">Duration</label>
+        <input type="number" name="duration_amount" id="id_duration_amount" min="1" value="{{ form.duration_amount.value|default:'' }}">
+      </div>
+      <div>
+        <label>Unit</label>
+        <div class="mod-unit-tabs">
+          {% for u in duration_units %}<button type="button" class="mod-unit-tab" data-unit="{{ u }}">{{ u|title }}</button>{% endfor %}
+        </div>
+        <input type="hidden" name="duration_unit" id="id_duration_unit" value="{{ form.duration_unit.value|default:'' }}">
+      </div>
+    </div>
+    <div id="mod-permban-note" class="mod-permban-note" hidden>
+      Permanent - stays in effect until a Director/Admin unbans this account (see Report History &rarr; Bans/Mutes).
+    </div>
+    {% for error in form.non_field_errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <label for="{{ form.reason.id_for_label }}">Reason <span class="field-help" style="display:inline; text-transform:none;">(required - visible to other Admins/Directors)</span></label>
+    {{ form.reason }}
+    {% for error in form.reason.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <div style="margin-top: 1.2rem;">
+      <button type="submit" class="donate-btn" style="font-size: 1rem;">[ ISSUE ACTION ]</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  (function () {
+    var kindTabs = document.querySelectorAll('.mod-kind-tab');
+    var unitTabs = document.querySelectorAll('.mod-unit-tab');
+    var kindField = document.getElementById('id_kind');
+    var unitField = document.getElementById('id_duration_unit');
+    var durationFields = document.getElementById('mod-duration-fields');
+    var permbanNote = document.getElementById('mod-permban-note');
+
+    function setKind(kind) {
+      kindField.value = kind;
+      kindTabs.forEach(function (t) { t.classList.toggle('active', t.getAttribute('data-kind') === kind); });
+      durationFields.hidden = kind === 'perm_ban' || kind === 'warn';
+      permbanNote.hidden = kind !== 'perm_ban';
+    }
+    function setUnit(unit) {
+      unitField.value = unit;
+      unitTabs.forEach(function (t) { t.classList.toggle('active', t.getAttribute('data-unit') === unit); });
+    }
+
+    kindTabs.forEach(function (btn) {
+      btn.addEventListener('click', function () { setKind(btn.getAttribute('data-kind')); });
+    });
+    unitTabs.forEach(function (btn) {
+      btn.addEventListener('click', function () { setUnit(btn.getAttribute('data-unit')); });
+    });
+
+    setKind(kindField.value || 'mute');
+    setUnit(unitField.value || unitTabs[0].getAttribute('data-unit'));
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+<!-- Shared by forum/index.html (new post) and forum/edit_post.html (edit).
+     Expects a `form` (forum.forms.PostForm) in context, included right
+     after the <form> that holds _composer_fields.html. -->
+<script>
+  (function () {
+    var textarea = document.getElementById('{{ form.body.id_for_label }}');
+    if (!textarea) return;
+
+    // Wrap the current selection in the marker pair, or insert an empty
+    // pair with the cursor left in the middle when nothing's selected -
+    // plain textarea selection APIs, so this works the same everywhere
+    // (the old contenteditable + execCommand toolbar didn't).
+    document.querySelectorAll('.composer-toolbar button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var before = btn.getAttribute('data-before');
+        var after = btn.getAttribute('data-after');
+        var start = textarea.selectionStart;
+        var end = textarea.selectionEnd;
+        var value = textarea.value;
+        var selected = value.slice(start, end);
+
+        textarea.value = value.slice(0, start) + before + selected + after + value.slice(end);
+        textarea.focus();
+        textarea.selectionStart = start + before.length;
+        textarea.selectionEnd = start + before.length + selected.length;
+      });
+    });
+  })();
+
+  (function () {
+    // Local preview only - nothing here touches the server. Shows the
+    // picked file (image or video) in the composer before it's posted,
+    // via an object URL, and lets the poster clear the selection.
+    var input = document.getElementById('{{ form.media.id_for_label }}');
+    var box = document.getElementById('media-preview');
+    if (!input || !box) return;
+
+    var img = document.getElementById('media-preview-img');
+    var video = document.getElementById('media-preview-video');
+    var nameLabel = document.getElementById('media-preview-name');
+    var clearBtn = document.getElementById('media-preview-clear');
+    var currentUrl = null;
+
+    function reset() {
+      if (currentUrl) { URL.revokeObjectURL(currentUrl); currentUrl = null; }
+      box.hidden = true;
+      img.hidden = true;
+      video.hidden = true;
+      img.src = '';
+      video.src = '';
+      nameLabel.textContent = '';
+    }
+
+    input.addEventListener('change', function () {
+      var file = input.files && input.files[0];
+      if (!file) { reset(); return; }
+
+      if (currentUrl) URL.revokeObjectURL(currentUrl);
+      currentUrl = URL.createObjectURL(file);
+      nameLabel.textContent = file.name + ' (' + (file.size / (1024 * 1024)).toFixed(1) + ' MB)';
+
+      if (file.type.indexOf('video/') === 0) {
+        video.src = currentUrl;
+        video.hidden = false;
+        img.hidden = true;
+      } else {
+        img.src = currentUrl;
+        img.hidden = false;
+        video.hidden = true;
+      }
+      box.hidden = false;
+    });
+
+    clearBtn.addEventListener('click', function () {
+      input.value = '';
+      reset();
+    });
+  })();
+</script>

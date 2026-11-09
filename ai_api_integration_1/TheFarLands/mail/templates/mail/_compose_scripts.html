@@ -1,0 +1,96 @@
+<!-- Wires up mail/_compose.html: char counter, emoji insert (same
+     selection-splice trick as forum's marker toolbar - see forum/
+     templates/forum/_composer_scripts.html), and attachment preview (same
+     pattern as forum's, adapted to mail's ids). No GIF search here - GIFs
+     go through the [ ATTACH ] field or a pasted link (see forum.sanitize.
+     embed_image_links). Only ever included once per page, since only one
+     Social thread can be open at a time. -->
+<script>
+  (function () {
+    var MAX_LEN = 800;
+    var textarea = document.getElementById('mail-compose-body');
+    var counter = document.getElementById('mail-char-counter');
+    if (!textarea || !counter) return;
+
+    function updateCounter() {
+      var len = textarea.value.length;
+      counter.textContent = len + '/' + MAX_LEN;
+      counter.classList.toggle('warn', len >= MAX_LEN * 0.9 && len < MAX_LEN);
+      counter.classList.toggle('limit', len >= MAX_LEN);
+    }
+
+    // Auto-grow the compose box with its content instead of starting at
+    // the forum-sized 120px min-height (see .mail-compose-body in mail/
+    // index.html) - stays small for a one-line "lol" and only takes up
+    // more room once a message actually needs it, capped by that same
+    // rule's max-height (further growth scrolls inside the box instead
+    // of pushing the rest of the page down indefinitely).
+    function autoGrow() {
+      textarea.style.height = 'auto';
+      textarea.style.height = textarea.scrollHeight + 'px';
+    }
+    textarea.addEventListener('input', autoGrow);
+    autoGrow();
+
+    textarea.addEventListener('input', updateCounter);
+    updateCounter();
+
+    function insertAtCursor(text) {
+      var start = textarea.selectionStart, end = textarea.selectionEnd;
+      var value = textarea.value;
+      textarea.value = value.slice(0, start) + text + value.slice(end);
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = start + text.length;
+      updateCounter();
+    }
+
+    function getCookie(name) {
+      var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+
+    // Emoji picker - dropdown-panel open/close pattern.
+    var emojiToggle = document.getElementById('mail-emoji-toggle');
+    var emojiPanel = document.getElementById('mail-emoji-panel');
+
+    if (emojiToggle && emojiPanel) {
+      emojiToggle.addEventListener('click', function (e) { e.stopPropagation(); emojiPanel.classList.toggle('open'); });
+      emojiPanel.querySelectorAll('.emoji-pick').forEach(function (btn) {
+        btn.addEventListener('click', function () { insertAtCursor(btn.textContent); });
+      });
+      emojiPanel.addEventListener('click', function (e) { e.stopPropagation(); });
+    }
+    document.addEventListener('click', function () {
+      if (emojiPanel) emojiPanel.classList.remove('open');
+    });
+
+    // Attachment preview - same object-URL pattern as forum's composer.
+    var mediaInput = document.querySelector('input[name="media"]');
+    var previewBox = document.getElementById('mail-media-preview');
+    var previewImg = document.getElementById('mail-media-preview-img');
+    var previewVideo = document.getElementById('mail-media-preview-video');
+    var previewClear = document.getElementById('mail-media-preview-clear');
+    var currentUrl = null;
+    if (mediaInput && previewBox && previewImg && previewVideo && previewClear) {
+      mediaInput.addEventListener('change', function () {
+        var file = mediaInput.files && mediaInput.files[0];
+        if (!file) return;
+        if (currentUrl) URL.revokeObjectURL(currentUrl);
+        currentUrl = URL.createObjectURL(file);
+        if (file.type.indexOf('video/') === 0) {
+          previewVideo.src = currentUrl; previewVideo.hidden = false; previewImg.hidden = true;
+        } else {
+          previewImg.src = currentUrl; previewImg.hidden = false; previewVideo.hidden = true;
+        }
+        previewBox.hidden = false;
+      });
+      previewClear.addEventListener('click', function () {
+        mediaInput.value = '';
+        if (currentUrl) { URL.revokeObjectURL(currentUrl); currentUrl = null; }
+        previewBox.hidden = true;
+        previewImg.hidden = true;
+        previewVideo.hidden = true;
+      });
+    }
+  })();
+</script>

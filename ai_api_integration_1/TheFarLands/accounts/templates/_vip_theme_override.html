@@ -1,0 +1,213 @@
+{% load static %}
+{% comment %}
+VIP "Custom Theme" / "Background Themes" perks - re-skins the site's
+--red/--red-bright/--red-dim CSS variables (and, for Background Themes,
+the page background itself) for the CURRENTLY SIGNED-IN account's own
+view only. Every other visitor still sees Classic Red / the normal black
+background regardless of whose profile/post/page they're looking at - a
+personal display preference, not something that changes how this
+account's content looks to anyone else. See accounts.models.CustomUser.
+site_theme/background_theme and settings_view's 'vip' sub-tab.
+
+Included at the end of <head>, after the page's own main <style> block,
+in both base.html and home.html (home.html doesn't extend base.html, so
+it needs its own include, same split as _vip_badge.html/_vip_name.html).
+CSS custom properties/later rules cascade by source order for equal
+specificity, so appearing later than the base :root/body block is what
+lets this win.
+
+`is_home` - pass `with is_home=True` from home.html's own include only.
+Background Themes behaves differently there on purpose (see Kitty/Panda/
+Raging Crest below): home.html includes an image-heavy featured section
+of its own, so a tiled background pattern competes with it in a way it
+doesn't on every other (mostly text/card) page - Home keeps its own
+plain background (white for Kitty/Panda, the site's normal black for
+Raging Crest) while every other page gets the actual pattern.
+
+Set has no visual effect at all unless the account is a currently-active
+VIP (is_vip) AND picked something other than each perk's default - most
+accounts hit neither condition and this renders nothing.
+{% endcomment %}
+{% if user.is_authenticated and user.is_vip %}
+<style>
+  {% if user.background_theme == 'kitty' %}
+  /* Kitty Background forces its own full soft-pink-and-white palette,
+     taking precedence over Custom Theme (site_theme) below by sheer
+     source order - whatever site_theme is set to, this still wins.
+     Beyond the usual --red family, this also flips every "black panel"
+     surface (--black/--deep-black, used by .card and nearly every box/
+     input/avatar-blank across the site) and the semi-transparent nav/
+     dropdown/modal overlays (--overlay-rgb) light, then darkens the
+     text colors (--silver/--white/--dim-white) to match - without that
+     last part, the existing light-gray/white text would be unreadable
+     against its own now-light background. */
+  :root {
+    /* Against the new white/light-pink panels below, --red-bright is the
+       one used for most actual TEXT (headings, active nav, glows), so
+       it needs to be the most saturated/darkest of the three for
+       legibility - the reverse of the dark theme's "bright = lightest,
+       pops off black" relationship. Contrast-checked against white:
+       red-bright 6.3:1, red 4.62:1, red-dim 3.17:1 (border-only use, so
+       the lower bar is fine). */
+    --red: #d6336c;
+    --red-bright: #b8185f;
+    --red-dim: #e0689a;
+    --black: #ffe6f0;
+    --deep-black: #ffffff;
+    --silver: #5c2e45;
+    --white: #3d1f2e;
+    --dim-white: #a9678a;
+    --overlay-rgb: 255,255,255;
+  }
+  body {
+    {% if is_home %}
+    background: #fff;
+    {% else %}
+    background: #fff url('{% static "accounts/kitty_paw_bg.png" %}') repeat;
+    {% endif %}
+    color: #6b3850;
+  }
+  {% elif user.background_theme == 'panda' %}
+  /* Panda Background - same "light panel + patterned body" mechanism
+     as Kitty above, but grayscale/black instead of pink: accents go
+     black-on-white rather than pink-on-white. Contrast-checked against
+     white: red-bright 17.4:1, red 12.63:1, red-dim 4.95:1. */
+  :root {
+    --red: #333333;
+    --red-bright: #1a1a1a;
+    --red-dim: #707070;
+    --black: #f2f2f2;
+    --deep-black: #ffffff;
+    --silver: #2b2b2b;
+    --white: #111111;
+    --dim-white: #6e6e6e;
+    --overlay-rgb: 255,255,255;
+  }
+  body {
+    {% if is_home %}
+    background: #fff;
+    {% else %}
+    background: #fff url('{% static "accounts/panda_bg.png" %}') repeat;
+    {% endif %}
+    color: #1a1a1a;
+  }
+  {% elif user.background_theme == 'raging_crest' %}
+  /* The Raging Crest - unlike Kitty/Panda, this does NOT flip the site
+     to a light palette: the crest art is itself black-with-red, so it
+     just drops into the site's existing classic red/black look as a
+     textured body instead of flat black. No :root overrides at all -
+     being its own elif branch (ahead of site_theme below) is what
+     resets color to the TRUE defaults, taking precedence over Custom
+     Theme the same way Kitty/Panda do ("coloring will go back to red
+     and black like the default" - explicitly requested, not an
+     oversight). Home gets no body override at all - plain black is
+     already its default, exactly what this theme wants there too. */
+  {% if not is_home %}
+  body {
+    background: var(--deep-black) url('{% static "accounts/raging_crest_bg.png" %}') repeat;
+  }
+  {% endif %}
+  {% elif user.background_theme == 'galaxy_view' %}
+  /* Galaxy View - stays dark like Raging Crest (no light flip - the
+     nebula art is itself black with purple/pink glow), but unlike
+     Raging Crest it DOES override the --red accent family, to a purple
+     matching the art, taking precedence over Custom Theme the same way
+     every Background Theme does. Panels (--black/--deep-black/--silver/
+     --white/--dim-white) are left at their normal dark defaults - only
+     the accent color changes, same values as the royal_purple Custom
+     Theme option for consistency. */
+  :root {
+    --red: #7700cc;
+    --red-bright: #a64dff;
+    --red-dim: #330066;
+  }
+  {% if not is_home %}
+  body {
+    background: var(--deep-black) url('{% static "accounts/galaxy_view_bg.png" %}') repeat;
+  }
+  {% endif %}
+  {% elif user.background_theme == 'steampunk_room' %}
+  /* Steampunk Room - same dark-panel + colored-accent mechanism as
+     Galaxy View, golden-brown/bronze instead of purple to match the
+     art. */
+  :root {
+    --red: #a6722e;
+    --red-bright: #d9a441;
+    --red-dim: #4d3212;
+  }
+  {% if not is_home %}
+  body {
+    background: var(--deep-black) url('{% static "accounts/steampunk_room_bg.png" %}') repeat;
+  }
+  {% endif %}
+  {% elif user.background_theme == 'underwater_journey' %}
+  /* Underwater Journey - same dark-panel + colored-accent mechanism as
+     Galaxy View, glowing cyan instead of purple to match the art. */
+  :root {
+    --red: #00b8cc;
+    --red-bright: #33e6ff;
+    --red-dim: #004d57;
+  }
+  {% if not is_home %}
+  body {
+    background: var(--deep-black) url('{% static "accounts/underwater_journey_bg.png" %}') repeat;
+  }
+  {% endif %}
+  {% elif user.background_theme == 'moonlight' %}
+  /* Moonlight - same dark-panel + colored-accent mechanism as Galaxy
+     View, silver/moonlight-white instead of a saturated hue to match
+     the art (a bright white moon through dark clouds). Sized to the
+     full page width with height scaling proportionally (100% auto) -
+     on a page short enough that one copy covers it, that's all you
+     ever see; on a longer page, repeat-y tiles it again below so the
+     photo (not a flat --deep-black gap) keeps covering the page as you
+     scroll. Only vertical repeat - width is already an exact 100% match
+     to the body, so a horizontal copy would never be visible anyway. */
+  :root {
+    --red: #b0b0c0;
+    --red-bright: #e6e6f0;
+    --red-dim: #4a4a58;
+  }
+  {% if not is_home %}
+  body {
+    background: var(--deep-black) url('{% static "accounts/moonlight_bg.png" %}?v=3') repeat-y top center / 100% auto;
+  }
+  {% endif %}
+  {% elif user.background_theme == 'sunlight' %}
+  /* Sunlight - same real-photo mechanism as Moonlight (full-width fit,
+     repeat-y so a long page stays covered instead of hitting a flat
+     --deep-black gap). Gold accent, same hex as the Gold Custom Theme
+     option for consistency. */
+  :root {
+    --red: #cc9900;
+    --red-bright: #ffcc1a;
+    --red-dim: #665000;
+  }
+  {% if not is_home %}
+  body {
+    background: var(--deep-black) url('{% static "accounts/sunlight_bg.png" %}') repeat-y top center / 100% auto;
+  }
+  {% endif %}
+  {% elif user.site_theme and user.site_theme != 'classic_red' %}
+  :root {
+    {% if user.site_theme == 'toxic_green' %}
+    --red: #00cc44;
+    --red-bright: #1aff6a;
+    --red-dim: #006622;
+    {% elif user.site_theme == 'cyber_blue' %}
+    --red: #0066cc;
+    --red-bright: #1a8cff;
+    --red-dim: #003366;
+    {% elif user.site_theme == 'royal_purple' %}
+    --red: #7700cc;
+    --red-bright: #a64dff;
+    --red-dim: #330066;
+    {% elif user.site_theme == 'gold' %}
+    --red: #cc9900;
+    --red-bright: #ffcc1a;
+    --red-dim: #665000;
+    {% endif %}
+  }
+  {% endif %}
+</style>
+{% endif %}

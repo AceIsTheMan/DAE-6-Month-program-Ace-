@@ -1,0 +1,154 @@
+{% load static %}
+{% comment %}
+Mail/notification (envelope) and Settings (gear) nav icons - included from
+both accounts/templates/base.html and accounts/templates/home.html (which
+doesn't extend base.html, so this partial has to be fully self-contained
+and includable from either). Hidden entirely for guest ("Hacker")
+accounts - guests can't use any part of Mail (see mail.views.
+_require_mail_access).
+
+Glyphs are plain monochrome Unicode, matching the site's existing
+convention (see forum/templates/forum/index.html:154-155's comment on
+"plain text glyphs, not color emoji"):
+  mail/notification trigger - envelope (u2709)
+  settings/gear             - gear (u2699)
+  Directive (person icon)   - chess pawn (u265F, Chess Symbols is
+                               monochrome by definition)
+  unread indicator          - filled circle (u25CF)
+
+Currency/"Cipher Token" is the one deliberate exception to "no raster
+icons" above - it uses the actual branded coin art
+(accounts/static/accounts/cipher_token.gif, see also the Store page's
+token-square and token-pack cards) instead of a generic glyph, now that
+Cipher Tokens are a real, named thing rather than a placeholder "Digit".
+{% endcomment %}
+{% if user.is_authenticated and not user.is_guest %}
+<style>
+  /* Duplicated from base.html's global primitive (harmless - identical
+     rules, home.html doesn't extend base.html so this partial has to
+     carry its own copy to render correctly there too). */
+  .dropdown-panel {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.4rem;
+    min-width: 230px;
+    background: rgba(var(--overlay-rgb),0.95);
+    border: 1px solid var(--red);
+    box-shadow: 0 0 20px rgba(204,0,0,0.4);
+    z-index: 2000;
+  }
+  .dropdown-panel.open { display: block; }
+  .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.85rem 1.1rem;
+    background: none;
+    border: none;
+    border-bottom: 1px dashed var(--red-dim);
+    color: var(--silver);
+    text-decoration: none;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.95rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: left;
+    cursor: pointer;
+  }
+  .dropdown-item:last-child { border-bottom: none; }
+  .dropdown-item:hover { background: rgba(204,0,0,0.15); color: var(--red-bright); }
+  .dropdown-item.inert { cursor: default; color: var(--dim-white); }
+  .dropdown-item.inert:hover { background: none; color: var(--dim-white); }
+  .dropdown-token-icon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    image-rendering: pixelated;
+  }
+  .dropdown-badge { color: var(--red-bright); margin-left: auto; text-shadow: 0 0 4px var(--red); }
+  .nav-icon-wrap { position: relative; }
+  .nav-icon-btn {
+    background: none;
+    border: 1px solid var(--red-dim);
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    /* Fixed width, not just padding - the envelope and gear glyphs have
+       different intrinsic widths, so padding alone left the mail icon's
+       box narrower than the gear's. */
+    min-width: 2.4rem;
+    text-align: center;
+    font-size: 1.25rem;
+    line-height: 1;
+    color: var(--dim-white);
+    padding: 0.3rem 0.5rem;
+    position: relative;
+    box-sizing: border-box;
+    transition: color 0.2s, text-shadow 0.2s, border-color 0.2s, background 0.2s;
+  }
+  .nav-icon-btn:hover, .nav-icon-btn.open {
+    color: var(--red-bright);
+    text-shadow: 0 0 6px var(--red);
+    border-color: var(--red-bright);
+    background: rgba(204,0,0,0.1);
+  }
+  .nav-icon-badge {
+    position: absolute;
+    top: -4px;
+    right: -6px;
+    min-width: 15px;
+    height: 15px;
+    padding: 0 2px;
+    border-radius: 8px;
+    background: var(--red-bright);
+    box-shadow: 0 0 6px var(--red);
+    color: var(--deep-black);
+    font-size: 0.65rem;
+    line-height: 15px;
+    text-align: center;
+    font-family: 'Share Tech Mono', monospace;
+  }
+</style>
+<li class="nav-auth-link nav-icon-wrap">
+  <button type="button" class="nav-icon-btn" id="mail-nav-trigger" aria-label="Mail">
+    {# More than 10 unread just shows "!" instead of a growing number - see mail.context_processors.notification_counts. #}
+    &#9993;{% if unread_mail_count %}<span class="nav-icon-badge">{% if unread_mail_count > 10 %}!{% else %}{{ unread_mail_count }}{% endif %}</span>{% endif %}
+  </button>
+  <div class="dropdown-panel" id="mail-nav-dropdown">
+    {# ?cutscene=1 marks this as the one entry point the boot-up terminal splash is allowed to play from - see mail/templates/mail/index.html's script. Every other way into Mail (sidebar tabs, search, pagination, a bookmark) omits it and never plays the splash. #}
+    <a href="{% url 'mail_inbox' %}?cutscene=1" class="dropdown-item">&#9993; Mail</a>
+    <a href="{% url 'mail_directives' %}" class="dropdown-item">
+      &#9823; Directive
+      {% if unread_directive_count %}<span class="dropdown-badge">&#9679;</span>{% endif %}
+    </a>
+    <a href="{% url 'mail_tokens' %}" class="dropdown-item">
+      <img src="{% static 'accounts/cipher_token.gif' %}" alt="" class="dropdown-token-icon">
+      <span>Cipher Tokens &mdash; <span class="token-amount">{{ currency_balance|default:"0" }}</span></span>
+    </a>
+  </div>
+</li>
+<li class="nav-auth-link nav-icon-wrap">
+  <a href="{% url 'settings_page' %}" class="nav-icon-btn" aria-label="Settings">&#9881;</a>
+</li>
+<script>
+  (function () {
+    var trigger = document.getElementById('mail-nav-trigger');
+    var panel = document.getElementById('mail-nav-dropdown');
+    if (!trigger || !panel) return;
+    trigger.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var willOpen = !panel.classList.contains('open');
+      document.querySelectorAll('.dropdown-panel.open').forEach(function (p) { p.classList.remove('open'); });
+      document.querySelectorAll('.nav-icon-btn.open').forEach(function (t) { t.classList.remove('open'); });
+      if (willOpen) { panel.classList.add('open'); trigger.classList.add('open'); }
+    });
+    document.addEventListener('click', function () {
+      panel.classList.remove('open');
+      trigger.classList.remove('open');
+    });
+  })();
+</script>
+{% endif %}

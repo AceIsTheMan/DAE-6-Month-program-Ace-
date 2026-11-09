@@ -1,0 +1,158 @@
+<!-- Shared helpers behind every terminal-style cutscene on the site (the
+     Mail boot-up splash has its own, separate, simpler copy - this is for
+     the bigger family: "C1" the secret breach cutscene, and the
+     role-based create/login cutscenes in _role_cutscenes.html). Exposed
+     as window.TFL_Cutscene so each cutscene partial's own IIFE can call
+     into it without re-defining the same typing/dot-loading logic.
+     Must be included BEFORE any partial that uses it (script execution
+     order matters - this just defines functions, it doesn't run
+     anything itself). -->
+<script>
+  window.TFL_Cutscene = (function () {
+    function shuffle(arr) {
+      var a = arr.slice();
+      for (var i = a.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+      }
+      return a;
+    }
+
+    function typeLine(el, text, delay, done) {
+      el.textContent = '';
+      var i = 0;
+      (function next() {
+        if (i < text.length) {
+          el.textContent += text[i];
+          i++;
+          setTimeout(next, delay);
+        } else if (done) {
+          done();
+        }
+      })();
+    }
+
+    // Cycles a span through '.' -> '..' -> '...' a few times, like a real
+    // loading indicator, instead of just displaying three static dots.
+    function animateDots(dotsEl, done, cycles) {
+      var frames = ['.', '..', '...'];
+      var frame = 0;
+      var cyclesLeft = cycles || 2;
+      var tick = setInterval(function () {
+        dotsEl.textContent = frames[frame % 3];
+        frame++;
+        if (frame % 3 === 0) {
+          cyclesLeft--;
+          if (cyclesLeft <= 0) {
+            clearInterval(tick);
+            dotsEl.textContent = '...';
+            if (done) done();
+          }
+        }
+      }, 220);
+    }
+
+    // Every "..." anywhere in a terminal line plays as an animated loading
+    // indicator instead of static dots - text before/after it (if any,
+    // e.g. "<Clearing Breach ...>"'s trailing ">") still types normally.
+    function typeAnimatedLine(el, text, done, cycles) {
+      var dotsAt = text.indexOf('...');
+      if (dotsAt === -1) {
+        typeLine(el, text, 30, done);
+        return;
+      }
+      var prefix = text.slice(0, dotsAt);
+      var suffix = text.slice(dotsAt + 3);
+      var prefixEl = document.createElement('span');
+      var dotsEl = document.createElement('span');
+      var suffixEl = document.createElement('span');
+      el.appendChild(prefixEl);
+      el.appendChild(dotsEl);
+      el.appendChild(suffixEl);
+      typeLine(prefixEl, prefix, 30, function () {
+        animateDots(dotsEl, function () {
+          if (suffix) {
+            typeLine(suffixEl, suffix, 30, done);
+          } else if (done) {
+            done();
+          }
+        }, cycles);
+      });
+    }
+
+    // Rapidly scrambles el's own text into glitch characters for
+    // durationMs, then empties it and hides it (display:none) - "glitch
+    // out and disappear", not a smooth fade.
+    function glitchOut(el, originalText, durationMs, done) {
+      var glitchChars = '!@#$%^&*▓▒░<>/\\|~01';
+      var stepMs = 40;
+      var elapsed = 0;
+      var tick = setInterval(function () {
+        var scrambled = '';
+        for (var i = 0; i < originalText.length; i++) {
+          scrambled += Math.random() < 0.5
+            ? originalText[i]
+            : glitchChars[Math.floor(Math.random() * glitchChars.length)];
+        }
+        el.textContent = scrambled;
+        elapsed += stepMs;
+        if (elapsed >= durationMs) {
+          clearInterval(tick);
+          el.textContent = '';
+          el.style.display = 'none';
+          if (done) done();
+        }
+      }, stepMs);
+    }
+
+    // Same rapid character-scramble as glitchOut, but restores the
+    // original text afterward instead of erasing/hiding it - a quick
+    // "flicker of corruption" on text that needs to keep being there.
+    function glitchFlicker(el, originalText, durationMs, done) {
+      var glitchChars = '!@#$%^&*▓▒░<>/\\|~01';
+      var stepMs = 30;
+      var elapsed = 0;
+      var tick = setInterval(function () {
+        var scrambled = '';
+        for (var i = 0; i < originalText.length; i++) {
+          scrambled += Math.random() < 0.5
+            ? originalText[i]
+            : glitchChars[Math.floor(Math.random() * glitchChars.length)];
+        }
+        el.textContent = scrambled;
+        elapsed += stepMs;
+        if (elapsed >= durationMs) {
+          clearInterval(tick);
+          el.textContent = originalText;
+          if (done) done();
+        }
+      }, stepMs);
+    }
+
+    // Steps el's text color through `colors` in order, intervalMs apart,
+    // settling on the last one - a "glitching between colors" effect.
+    function colorCycle(el, colors, intervalMs, done) {
+      var i = 0;
+      el.style.color = colors[0];
+      var tick = setInterval(function () {
+        i++;
+        if (i >= colors.length) {
+          clearInterval(tick);
+          if (done) done();
+          return;
+        }
+        el.style.color = colors[i];
+      }, intervalMs);
+    }
+
+    return {
+      shuffle: shuffle,
+      typeLine: typeLine,
+      animateDots: animateDots,
+      typeAnimatedLine: typeAnimatedLine,
+      glitchOut: glitchOut,
+      glitchFlicker: glitchFlicker,
+      colorCycle: colorCycle,
+    };
+  })();
+</script>

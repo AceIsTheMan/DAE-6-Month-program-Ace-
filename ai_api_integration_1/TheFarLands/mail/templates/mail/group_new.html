@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}New Group // Mail{% endblock %}
+{% block content %}
+<div class="section-label">// NEW GROUP</div>
+<div class="section-divider"></div>
+<div class="card">
+  <form method="post">
+    {% csrf_token %}
+    <label for="{{ form.title.id_for_label }}">Group name (optional)</label>
+    {{ form.title }}
+    {% for error in form.title.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <label>Members <span class="field-help" style="display:inline; text-transform:none;">(up to {{ group_invite_max }} others, {{ group_max_members }} total including you)</span></label>
+    {% include "mail/_recipient_picker.html" with recipient_mode="social" max_recipients=group_invite_max %}
+
+    <div style="margin-top: 1.2rem;">
+      <button type="submit" class="donate-btn">[ CREATE GROUP ]</button>
+    </div>
+  </form>
+</div>
+{% include "mail/_recipient_picker_scripts.html" %}
+{% endblock %}

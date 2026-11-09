@@ -1,0 +1,685 @@
+{% load static %}
+{% comment %}
+  Site-wide floating AI assistant widget (David the Dog / F.R.E.D.) -
+  included at the end of <body> in both base.html and home.html (home.html
+  doesn't extend base.html, same duplication every other site-wide partial
+  here needs - see _vip_theme_override.html's doc comment for why).
+
+  This is the UI shell only for now: a toggle button fixed bottom-right
+  that expands a chat panel anchored to that same corner (transform-origin:
+  bottom right, so it visually grows out of the button rather than
+  appearing from nowhere). No persona art, no category Q&A, and no real
+  chat backend yet - those land once the character images and content are
+  ready. z-index 9000 - below the Exclusive-content guard overlay's 99999
+  (forum/templates/forum/index.html) so that full-screen takeover still
+  wins if both were ever somehow visible at once, but above everything
+  else on the page (nav is 3000).
+{% endcomment %}
+<div id="ai-assistant-widget" class="ai-assistant-widget">
+  <button type="button" id="ai-assistant-toggle" class="ai-assistant-toggle" aria-label="Open assistant chat" aria-expanded="false">
+    <span class="ai-assistant-toggle-label">// CHAT</span>
+  </button>
+  <div id="ai-assistant-panel" class="ai-assistant-panel" role="dialog" aria-label="Assistant chat" aria-hidden="true">
+    <div class="ai-assistant-header">
+      <span class="ai-assistant-title">// ASSISTANT</span>
+      <button type="button" id="ai-assistant-close" class="ai-assistant-close" aria-label="Close chat">&times;</button>
+    </div>
+    <div class="ai-assistant-body">
+      <div id="ai-assistant-picker" class="ai-assistant-picker">
+        <button type="button" class="ai-persona-option" data-persona="fred" aria-label="F.R.E.D.">
+          <img src="{% static 'accounts/fred_frame1.png' %}" alt="">
+        </button>
+        <button type="button" class="ai-persona-option" data-persona="david" data-avatar-src="{% static 'accounts/david_idle.gif' %}?v=3" aria-label="David">
+          <img src="{% static 'accounts/david_frame1.png' %}?v=3" alt="">
+        </button>
+      </div>
+      <div id="ai-assistant-chat" class="ai-assistant-chat" hidden>
+        <div class="ai-assistant-chat-top">
+          <button type="button" id="ai-assistant-back" class="ai-assistant-back">&larr; back</button>
+        </div>
+        <div class="ai-assistant-chat-avatar-row">
+          <div id="ai-assistant-chat-avatar-wrap" class="ai-assistant-chat-avatar-wrap">
+            <img id="ai-assistant-chat-avatar" class="ai-assistant-chat-avatar" src="" alt="">
+          </div>
+        </div>
+        <div id="ai-chat-thread" class="ai-chat-thread"></div>
+        <form id="ai-chat-form" class="ai-chat-form" data-user-pfp="{% if user.is_authenticated and user.profile_picture %}{{ user.profile_picture.url }}{% endif %}">
+          {% csrf_token %}
+          <input type="text" id="ai-chat-input" class="ai-chat-input" placeholder="Type a message..." autocomplete="off" maxlength="500">
+          <button type="submit" class="ai-chat-send" aria-label="Send">&gt;</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+  .ai-assistant-widget {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    z-index: 9000;
+  }
+  .ai-assistant-toggle {
+    display: block;
+    width: min(340px, calc(100vw - 2.5rem));
+    box-sizing: border-box;
+    padding: 0.7rem 0;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    border-radius: 0;
+    color: var(--red-bright);
+    box-shadow: 0 0 12px rgba(204, 0, 0, 0.45);
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .ai-assistant-toggle-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    letter-spacing: 2px;
+  }
+  .ai-assistant-toggle:hover {
+    border-color: var(--red-bright);
+    box-shadow: 0 0 20px rgba(255, 26, 26, 0.6);
+  }
+  .ai-assistant-widget.open .ai-assistant-toggle {
+    display: none;
+  }
+  .ai-assistant-panel {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: min(340px, calc(100vw - 2.5rem));
+    height: min(460px, calc(100vh - 7rem));
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    box-shadow: 0 0 28px rgba(204, 0, 0, 0.35);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transform-origin: bottom right;
+    transform: scale(0.15);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.25s ease, opacity 0.2s ease;
+  }
+  .ai-assistant-widget.open .ai-assistant-panel {
+    transform: scale(1);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .ai-assistant-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--red-dim);
+    flex-shrink: 0;
+  }
+  .ai-assistant-title {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--red-bright);
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+  }
+  .ai-assistant-close {
+    background: none;
+    border: none;
+    color: var(--dim-white);
+    font-size: 1.3rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.2rem;
+  }
+  .ai-assistant-close:hover { color: var(--red-bright); }
+  .ai-assistant-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+  .ai-assistant-picker {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  /* .ai-assistant-picker/.ai-assistant-chat both set their own `display`
+     below, which (equal specificity, author stylesheet) beats the
+     browser default `[hidden] { display: none }` - without this, toggling
+     the `hidden` attribute in JS does nothing visible. */
+  #ai-assistant-picker[hidden], #ai-assistant-chat[hidden] {
+    display: none !important;
+  }
+  .ai-persona-option {
+    flex: 0 0 50%;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--black);
+    border: none;
+    border-bottom: 1px solid var(--red-dim);
+    cursor: pointer;
+    padding: 1.25rem;
+    box-sizing: border-box;
+    transition: background 0.2s ease;
+  }
+  .ai-persona-option:last-child { border-bottom: none; }
+  .ai-persona-option:hover img { filter: drop-shadow(0 0 20px rgba(255, 26, 26, 0.7)); }
+  .ai-persona-option img {
+    max-width: 88%;
+    max-height: 88%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 14px rgba(255, 26, 26, 0.4));
+  }
+  .ai-persona-option[data-persona="fred"] {
+    padding: 0.5rem;
+  }
+  .ai-persona-option[data-persona="fred"] img {
+    max-width: 96%;
+    max-height: 96%;
+  }
+  .ai-assistant-chat {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 0.6rem 0.75rem 0.75rem;
+  }
+  .ai-assistant-chat-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    margin-bottom: 0.4rem;
+  }
+  .ai-assistant-back {
+    background: none;
+    border: none;
+    color: var(--dim-white);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    padding: 0;
+  }
+  .ai-assistant-back:hover { color: var(--red-bright); }
+  .ai-assistant-chat-avatar-row {
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-bottom: 0.5rem;
+  }
+  /* The frame is a visual status indicator, not just decoration: a slow
+     pulse while idle, a steadier brighter glow while actually replying
+     - so you can tell at a glance which state the assistant is in
+     without reading the chat log. Toggled via .is-idle/.is-replying,
+     see makeFredAnimator's callers and playDavidReply/playFredReply. */
+  .ai-assistant-chat-avatar-wrap {
+    width: 120px;
+    height: 120px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--red-dim);
+    transition: border-color 0.3s ease, box-shadow 0.3s ease, width 0.2s ease, height 0.2s ease;
+  }
+  /* David's art is a wide, short composition (ears/paws spread out) -
+     a square frame like F.R.E.D.'s skull uses would letterbox it badly.
+     david_frame*.png/david_idle.gif are pre-cropped tight to the actual
+     artwork (585x331, ~1.77:1) specifically so this ratio matches what
+     object-fit:contain sees - matching the wrap to a tighter CONTENT
+     bbox alone doesn't help, since contain scales off the image's full
+     canvas dimensions, not where the visible art happens to sit in it. */
+  .ai-assistant-chat-avatar-wrap.persona-david {
+    width: 160px;
+    height: 90px;
+  }
+  .ai-assistant-chat-avatar-wrap.is-idle {
+    animation: ai-avatar-idle-pulse 2.4s ease-in-out infinite;
+  }
+  .ai-assistant-chat-avatar-wrap.is-replying {
+    border-color: var(--red-bright);
+    box-shadow: 0 0 20px rgba(255, 26, 26, 0.65);
+  }
+  @keyframes ai-avatar-idle-pulse {
+    0%, 100% { border-color: var(--red-dim); box-shadow: 0 0 6px rgba(204, 0, 0, 0.25); }
+    50% { border-color: var(--red-bright); box-shadow: 0 0 16px rgba(255, 26, 26, 0.5); }
+  }
+  .ai-assistant-chat-avatar {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 0 10px rgba(255, 26, 26, 0.45));
+  }
+  .ai-assistant-placeholder {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--dim-white);
+    font-size: 0.85rem;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  /* -- chat thread: F.R.E.D. left (no avatar - his face is already
+     shown above), user right (their real profile picture, or a "?"
+     placeholder if they have none) -- */
+  .ai-chat-thread {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.25rem 0.1rem;
+  }
+  .ai-chat-msg {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.4rem;
+    max-width: 85%;
+  }
+  .ai-chat-msg.assistant { align-self: flex-start; }
+  .ai-chat-msg.user { align-self: flex-end; flex-direction: row-reverse; }
+  .ai-chat-msg-pfp {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    border: 1px solid var(--red-dim);
+  }
+  .ai-chat-msg-pfp.no-pic {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--deep-black);
+    color: var(--dim-white);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+  }
+  .ai-chat-bubble {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    line-height: 1.4;
+    padding: 0.5rem 0.65rem;
+    border: 1px solid var(--red-dim);
+    color: var(--white);
+    word-wrap: break-word;
+    white-space: pre-wrap;
+  }
+  .ai-chat-msg.user .ai-chat-bubble {
+    background: rgba(204, 0, 0, 0.12);
+    border-color: var(--red-bright);
+  }
+  .ai-chat-form {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.6rem;
+    flex-shrink: 0;
+  }
+  .ai-chat-input {
+    flex: 1;
+    min-width: 0;
+    background: var(--deep-black);
+    border: 1px solid var(--red-dim);
+    color: var(--white);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    padding: 0.5rem 0.6rem;
+    box-sizing: border-box;
+  }
+  .ai-chat-input:focus { outline: none; border-color: var(--red-bright); }
+  .ai-chat-send {
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--red-bright);
+    font-family: 'Share Tech Mono', monospace;
+    padding: 0 0.9rem;
+    cursor: pointer;
+  }
+  .ai-chat-send:hover { border-color: var(--red-bright); }
+</style>
+<script>
+  (function () {
+    var widget = document.getElementById('ai-assistant-widget');
+    var toggle = document.getElementById('ai-assistant-toggle');
+    var closeBtn = document.getElementById('ai-assistant-close');
+    var panel = document.getElementById('ai-assistant-panel');
+    var picker = document.getElementById('ai-assistant-picker');
+    var chatView = document.getElementById('ai-assistant-chat');
+    var chatAvatar = document.getElementById('ai-assistant-chat-avatar');
+    var chatAvatarWrap = document.getElementById('ai-assistant-chat-avatar-wrap');
+    var chatThread = document.getElementById('ai-chat-thread');
+    var chatForm = document.getElementById('ai-chat-form');
+    var chatInput = document.getElementById('ai-chat-input');
+    var backBtn = document.getElementById('ai-assistant-back');
+    if (!widget || !toggle || !panel) return;
+
+    var userPfpUrl = chatForm ? chatForm.getAttribute('data-user-pfp') : '';
+    var FRED_FRAME1_SRC = "{% static 'accounts/fred_frame1.png' %}";
+    var FRED_FRAME2_SRC = "{% static 'accounts/fred_frame2.png' %}";
+    var FRED_FRAME3_SRC = "{% static 'accounts/fred_frame3.png' %}";
+    var FRED_FRAME5_SRC = "{% static 'accounts/fred_frame5.png' %}?v=2";
+
+    // F.R.E.D.'s whole animation is a sequence of discrete frames with
+    // per-step durations (ms) - not a baked GIF - so both idle and
+    // "replying" can share one generic sequencer (makeFredAnimator
+    // below). Idle loops forever; the reply sequence plays once and
+    // gets cut short whenever the actual reply finishes (see
+    // playFredReply) - its total (13s) comfortably covers typingMs's
+    // max (7s) so it's never seen running out mid-reply in practice.
+    var FRED_IDLE_SEQUENCE = [
+      { src: FRED_FRAME1_SRC, duration: 3000 },
+      { src: FRED_FRAME2_SRC, duration: 3000 },
+      { src: FRED_FRAME3_SRC, duration: 2000 },
+      { src: FRED_FRAME5_SRC, duration: 2000 },
+      { src: FRED_FRAME3_SRC, duration: 2000 },
+      { src: FRED_FRAME5_SRC, duration: 2000 },
+      { src: FRED_FRAME3_SRC, duration: 2000 },
+      { src: FRED_FRAME5_SRC, duration: 2000 },
+    ];
+    var FRED_REPLY_SEQUENCE = [
+      { src: FRED_FRAME2_SRC, duration: 3000 },
+      { src: FRED_FRAME3_SRC, duration: 2000 },
+      { src: FRED_FRAME5_SRC, duration: 2000 },
+      { src: FRED_FRAME3_SRC, duration: 2000 },
+      { src: FRED_FRAME5_SRC, duration: 2000 },
+      { src: FRED_FRAME3_SRC, duration: 2000 },
+    ];
+
+    // Drives one <img> through a sequence of {src, duration} steps.
+    // loop=true restarts from the first step after the last; loop=false
+    // just stops after the last step. Each animator has its own
+    // generation counter so an older sequence's pending setTimeout can
+    // never clobber a newer one on the SAME image - switching persona,
+    // resetting the chat, or a reply landing all bump it. Separate
+    // animator instances (picker thumbnail vs. chat avatar) are fully
+    // independent of each other.
+    function makeFredAnimator(imgEl) {
+      var gen = 0;
+      var timer = null;
+      function stop() {
+        gen++;
+        clearTimeout(timer);
+        timer = null;
+      }
+      function play(steps, loop) {
+        var myGen = ++gen;
+        var i = 0;
+        function step() {
+          if (myGen !== gen) return;
+          if (i >= steps.length) {
+            if (!loop) return;
+            i = 0;
+          }
+          var s = steps[i++];
+          if (imgEl) imgEl.src = s.src;
+          timer = setTimeout(step, s.duration);
+        }
+        step();
+      }
+      return { play: play, stop: stop };
+    }
+
+    var fredChatAnimator = makeFredAnimator(chatAvatar);
+
+    function getCookie(name) {
+      var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+
+    // accounts.views.assistant_reply - scripted Q&A matching against
+    // accounts.assistant_content.QA_ENTRIES. Resolves to a matched
+    // reply string, or null if nothing matched / the request failed -
+    // callers fall back to their own FRED_/DAVID_PLACEHOLDER_REPLIES in
+    // that case, same as if this endpoint didn't exist.
+    function fetchAssistantReply(persona, message) {
+      return fetch("{% url 'assistant_reply' %}", {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({ persona: persona, message: message }),
+      })
+        .then(function (r) { return r.ok ? r.json() : { reply: null }; })
+        .then(function (data) { return data && data.reply ? data.reply : null; })
+        .catch(function () { return null; });
+    }
+
+    // Fallback lines only - used when assistant_reply finds no scripted
+    // match for what was typed, or the request itself fails.
+    var FRED_PLACEHOLDER_REPLIES = [
+      "Acknowledged.",
+      "Noted. Standing by.",
+      "Still coming online, operative. Full capability isn't live yet - try me again soon.",
+      "Channel's quiet on my end right now. Give it another shot shortly.",
+      "Logged. My response systems aren't fully wired up yet, but I'm listening.",
+    ];
+
+    var DAVID_IDLE_SRC = "{% static 'accounts/david_idle.gif' %}?v=3";
+    var DAVID_FRAME1_SRC = "{% static 'accounts/david_frame1.png' %}?v=3";
+    var DAVID_FRAME3_SRC = "{% static 'accounts/david_frame3.png' %}?v=3";
+    var DAVID_FRAME4_SRC = "{% static 'accounts/david_frame4.png' %}?v=3";
+    var DAVID_PLACEHOLDER_REPLIES = [
+      "Woof!",
+      "Bark bark - noted!",
+      "Roof! Still getting my paws under me here, full replies coming soon.",
+      "Woof woof - give me another minute to get set up properly.",
+      "Roof roof! Hang tight a little longer - I'm still booting up my full conversation abilities, almost there, promise!",
+    ];
+
+    var activePersona = null;
+    var fredReplyTimer = null;
+    var davidReplyTimer = null;
+    var davidFrame3Timer = null;
+    var davidTalkInterval = null;
+    // Bumped on every send and captured per-call so a reply fetch that's
+    // still in flight when a newer message is sent (or the chat is
+    // reset/closed) knows it's stale and quietly does nothing instead of
+    // appending a late, out-of-order message.
+    var fredRequestSeq = 0;
+    var davidRequestSeq = 0;
+
+    function clearFredTimers() {
+      clearTimeout(fredReplyTimer);
+      fredReplyTimer = null;
+      fredChatAnimator.stop();
+    }
+
+    function clearDavidTimers() {
+      clearTimeout(davidReplyTimer);
+      clearTimeout(davidFrame3Timer);
+      clearInterval(davidTalkInterval);
+      davidReplyTimer = null;
+      davidFrame3Timer = null;
+      davidTalkInterval = null;
+    }
+
+    function resetChat() {
+      clearFredTimers();
+      clearDavidTimers();
+      fredRequestSeq++;
+      davidRequestSeq++;
+      activePersona = null;
+      if (chatThread) chatThread.innerHTML = '';
+      if (chatInput) chatInput.value = '';
+      if (chatAvatarWrap) chatAvatarWrap.classList.remove('is-idle', 'is-replying', 'persona-fred', 'persona-david');
+    }
+
+    // Avatar frame doubles as a status indicator - pulsing border while
+    // idle, a steadier brighter glow while actually composing a reply.
+    function setAvatarState(state) {
+      if (!chatAvatarWrap) return;
+      chatAvatarWrap.classList.toggle('is-idle', state === 'idle');
+      chatAvatarWrap.classList.toggle('is-replying', state === 'replying');
+    }
+
+    function appendMessage(sender, text) {
+      if (!chatThread) return;
+      var msg = document.createElement('div');
+      msg.className = 'ai-chat-msg ' + sender;
+      if (sender === 'user') {
+        var pfp;
+        if (userPfpUrl) {
+          pfp = document.createElement('img');
+          pfp.className = 'ai-chat-msg-pfp';
+          pfp.src = userPfpUrl;
+          pfp.alt = '';
+        } else {
+          pfp = document.createElement('div');
+          pfp.className = 'ai-chat-msg-pfp no-pic';
+          pfp.textContent = '?';
+        }
+        msg.appendChild(pfp);
+      }
+      var bubble = document.createElement('div');
+      bubble.className = 'ai-chat-bubble';
+      bubble.textContent = text;
+      msg.appendChild(bubble);
+      chatThread.appendChild(msg);
+      chatThread.scrollTop = chatThread.scrollHeight;
+    }
+
+    function playFredReply(userText) {
+      clearFredTimers();
+      var requestId = ++fredRequestSeq;
+      // start the "replying" sequence right away - don't wait on the
+      // fetch, which should resolve near-instantly anyway (local
+      // scripted matching, not a real network-bound AI call)
+      fredChatAnimator.play(FRED_REPLY_SEQUENCE, false);
+      setAvatarState('replying');
+      fetchAssistantReply('fred', userText).then(function (matched) {
+        if (requestId !== fredRequestSeq) return; // superseded or reset
+        var reply = matched || FRED_PLACEHOLDER_REPLIES[Math.floor(Math.random() * FRED_PLACEHOLDER_REPLIES.length)];
+        // simulated "typing" duration, scaled to reply length, well
+        // under the reply sequence's 13s total so it always cuts the
+        // sequence short rather than running past the end of it
+        var typingMs = Math.min(7000, Math.max(1500, reply.length * 60));
+        fredReplyTimer = setTimeout(function () {
+          if (requestId !== fredRequestSeq) return;
+          appendMessage('assistant', reply);
+          fredChatAnimator.play(FRED_IDLE_SEQUENCE, true);
+          setAvatarState('idle');
+        }, typingMs);
+      });
+    }
+
+    function playDavidReply(userText) {
+      clearDavidTimers();
+      var requestId = ++davidRequestSeq;
+      // "talking" starts right away, same reasoning as F.R.E.D.'s
+      // frame2 - don't wait on the fetch to start the animation
+      var talkFrames = [DAVID_FRAME1_SRC, DAVID_FRAME4_SRC];
+      var talkIdx = 0;
+      if (chatAvatar) chatAvatar.src = talkFrames[talkIdx];
+      davidTalkInterval = setInterval(function () {
+        talkIdx = 1 - talkIdx;
+        if (chatAvatar) chatAvatar.src = talkFrames[talkIdx];
+      }, 350);
+      setAvatarState('replying');
+
+      fetchAssistantReply('david', userText).then(function (matched) {
+        if (requestId !== davidRequestSeq) return; // superseded or reset
+        var reply = matched || DAVID_PLACEHOLDER_REPLIES[Math.floor(Math.random() * DAVID_PLACEHOLDER_REPLIES.length)];
+        // simulated "typing" duration, scaled to reply length, so the
+        // frame1/4 -> frame3 handoff is actually visible rather than
+        // instant every time
+        var typingMs = Math.min(9000, Math.max(1500, reply.length * 60));
+        if (typingMs > 5000) {
+          davidFrame3Timer = setTimeout(function () {
+            if (requestId !== davidRequestSeq) return;
+            clearInterval(davidTalkInterval);
+            davidTalkInterval = null;
+            if (chatAvatar) chatAvatar.src = DAVID_FRAME3_SRC;
+          }, 5000);
+        }
+        davidReplyTimer = setTimeout(function () {
+          if (requestId !== davidRequestSeq) return;
+          clearInterval(davidTalkInterval);
+          davidTalkInterval = null;
+          appendMessage('assistant', reply);
+          if (chatAvatar) chatAvatar.src = DAVID_IDLE_SRC;
+          setAvatarState('idle');
+        }, typingMs);
+      });
+    }
+
+    function sendMessage(text) {
+      text = text.trim();
+      if (!text) return;
+      appendMessage('user', text);
+      if (chatInput) chatInput.value = '';
+      if (activePersona === 'fred') playFredReply(text);
+      else if (activePersona === 'david') playDavidReply(text);
+    }
+
+    if (chatForm) {
+      chatForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+        sendMessage(chatInput ? chatInput.value : '');
+      });
+    }
+
+    function setOpen(open) {
+      widget.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      panel.setAttribute('aria-hidden', open ? 'false' : 'true');
+      if (!open && picker && chatView) {
+        // always land back on persona selection next time it's opened
+        chatView.hidden = true;
+        picker.hidden = false;
+        resetChat();
+      }
+    }
+
+    document.querySelectorAll('.ai-persona-option').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        resetChat();
+        activePersona = btn.getAttribute('data-persona');
+        if (chatAvatarWrap) {
+          chatAvatarWrap.classList.toggle('persona-fred', activePersona === 'fred');
+          chatAvatarWrap.classList.toggle('persona-david', activePersona === 'david');
+        }
+        if (activePersona === 'fred') {
+          fredChatAnimator.play(FRED_IDLE_SEQUENCE, true);
+        } else {
+          var avatarSrc = btn.getAttribute('data-avatar-src');
+          // re-assigning .src (even to the same URL) restarts a GIF's
+          // animation from its first frame - desirable here, so David
+          // always starts his idle loop fresh when you switch to him
+          if (chatAvatar && avatarSrc) chatAvatar.src = avatarSrc;
+        }
+        setAvatarState('idle');
+        if (picker) picker.hidden = true;
+        if (chatView) chatView.hidden = false;
+        if (chatInput) chatInput.focus();
+      });
+    });
+    if (backBtn) {
+      backBtn.addEventListener('click', function () {
+        if (chatView) chatView.hidden = true;
+        if (picker) picker.hidden = false;
+        resetChat();
+      });
+    }
+
+    toggle.addEventListener('click', function () {
+      setOpen(!widget.classList.contains('open'));
+    });
+    closeBtn.addEventListener('click', function () {
+      setOpen(false);
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') setOpen(false);
+    });
+    document.addEventListener('click', function (e) {
+      if (!widget.classList.contains('open')) return;
+      if (widget.contains(e.target)) return;
+      setOpen(false);
+    });
+  })();
+</script>

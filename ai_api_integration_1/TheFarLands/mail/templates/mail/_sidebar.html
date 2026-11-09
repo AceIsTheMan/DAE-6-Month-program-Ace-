@@ -1,0 +1,31 @@
+<!-- Left category nav. Directive isn't listed here on purpose - it's only
+     reached via the notification dropdown (see _nav_mail_icons.html), not
+     the Mail sidebar itself; the Directives page still renders through
+     this same layout so there's somewhere to land, it just isn't one of
+     the five sidebar rows. Reports is absent from the DOM entirely for
+     non-moderators, not just hidden with CSS. -->
+<div class="mail-sidebar">
+  <a href="{% url 'mail_draft_new' %}" class="mail-category{% if active_category == 'draft' %} active{% endif %}">Draft</a>
+  <a href="{% url 'mail_inbox' %}" class="mail-category{% if active_category == 'inbox' %} active{% endif %}">Inbox{% if unread_mail_count %} <span class="mail-category-badge">{{ unread_mail_count }}</span>{% endif %}</a>
+  <a href="{% url 'mail_sent' %}" class="mail-category{% if active_category == 'sent' %} active{% endif %}">Sent</a>
+  <a href="{% url 'mail_updates' %}" class="mail-category{% if active_category == 'updates' %} active{% endif %}">Updates{% if unread_by_category.update %} <span class="mail-category-badge">{{ unread_by_category.update }}</span>{% endif %}</a>
+  <a href="{% url 'mail_social' %}" class="mail-category{% if active_category == 'social' %} active{% endif %}">Social{% if unread_by_category.social %} <span class="mail-category-badge">{{ unread_by_category.social }}</span>{% endif %}</a>
+  <a href="{% url 'mail_friends' %}" class="mail-category{% if active_category == 'friends' %} active{% endif %}">Friends</a>
+  <a href="{% url 'mail_fan_letters' %}" class="mail-category{% if active_category == 'fan_letters' %} active{% endif %}">Fan Letter{% if unread_by_category.fan_letter %} <span class="mail-category-badge">{{ unread_by_category.fan_letter }}</span>{% endif %}</a>
+  <a href="{% url 'mail_saved' %}" class="mail-category{% if active_category == 'saved' %} active{% endif %}">Saved</a>
+  <a href="{% url 'mail_tokens' %}" class="mail-category{% if active_category == 'tokens' %} active{% endif %}">Cipher Tokens</a>
+  {% if can_moderate %}
+  <a href="{% url 'mail_reports' %}" class="mail-category{% if active_category == 'reports' %} active{% endif %}">Reports</a>
+  <a href="{% url 'mail_report_history' %}" class="mail-category{% if active_category == 'report_history' %} active{% endif %}">Report History</a>
+  {% endif %}
+  {% if not user.is_director %}
+  <a href="{% url 'mail_fan_letter_new' %}" class="mail-category mail-category-director">+ New Fan Letter</a>
+  {% endif %}
+  {% if user.is_director %}
+  <div class="mail-sidebar-directorsection">
+    <a href="{% url 'mail_update_new' %}" class="mail-category mail-category-director">+ New Update</a>
+    <a href="{% url 'mail_directive_new' %}" class="mail-category mail-category-director">+ New Directive</a>
+    <a href="{% url 'mail_admin_mail_new' %}" class="mail-category mail-category-director">+ Admin Mail</a>
+  </div>
+  {% endif %}
+</div>

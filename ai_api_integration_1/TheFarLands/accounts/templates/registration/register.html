@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Register // The Far Lands{% endblock %}
+{% block content %}
+<div class="section-label">// AGENT REGISTRATION</div>
+<div class="section-divider"></div>
+
+<div class="card" style="max-width: 480px; margin: 0 auto;">
+  <div class="stamp">NEW AGENT</div>
+
+  <form method="post" novalidate>
+    {% csrf_token %}
+
+    {% if form.non_field_errors %}
+      {% for error in form.non_field_errors %}
+        <div class="field-error">{{ error }}</div>
+      {% endfor %}
+    {% endif %}
+
+    <label for="{{ form.username.id_for_label }}">Codename (username)</label>
+    {{ form.username }}
+    {% for error in form.username.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <label for="{{ form.email.id_for_label }}">Contact email</label>
+    {{ form.email }}
+    {% for error in form.email.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <label for="{{ form.password1.id_for_label }}">Password</label>
+    <div class="pw-field">
+      {{ form.password1 }}
+      <button type="button" class="pw-toggle" onclick="togglePasswordVisibility('{{ form.password1.id_for_label }}', this)">[ SHOW ]</button>
+    </div>
+    {% for error in form.password1.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+    <div class="field-help">At least 8 characters. Not too common, not all numbers.</div>
+
+    <label for="{{ form.password2.id_for_label }}">Confirm password</label>
+    <div class="pw-field">
+      {{ form.password2 }}
+      <button type="button" class="pw-toggle" onclick="togglePasswordVisibility('{{ form.password2.id_for_label }}', this)">[ SHOW ]</button>
+    </div>
+    {% for error in form.password2.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <div class="checkbox-row">
+      {{ form.agree_to_rules }}
+      <label for="{{ form.agree_to_rules.id_for_label }}">I have read and understood the rules above.</label>
+    </div>
+    {% for error in form.agree_to_rules.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+
+    <div style="margin-top: 1.5rem;">
+      <button type="submit" class="donate-btn">[ PROCEED ]</button>
+    </div>
+  </form>
+
+  <p style="margin-top: 1.5rem; font-size: 0.85rem;">
+    Already an agent? <a href="{% url 'login' %}" class="inline-link">Log in</a>.
+  </p>
+</div>
+{% endblock %}

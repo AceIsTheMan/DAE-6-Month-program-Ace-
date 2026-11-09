@@ -1,0 +1,1123 @@
+{% extends "base.html" %}
+{% load mail_extras static %}
+{% block title %}Mail // The Far Lands{% endblock %}
+
+{% block extra_head %}
+{% include "forum/_composer_style.html" %}
+<style>
+  /* Boot-up terminal splash shown on entering the Mail tab - see the
+     script at the bottom of this template (mail-terminal-boot). Fixed/
+     full-viewport so it covers the already-rendered page underneath
+     without needing any server-side "don't render yet" logic - the real
+     content is there the whole time, this just sits on top of it. */
+  .mail-terminal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: var(--deep-black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+  .mail-terminal-overlay.mail-terminal-fade { opacity: 0; transition: opacity 0.4s ease; pointer-events: none; }
+  .mail-terminal-overlay.mail-terminal-hidden { display: none; }
+  .mail-terminal-box {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1.4rem;
+    letter-spacing: 1px;
+    color: var(--red-bright);
+    text-shadow: 0 0 8px var(--red), 0 0 20px var(--red-dim);
+    white-space: pre-wrap;
+    max-width: 90%;
+    text-align: center;
+  }
+  .mail-terminal-cursor { animation: mail-terminal-blink 1s step-end infinite; }
+  .mail-terminal-accepted {
+    display: block;
+    margin-top: 0.6rem;
+    color: #33ff5b;
+    text-shadow: 0 0 8px #33ff5b, 0 0 20px #0e6621;
+  }
+  @keyframes mail-terminal-blink { 50% { opacity: 0; } }
+
+  .mail-layout { display: grid; grid-template-columns: 200px minmax(0,1fr); gap: 1.5rem; align-items: start; }
+  .mail-layout.has-members { grid-template-columns: 200px minmax(0,1fr) 220px; }
+  @media (max-width: 900px) {
+    .mail-layout, .mail-layout.has-members { grid-template-columns: 1fr; }
+  }
+
+  .mail-sidebar { display: flex; flex-direction: column; gap: 0.3rem; border-right: 1px dashed var(--red-dim); padding-right: 1rem; }
+  .mail-category {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--silver);
+    text-decoration: none;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid transparent;
+  }
+  .mail-category:hover, .mail-category.active {
+    color: var(--red-bright);
+    border-color: var(--red);
+    background: rgba(204,0,0,0.1);
+    text-shadow: 0 0 6px var(--red);
+  }
+  .mail-category-badge {
+    display: inline-block;
+    min-width: 1.1rem;
+    padding: 0 0.3rem;
+    border-radius: 7px;
+    background: var(--red-bright);
+    box-shadow: 0 0 6px var(--red);
+    color: var(--deep-black);
+    font-size: 0.65rem;
+    line-height: 1.1rem;
+    text-align: center;
+  }
+  .mail-sidebar-directorsection { margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed var(--red-dim); display: flex; flex-direction: column; gap: 0.3rem; }
+  .mail-category-director { font-size: 0.72rem; color: var(--dim-white); }
+
+  .thread-list-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.7rem 0.9rem;
+    border-left: 2px solid var(--red-dim);
+    background: rgba(204,0,0,0.05);
+    margin-bottom: 0.6rem;
+  }
+  .thread-list-link, a.thread-list-link {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: baseline;
+    text-decoration: none;
+    color: inherit;
+  }
+  .thread-list-main { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+  .thread-sender { color: var(--red-bright); font-family: 'VT323', monospace; font-size: 1.05rem; letter-spacing: 1px; }
+  .thread-snippet { color: var(--silver); font-size: 0.82rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; max-width: 420px; }
+  .thread-date { color: var(--dim-white); font-size: 0.7rem; white-space: nowrap; }
+
+  .categories-search { margin-bottom: 1rem; }
+  .categories-panel { display: none; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.6rem; align-items: center; }
+  .categories-panel.open { display: flex; }
+  .categories-panel input { background: var(--black); border: 1px solid var(--red-dim); color: var(--silver); font-family: 'Share Tech Mono', monospace; padding: 0.4rem 0.6rem; }
+  .categories-panel button { background: none; border: 1px solid var(--red-dim); color: var(--silver); font-family: 'Share Tech Mono', monospace; text-transform: uppercase; padding: 0.4rem 0.8rem; cursor: pointer; }
+  .fan-letters-row { cursor: pointer; }
+  .fan-letters-panel { display: flex; flex-direction: column; }
+  .fan-letters-panel .thread-list-item { margin-left: 1rem; }
+  .js-fan-letters-more, .js-mail-list-more { display: block; margin: 0.5rem 0 0.5rem 1rem; background: none; border: 1px dashed var(--red-dim); color: var(--dim-white); font-family: 'Share Tech Mono', monospace; text-transform: uppercase; padding: 0.4rem 0.8rem; cursor: pointer; }
+
+  .conversation-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 1px dashed var(--red-dim); }
+  .conversation-title-group { display: flex; align-items: center; gap: 0.6rem; }
+  .conversation-title { font-family: 'VT323', monospace; color: var(--red-bright); font-size: 1.3rem; letter-spacing: 1px; }
+  .conversation-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--red-dim);
+    flex-shrink: 0;
+  }
+  .conversation-avatar-blank {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--black);
+    color: var(--red-dim);
+    font-size: 0.9rem;
+  }
+  .conversation-back { font-size: 0.75rem; color: var(--dim-white); text-decoration: none; border: 1px solid var(--red-dim); padding: 0.3rem 0.7rem; }
+  .conversation-back:hover { color: var(--red-bright); border-color: var(--red-bright); }
+
+  .message-bubble-list { display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 1rem; max-height: 440px; overflow-y: auto; padding-right: 0.3rem; }
+  .message-bubble { max-width: 75%; padding: 0.6rem 0.8rem; border: 1px solid #333; background: var(--black); }
+  .message-bubble.mine { align-self: flex-end; background: rgba(204,0,0,0.15); border-color: var(--red-dim); }
+  .message-bubble-meta { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem; font-size: 0.7rem; color: var(--dim-white); letter-spacing: 1px; }
+  /* A "mine" bubble sits flush against the right edge of .mail-main - the
+     shared .dots-menu .dropdown-panel rule (see base.html) opens every
+     dropdown left-aligned to its trigger, which pushes a 230px-wide panel
+     off past the right edge from a trigger that's already almost there.
+     Flip just this one back to right-aligned so it opens INTO the bubble/
+     page instead of off it. */
+  .message-bubble.mine .dots-menu .dropdown-panel { left: auto; right: 0; }
+  /* Compose box for an open thread (see mail/_compose.html) - overrides
+     the shared .composer-body's 120px min-height (meant for the forum
+     post composer), which is a real floor that a smaller value alone
+     doesn't clear - min-height: 0 here plus the textarea's own rows="1"
+     is what actually lets it render single-line-tall by default. Grows
+     only with what you're actually typing (see mail/_compose_scripts.
+     html's autoGrow), capped so one huge paste scrolls inside the box
+     instead of taking over the page. */
+  .mail-compose-body { min-height: 0; max-height: 200px; overflow-y: auto; resize: none; }
+  .message-sender { color: var(--red-bright); }
+  .message-body { color: var(--silver); font-size: 0.88rem; line-height: 1.5; overflow-wrap: anywhere; }
+  .message-bubble img, .message-bubble video { max-width: 100%; margin-top: 0.4rem; border: 1px solid var(--red-dim); display: block; }
+  .shared-post-embed { border: 1px dashed var(--red-dim); padding: 0.5rem 0.7rem; margin-top: 0.3rem; background: rgba(var(--overlay-rgb),0.3); }
+  .shared-post-embed.unavailable { color: var(--dim-white); font-style: italic; }
+  .shared-post-author { color: var(--red-bright); font-size: 0.75rem; margin-bottom: 0.2rem; }
+  .forwarded-label { color: var(--dim-white); font-size: 0.7rem; letter-spacing: 1px; margin-bottom: 0.2rem; font-style: italic; }
+  .friend-request-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+  .friend-request-actions button { background: none; border: 1px solid var(--red-dim); color: var(--silver); font-family: 'Share Tech Mono', monospace; text-transform: uppercase; letter-spacing: 1px; font-size: 0.75rem; padding: 0.3rem 0.7rem; cursor: pointer; }
+  .friend-request-actions button:hover { border-color: var(--red-bright); color: var(--red-bright); background: rgba(204,0,0,0.1); }
+
+  .compose-row { display: flex; align-items: center; justify-content: space-between; margin-top: 0.5rem; gap: 0.6rem; flex-wrap: wrap; }
+  .char-counter { color: var(--dim-white); font-size: 0.72rem; letter-spacing: 1px; }
+  .char-counter.warn { color: var(--red-bright); }
+  .char-counter.limit { color: var(--red-bright); font-weight: bold; text-shadow: 0 0 6px var(--red); }
+  .compose-row-right { display: flex; align-items: center; gap: 0.6rem; }
+  .compose-tools { display: flex; gap: 0.5rem; align-items: center; position: relative; }
+  .mail-send-btn {
+    font-size: 1.1rem;
+    line-height: 1;
+    height: 2rem;
+    min-width: 2.4rem;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--red-dim);
+    border: 1px solid var(--red-bright);
+    color: var(--white);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .mail-send-btn:hover { background: var(--red); }
+  .compose-tool-btn {
+    font-family: 'Share Tech Mono', monospace;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--dim-white);
+    padding: 0 0.6rem;
+    font-size: 0.78rem;
+    line-height: 1;
+    cursor: pointer;
+    /* Fixed height + internal centering - without this, the emoji glyph
+       and "[ ATTACH ]" text render at different natural heights (one's a
+       <button>, one's a <label>, and glyph metrics vary), so the two
+       controls end up visibly different sizes even though .compose-tools
+       centers them on the same line. */
+    height: 2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    vertical-align: middle;
+    /* The Attach control is a <label> (so clicking it opens the file
+       picker) and base.html's global `label { margin-top: 1rem;
+       margin-bottom: 0.3rem; }` rule (meant for real form field labels)
+       otherwise leaks into it, pushing it out of line with the emoji
+       <button> despite both computing to the same height. */
+    margin: 0;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+  .compose-tool-btn:hover { border-color: var(--red-bright); color: var(--red-bright); }
+  .compose-attach-label { position: relative; overflow: hidden; }
+  .compose-attach-label input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  #mail-emoji-panel { top: auto; bottom: 100%; right: auto; left: 0; margin-bottom: 0.4rem; margin-top: 0; padding: 0.6rem; }
+  .emoji-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.3rem; }
+  .emoji-pick { background: none; border: 1px solid transparent; font-size: 1.2rem; cursor: pointer; padding: 0.2rem; }
+  .emoji-pick:hover { border-color: var(--red-dim); background: rgba(204,0,0,0.1); }
+  .attachment-preview { margin-top: 0.5rem; border: 1px dashed var(--red-dim); padding: 0.5rem; }
+  .attachment-preview img, .attachment-preview video { max-width: 100%; max-height: 240px; display: block; border: 1px solid var(--red-dim); }
+
+  .member-list { display: flex; flex-direction: column; gap: 0.6rem; border-left: 1px dashed var(--red-dim); padding-left: 1rem; }
+  .member-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; }
+  .member-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid var(--red-dim); flex-shrink: 0; }
+  .member-cap-indicator { color: var(--dim-white); font-size: 0.72rem; margin-top: 0.4rem; }
+
+  .recipient-picker { margin-top: 0.5rem; }
+  .recipient-search-input { width: 100%; }
+  .recipient-results { display: flex; flex-direction: column; gap: 0.2rem; margin-top: 0.3rem; }
+  .recipient-row {
+    text-align: left;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--silver);
+    padding: 0.4rem 0.6rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .recipient-row:hover { border-color: var(--red-bright); color: var(--red-bright); }
+  .recipient-chips { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+  .chip { background: var(--red-dim); color: var(--white); padding: 2px 8px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 0.4rem; }
+  .chip-remove { background: none; border: none; color: var(--white); cursor: pointer; font-size: 0.85rem; padding: 0; }
+  .recipient-counter { display: block; color: var(--dim-white); font-size: 0.72rem; margin-top: 0.3rem; }
+  .recipient-picker-title { font-family: 'VT323', monospace; color: var(--red-dim); letter-spacing: 1px; margin-bottom: 0.4rem; }
+  .social-dm-search { margin-bottom: 1rem; }
+  .social-dm-search .recipient-results { margin-top: 0.3rem; }
+  .social-dm-search .recipient-row { text-decoration: none; display: block; }
+
+  .friends-list { display: flex; flex-direction: column; gap: 0.6rem; }
+  .friend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    padding: 0.6rem 0.9rem;
+    border-left: 2px solid var(--red-dim);
+    background: rgba(204,0,0,0.05);
+  }
+  .friend-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid var(--red-dim); flex-shrink: 0; }
+  .friend-avatar-blank { display: flex; align-items: center; justify-content: center; background: var(--black); color: var(--red-dim); }
+  .friend-name { color: var(--red-bright); font-family: 'VT323', monospace; font-size: 1.1rem; letter-spacing: 1px; text-decoration: none; flex-grow: 1; }
+  .friend-name:hover { text-decoration: underline; }
+  .friend-message-btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--dim-white);
+    border: 1px solid var(--red-dim);
+    padding: 0.3rem 0.6rem;
+    text-decoration: none;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .friend-message-btn:hover { color: var(--red-bright); border-color: var(--red-bright); }
+
+  /* Cipher Tokens tab - a ledger, not a message feed, so it gets its
+     own stat-tile + row layout rather than reusing friend-item/
+     report-item. */
+  .token-tab-stats { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .token-tab-stat { border: 1px solid var(--red-dim); padding: 0.8rem 1.2rem; min-width: 140px; }
+  .token-tab-stat-value { font-family: 'VT323', monospace; font-size: 1.8rem; color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
+  .token-tab-stat-label { font-size: 0.7rem; letter-spacing: 1px; text-transform: uppercase; color: var(--dim-white); }
+  .token-tab-subhead { font-family: 'VT323', monospace; font-size: 1.1rem; letter-spacing: 2px; color: var(--red-bright); text-shadow: 0 0 4px var(--red); margin: 1.2rem 0 0.6rem; }
+  .token-tab-list { display: flex; flex-direction: column; gap: 0.5rem; }
+  .token-tab-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.6rem 0.9rem; border-left: 2px solid var(--red-dim); background: rgba(204,0,0,0.05); }
+  .token-tab-row-icon { width: 24px; height: 24px; flex-shrink: 0; image-rendering: pixelated; }
+  .token-tab-row-main { flex-grow: 1; min-width: 0; }
+  .token-tab-row-top { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .token-tab-row-amount { font-family: 'VT323', monospace; font-size: 1.2rem; color: var(--red-bright); text-shadow: 0 0 4px var(--red); }
+  .token-tab-row-amount-neg { color: #ff6666; text-shadow: none; }
+  .token-tab-row-kind { font-size: 0.72rem; letter-spacing: 1px; text-transform: uppercase; color: var(--dim-white); }
+  .token-tab-row-note { font-size: 0.72rem; color: var(--dim-white); margin-top: 0.15rem; }
+  .token-tab-row-date { font-size: 0.68rem; color: var(--dim-white); white-space: nowrap; }
+  .token-tab-history-toggle {
+    display: block;
+    margin: 1.5rem 0 0.8rem;
+    font-family: 'VT323', monospace;
+    font-size: 1rem;
+    letter-spacing: 2px;
+    color: var(--silver);
+    background: none;
+    border: 1px solid var(--red-dim);
+    padding: 0.5rem 1.2rem;
+    cursor: pointer;
+  }
+  .token-tab-history-toggle:hover { color: var(--red-bright); border-color: var(--red-bright); }
+  .token-tab-history { display: none; overflow-x: auto; }
+  .token-tab-history.token-tab-history-open { display: block; }
+  .token-tab-history-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  .token-tab-history-table th, .token-tab-history-table td { border: 1px solid var(--red-dim); padding: 0.4rem 0.6rem; text-align: left; white-space: nowrap; }
+  .token-tab-history-table th { color: var(--red-bright); text-transform: uppercase; font-size: 0.66rem; letter-spacing: 1px; }
+
+  .reports-list { display: flex; flex-direction: column; gap: 0.8rem; }
+  .report-item { border: 1px solid var(--red-dim); padding: 0.8rem; }
+  .report-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.4rem; font-size: 0.72rem; color: var(--dim-white); margin-bottom: 0.4rem; }
+  .report-meta a { color: var(--red-bright); text-decoration: none; }
+  .report-meta a:hover { text-decoration: underline; }
+  .report-reason { color: var(--silver); font-size: 0.85rem; margin-bottom: 0.6rem; }
+  .report-actions { display: flex; gap: 0.5rem; }
+  .report-warn-box { margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.4rem; }
+  .report-warn-text { width: 100%; min-height: 60px; }
+  .report-action-btn {
+    font-family: 'Share Tech Mono', monospace;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--dim-white);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.75rem;
+    cursor: pointer;
+  }
+  .report-action-btn:hover { border-color: var(--red-bright); color: var(--red-bright); }
+  .report-history-status { font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; }
+  .report-history-status-resolved { color: var(--red-bright); }
+  .report-history-status-dismissed { color: var(--dim-white); }
+  .report-history-status-active-mod { color: var(--red-bright); text-shadow: 0 0 4px var(--red); }
+
+  .history-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+  .history-tab {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--silver);
+    text-decoration: none;
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--red-dim);
+  }
+  .history-tab:hover, .history-tab.active { color: var(--red-bright); border-color: var(--red-bright); background: rgba(204,0,0,0.1); }
+  .history-search { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1.2rem; flex-wrap: wrap; }
+  .history-search input[type="text"] { min-width: 220px; }
+  .history-search button, .history-search a.search-clear {
+    font-family: 'Share Tech Mono', monospace;
+    background: var(--red-dim);
+    border: 1px solid var(--red-bright);
+    color: var(--white);
+    padding: 0.5rem 0.9rem;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .history-search button:hover, .history-search a.search-clear:hover { background: var(--red); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="mail-terminal-boot" class="mail-terminal-overlay">
+  <div class="mail-terminal-box">
+    <span id="mail-terminal-typed"></span><span id="mail-terminal-dots"></span><span class="mail-terminal-cursor">&#9608;</span>
+    <span id="mail-terminal-accepted" class="mail-terminal-accepted" style="display:none;">{accepted!}</span>
+  </div>
+</div>
+<script>
+  // Boot-up terminal splash - only ever eligible to play when this page
+  // load came from clicking the nav envelope's "Mail" dropdown item
+  // specifically (see accounts/templates/_nav_mail_icons.html's
+  // ?cutscene=1) - every other way into a mail page (a sidebar tab,
+  // search, "Load More" pagination, a bookmark, the "Directive" nav
+  // item) omits that marker and skips this entirely, regardless of mode.
+  //
+  // Once that gate passes, how often it actually plays is the per-
+  // account setting from Settings tab, Cutscenes sub-tab (accounts.
+  // models.CustomUser.mail_cutscene_mode, injected by mail.context_
+  // processors.notification_counts so it's available here without
+  // threading it through every mail view):
+  //   'never'    - never shown at all.
+  //   'cooldown' - shown once, then suppressed for COOLDOWN_MS so
+  //                clicking the Mail button again shortly after doesn't
+  //                replay it every time. The default, and the only mode
+  //                localStorage matters for.
+  //   'always'   - shown every time the Mail button is clicked, no
+  //                cooldown.
+  (function () {
+    var overlay = document.getElementById('mail-terminal-boot');
+    if (!overlay) return;
+
+    var enteredViaMailButton = new URLSearchParams(window.location.search).get('cutscene') === '1';
+    if (!enteredViaMailButton) {
+      overlay.classList.add('mail-terminal-hidden');
+      return;
+    }
+
+    var cutsceneMode = '{{ mail_cutscene_mode|default:"cooldown" }}';
+    if (cutsceneMode === 'never') {
+      overlay.classList.add('mail-terminal-hidden');
+      return;
+    }
+    if (cutsceneMode === 'cooldown') {
+      var COOLDOWN_MS = 10 * 60 * 1000;
+      var STORAGE_KEY = 'mailTerminalLastShown';
+      var lastShown = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10);
+      if (Date.now() - lastShown < COOLDOWN_MS) {
+        overlay.classList.add('mail-terminal-hidden');
+        return;
+      }
+      localStorage.setItem(STORAGE_KEY, String(Date.now()));
+    }
+    // cutsceneMode === 'always' falls straight through - plays every time.
+
+    var typedEl = document.getElementById('mail-terminal-typed');
+    var dotsEl = document.getElementById('mail-terminal-dots');
+    var acceptedEl = document.getElementById('mail-terminal-accepted');
+    var entryText = '>.entry_key (:communicate:) ';
+    var charIndex = 0;
+
+    function typeNextChar() {
+      if (charIndex < entryText.length) {
+        typedEl.textContent += entryText[charIndex];
+        charIndex++;
+        setTimeout(typeNextChar, 35);
+      } else {
+        animateLoadingDots();
+      }
+    }
+
+    function animateLoadingDots() {
+      var frames = ['.', '..', '...'];
+      var frame = 0;
+      var cyclesLeft = 5;
+      var tick = setInterval(function () {
+        dotsEl.textContent = frames[frame % frames.length];
+        frame++;
+        if (frame % frames.length === 0) {
+          cyclesLeft--;
+          if (cyclesLeft <= 0) {
+            clearInterval(tick);
+            dotsEl.textContent = '...';
+            revealAccepted();
+          }
+        }
+      }, 250);
+    }
+
+    function revealAccepted() {
+      acceptedEl.style.display = 'block';
+      setTimeout(function () {
+        overlay.classList.add('mail-terminal-fade');
+        setTimeout(function () { overlay.classList.add('mail-terminal-hidden'); }, 400);
+      }, 700);
+    }
+
+    typeNextChar();
+  })();
+</script>
+
+<div class="section-label">// {% if active_category == 'directives' %}DIRECTIVE{% else %}MAIL{% endif %}</div>
+<div class="section-divider"></div>
+
+<div class="mail-layout{% if open_conversation.is_group %} has-members{% endif %}">
+  {% include "mail/_sidebar.html" %}
+
+  <div class="mail-main">
+    {% if active_category == 'social' %}
+      {% if open_conversation %}
+        {% with partner=open_conversation|dm_partner:user %}
+        <div class="conversation-header">
+          <span class="conversation-title-group">
+            {% if partner %}
+              <a href="{% url 'user_profile' partner.username %}" title="View {{ partner.username }}'s profile">
+                {% if partner.profile_picture %}
+                  <img src="{{ partner.profile_picture.url }}" alt="" class="conversation-avatar">
+                {% else %}
+                  <span class="conversation-avatar conversation-avatar-blank">?</span>
+                {% endif %}
+              </a>
+            {% endif %}
+            <span class="conversation-title">{{ open_conversation|conversation_display_name:user }}</span>
+            {% if open_conversation.is_admin_only %}<span class="role-badge" title="Confidential Director/Admin mail" style="color: var(--red-bright); border-color: var(--red-bright);">&#128274; ADMIN ONLY</span>{% endif %}
+          </span>
+          <a href="{% url 'mail_social' %}" class="conversation-back">[ BACK ]</a>
+        </div>
+        {% endwith %}
+        <div class="message-bubble-list">
+          {% for message in thread_messages %}
+          <div class="message-bubble {% if message.sender_id == user.id %}mine{% else %}theirs{% endif %}">
+            <div class="message-bubble-meta">
+              <span class="message-sender">{% include "_vip_name.html" with vip_user=message.sender %}{% include "_vip_badge.html" with vip_user=message.sender %}</span>
+              <span>{{ message.created_at|date:"m/d/Y g:i A" }}</span>
+              {% include "_dots_menu.html" with target_type="message" target_id=message.id target_username=message.sender.username show_report=message.sender_id|ne:user.id show_friend=message.sender_id|ne:user.id show_mute=message.sender_id|ne:user.id show_message=False show_block=message.sender_id|ne:user.id show_forward=True show_save=True is_saved=active_category|eq:'saved' show_delete_message=message|can_delete_message:user %}
+            </div>
+            {% if message.forwarded_from_id %}<div class="forwarded-label">&#8618; Forwarded by {{ message.sender.username }}</div>{% endif %}
+            {% with embedded=message.forwarded_from %}
+            {% if message.forwarded_from_id and embedded %}
+              <div class="shared-post-embed">
+                <div class="shared-post-author">// {{ embedded.sender.username }}</div>
+                {% if embedded|admin_only_media_blocked:user %}<div class="admin-only-media-blocked">[ CONFIDENTIAL ]</div>{% else %}<div>{{ embedded|render_body:user }}</div>{% endif %}
+              </div>
+            {% elif message.forwarded_from_id %}
+              <div class="shared-post-embed unavailable">This message is no longer available.</div>
+            {% endif %}
+            {% endwith %}
+            {% if message.shared_post_id %}
+              {% if message.shared_post %}
+              <div class="shared-post-embed">
+                <div class="shared-post-author">// {{ message.shared_post.author.username }}</div>
+                <div>{{ message.shared_post.body|safe|truncatewords_html:40 }}</div>
+              </div>
+              {% else %}
+              <div class="shared-post-embed unavailable">This post is no longer available.</div>
+              {% endif %}
+            {% endif %}
+            {% if message.shared_comment_id %}
+              {% if message.shared_comment %}
+              <div class="shared-post-embed">
+                <div class="shared-post-author">// {{ message.shared_comment.author.username }} commented</div>
+                <div>{{ message.shared_comment.body|safe|truncatewords_html:40 }}</div>
+              </div>
+              {% else %}
+              <div class="shared-post-embed unavailable">This comment is no longer available.</div>
+              {% endif %}
+            {% endif %}
+            {% if message.body %}<div class="message-body">{{ message|render_body:user }}</div>{% endif %}
+            {% if message.media %}
+              {% if message|admin_only_media_blocked:user %}
+              <div class="admin-only-media-blocked">[ CONFIDENTIAL ATTACHMENT ]</div>
+              {% elif message.is_admin_only %}
+              {% if message.media_is_video %}
+              <video src="{% url 'mail_message_media' message.id %}" controls></video>
+              {% else %}
+              <img src="{% url 'mail_message_media' message.id %}" alt="">
+              {% endif %}
+              {% elif message.media_is_video %}
+              <video src="{{ message.media.url }}" controls></video>
+              {% else %}
+              <img src="{{ message.media.url }}" alt="">
+              {% endif %}
+            {% endif %}
+            {% if message.gif_url %}<img src="{{ message.gif_url }}" alt="GIF">{% endif %}
+            {% if message.friend_request_id and message.friend_request.status == 'pending' and message.friend_request.to_user_id == user.id %}
+            <div class="friend-request-actions">
+              <button type="button" class="js-friend-request-btn" data-request-id="{{ message.friend_request_id }}" data-action="accept">Accept</button>
+              <button type="button" class="js-friend-request-btn" data-request-id="{{ message.friend_request_id }}" data-action="decline">Decline</button>
+            </div>
+            {% endif %}
+          </div>
+          {% empty %}
+          <div class="empty-feed">No messages yet - say hello.</div>
+          {% endfor %}
+        </div>
+        {% include "mail/_compose.html" %}
+        {% include "mail/_compose_scripts.html" %}
+        <script>
+          (function () {
+            function getCookie(name) {
+              var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+              return match ? decodeURIComponent(match.pop()) : '';
+            }
+            document.addEventListener('click', function (e) {
+              var btn = e.target.closest('.js-friend-request-btn');
+              if (!btn) return;
+              var requestId = btn.getAttribute('data-request-id');
+              var action = btn.getAttribute('data-action');
+              var urlTemplate = "{% url 'mail_friend_request_respond' 0 %}";
+              fetch(urlTemplate.replace('/0/', '/' + requestId + '/'), {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'action=' + action,
+              }).then(function (r) { return r.ok ? location.reload() : null; });
+            });
+          })();
+        </script>
+      {% else %}
+        <div class="social-dm-search">
+          <input type="text" id="social-dm-search-input" class="recipient-search-input" placeholder="Search a username to message directly...">
+          <div class="recipient-results" id="social-dm-search-results"></div>
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <a href="{% url 'mail_group_new' %}" class="donate-btn" style="font-size: 0.85rem;">[ + NEW GROUP ]</a>
+        </div>
+        {% for conversation in conversations %}
+        <a href="{% url 'mail_social_thread' conversation.id %}" class="thread-list-item thread-list-link">
+          <div class="thread-list-main">
+            <span class="thread-sender">{{ conversation|conversation_display_name:user }}{% if conversation.is_admin_only %} &#128274;{% endif %}</span>
+          </div>
+          <span class="thread-date">{{ conversation.last_message_at|date:"m/d/Y g:i A" }}</span>
+        </a>
+        {% empty %}
+        <div class="empty-feed">No conversations yet.</div>
+        {% endfor %}
+        <script>
+          (function () {
+            var input = document.getElementById('social-dm-search-input');
+            var results = document.getElementById('social-dm-search-results');
+            if (!input || !results) return;
+            var timer = null;
+            var urlTemplate = "{% url 'mail_social_dm_start' 'PLACEHOLDER' %}";
+            input.addEventListener('input', function () {
+              clearTimeout(timer);
+              var q = input.value.trim();
+              if (!q) { results.innerHTML = ''; return; }
+              timer = setTimeout(function () {
+                fetch("{% url 'mail_recipient_search' %}?q=" + encodeURIComponent(q) + '&mode=social')
+                  .then(function (r) { return r.json(); })
+                  .then(function (data) {
+                    results.innerHTML = '';
+                    (data.results || []).forEach(function (u) {
+                      var row = document.createElement('a');
+                      row.className = 'recipient-row';
+                      row.textContent = u.username;
+                      row.href = urlTemplate.replace('PLACEHOLDER', encodeURIComponent(u.username));
+                      results.appendChild(row);
+                    });
+                    if (!(data.results || []).length) {
+                      results.innerHTML = '<div class="empty-feed" style="font-size:0.75rem;">No matches.</div>';
+                    }
+                  });
+              }, 250);
+            });
+          })();
+        </script>
+      {% endif %}
+    {% elif active_category == 'tokens' %}
+      <div class="token-tab-stats">
+        <div class="token-tab-stat">
+          <div class="token-tab-stat-value">{{ token_total_earned }}</div>
+          <div class="token-tab-stat-label">Total Earned</div>
+        </div>
+        <div class="token-tab-stat">
+          <div class="token-tab-stat-value">{{ token_balance }}</div>
+          <div class="token-tab-stat-label">Current Balance</div>
+        </div>
+        <div class="token-tab-stat">
+          <div class="token-tab-stat-value">{{ token_total_spent }}</div>
+          <div class="token-tab-stat-label">Total Spent</div>
+        </div>
+      </div>
+
+      <div class="token-tab-subhead">// EARNED</div>
+      <div class="token-tab-list">
+        {% for t in token_earned %}
+        <div class="token-tab-row">
+          <img src="{% static 'accounts/cipher_token.gif' %}" alt="" class="token-tab-row-icon">
+          <div class="token-tab-row-main">
+            <div class="token-tab-row-top">
+              <span class="token-tab-row-amount">+{{ t.amount }}</span>
+              <span class="token-tab-row-kind">{{ t.get_kind_display }}</span>
+            </div>
+            {% if t.note %}<div class="token-tab-row-note">{{ t.note }}</div>{% endif %}
+          </div>
+          <div class="token-tab-row-date">{{ t.created_at|date:"M j, Y, g:i A" }}</div>
+        </div>
+        {% empty %}
+        <div class="empty-feed">No Cipher Tokens earned yet.</div>
+        {% endfor %}
+      </div>
+
+      <div class="token-tab-subhead">// SPENT (MONTHLY SUMMARY)</div>
+      <div class="token-tab-list">
+        {% for m in token_monthly_spent %}
+        <div class="token-tab-row">
+          <div class="token-tab-row-main">
+            <div class="token-tab-row-top">
+              <span class="token-tab-row-amount token-tab-row-amount-neg">-{{ m.amount }}</span>
+              <span class="token-tab-row-kind">{{ m.label }}</span>
+            </div>
+            <div class="token-tab-row-note">{{ m.count }} transaction{{ m.count|pluralize }}</div>
+          </div>
+        </div>
+        {% empty %}
+        <div class="empty-feed">No Cipher Tokens spent yet.</div>
+        {% endfor %}
+      </div>
+
+      {% if token_history %}
+      <button type="button" class="token-tab-history-toggle" onclick="document.getElementById('token-balance-history').classList.toggle('token-tab-history-open'); this.textContent = this.textContent.indexOf('SHOW') !== -1 ? '[ HIDE BALANCE HISTORY ]' : '[ SHOW BALANCE HISTORY ]';">[ SHOW BALANCE HISTORY ]</button>
+      <div id="token-balance-history" class="token-tab-history">
+        <table class="token-tab-history-table">
+          <thead>
+            <tr><th>Date</th><th>Type</th><th>Amount</th><th>Balance After</th></tr>
+          </thead>
+          <tbody>
+            {% for t in token_history %}
+            <tr>
+              <td>{{ t.created_at|date:"M j, Y, g:i A" }}</td>
+              <td>{{ t.get_kind_display }}</td>
+              <td class="{% if t.amount < 0 %}token-tab-row-amount-neg{% endif %}">{% if t.amount >= 0 %}+{% endif %}{{ t.amount }}</td>
+              <td>{{ t.balance_after }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+    {% elif active_category == 'friends' %}
+      <div class="friends-list">
+        {% for rel in friends %}
+        <div class="friend-item">
+          <a href="{% url 'user_profile' rel.to_user.username %}" title="View {{ rel.to_user.username }}'s profile">
+            {% if rel.to_user.profile_picture %}
+              <img src="{{ rel.to_user.profile_picture.url }}" class="friend-avatar" alt="">
+            {% else %}
+              <span class="friend-avatar friend-avatar-blank">?</span>
+            {% endif %}
+          </a>
+          <a href="{% url 'user_profile' rel.to_user.username %}" class="friend-name">{{ rel.to_user.username }}</a>
+          {% if not rel.to_user.is_guest %}
+          <a href="{% url 'mail_social_dm_start' rel.to_user.username %}" class="friend-message-btn">[ MESSAGE ]</a>
+          {% endif %}
+        </div>
+        {% empty %}
+        <div class="empty-feed">No friends yet - add one from their profile or a message's 3-dot menu.</div>
+        {% endfor %}
+      </div>
+    {% elif active_category == 'reports' %}
+      <div class="reports-list">
+        {% for report in reports %}
+        <div class="report-item" id="report-{{ report.id }}">
+          <div class="report-meta">
+            <span>Filed by <a href="{% url 'user_profile' report.reporter.username %}">{{ report.reporter.username }}</a> &middot; {{ report.created_at|date:"m/d/Y g:i A" }} &middot; <strong>{{ report.get_category_display }}</strong></span>
+            <span>
+              {% if report.reported_user and not report.reported_comment %}Target: <a href="{% url 'user_profile' report.reported_user.username %}">{{ report.reported_user.username }}</a>{% endif %}
+              {% if report.reported_message %}Message #{{ report.reported_message.id }} from <a href="{% url 'user_profile' report.reported_message.sender.username %}">{{ report.reported_message.sender.username }}</a>{% endif %}
+              {% if report.reported_comment %}Comment from <a href="{% url 'user_profile' report.reported_user.username %}">{{ report.reported_user.username }}</a>{% endif %}
+            </span>
+          </div>
+          <div class="report-reason">{{ report.reason|safe }}</div>
+          {% if report.reported_message %}
+          <div class="report-reason" style="color: var(--dim-white);">Reported content: {{ report.reported_message.body|safe|default:"(no text)" }}</div>
+          {% endif %}
+          {% if report.reported_comment %}
+          <div class="report-reason" style="color: var(--dim-white);">Reported content: {{ report.reported_comment.body|safe|default:"(no text)" }}</div>
+          {% endif %}
+          {% if report.media %}
+          <div class="report-reason"><a href="{{ report.media.url }}" target="_blank" rel="noopener noreferrer">[ VIEW ATTACHMENT ]</a></div>
+          {% endif %}
+          {% if report.admin_requested_status %}
+          <div class="report-reason" style="color: var(--red-bright);">(@{{ report.admin_requested_by.username }}) requested {{ report.admin_requested_status|capfirst }} of report</div>
+          {% endif %}
+          <div class="report-actions">
+            {% if user.is_director %}
+            <button type="button" class="report-action-btn js-resolve-report" data-report="{{ report.id }}" data-status="resolved">[ RESOLVE ]</button>
+            <button type="button" class="report-action-btn js-resolve-report" data-report="{{ report.id }}" data-status="dismissed">[ DISMISS ]</button>
+            {% else %}
+            <button type="button" class="report-action-btn js-resolve-report" data-report="{{ report.id }}" data-status="resolved">[ REQUEST RESOLVE ]</button>
+            <button type="button" class="report-action-btn js-resolve-report" data-report="{{ report.id }}" data-status="dismissed">[ REQUEST DISMISS ]</button>
+            {% endif %}
+            <button type="button" class="report-action-btn js-warn-open" data-report="{{ report.id }}" data-username="{% if report.reported_user %}{{ report.reported_user.username }}{% elif report.reported_message %}{{ report.reported_message.sender.username }}{% elif report.reported_comment %}{{ report.reported_comment.author.username }}{% endif %}">[ WARN ]</button>
+          </div>
+          <div class="report-warn-box" id="report-warn-{{ report.id }}" hidden>
+            <textarea class="report-warn-text" maxlength="1500" placeholder="Warning message..."></textarea>
+            <button type="button" class="report-action-btn js-warn-send" data-report="{{ report.id }}">[ SEND WARNING ]</button>
+          </div>
+        </div>
+        {% empty %}
+        <div class="empty-feed">No open reports.</div>
+        {% endfor %}
+      </div>
+      <script>
+        (function () {
+          function getCookie(name) {
+            var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+            return match ? decodeURIComponent(match.pop()) : '';
+          }
+          document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.js-resolve-report');
+            if (!btn) return;
+            var reportId = btn.getAttribute('data-report');
+            var status = btn.getAttribute('data-status');
+            var urlTemplate = "{% url 'mail_report_resolve' 0 %}";
+            fetch(urlTemplate.replace('/0/', '/' + reportId + '/'), {
+              method: 'POST',
+              headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: 'status=' + status,
+            }).then(function (r) {
+              if (!r.ok) return;
+              if (r.status === 204) {
+                var item = document.getElementById('report-' + reportId);
+                if (item) item.remove();
+                return;
+              }
+              // Admin request - report stays open, just reload to show
+              // the "(@admin) requested ..." banner.
+              location.reload();
+            });
+          });
+
+          document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.js-warn-open');
+            if (!btn) return;
+            var box = document.getElementById('report-warn-' + btn.getAttribute('data-report'));
+            if (box) box.hidden = !box.hidden;
+          });
+
+          document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.js-warn-send');
+            if (!btn) return;
+            var reportId = btn.getAttribute('data-report');
+            var box = document.getElementById('report-warn-' + reportId);
+            var text = box.querySelector('.report-warn-text');
+            if (!text.value.trim()) return;
+            var urlTemplate = "{% url 'mail_report_warn' 0 %}";
+            fetch(urlTemplate.replace('/0/', '/' + reportId + '/'), {
+              method: 'POST',
+              headers: { 'X-CSRFToken': getCookie('csrftoken'), 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: 'message=' + encodeURIComponent(text.value),
+            }).then(function (r) {
+              if (!r.ok) return;
+              text.value = '';
+              box.hidden = true;
+              btn.closest('.report-warn-box').insertAdjacentHTML('beforebegin', '<div class="report-reason" style="color: var(--red-bright);">Warning sent.</div>');
+            });
+          });
+        })();
+      </script>
+    {% elif active_category == 'report_history' %}
+      <div class="history-tabs">
+        <a href="{% url 'mail_report_history' %}?tab=reports{% if history_query %}&q={{ history_query }}{% endif %}" class="history-tab{% if history_tab == 'reports' %} active{% endif %}">Reports</a>
+        <a href="{% url 'mail_report_history' %}?tab=actions{% if history_query %}&q={{ history_query }}{% endif %}" class="history-tab{% if history_tab == 'actions' %} active{% endif %}">Bans &amp; Mutes</a>
+      </div>
+      <form method="get" class="history-search">
+        <input type="hidden" name="tab" value="{{ history_tab }}">
+        <input type="text" name="q" value="{{ history_query }}" placeholder="Search by username...">
+        <button type="submit">[ SEARCH ]</button>
+        {% if history_query %}<a href="{% url 'mail_report_history' %}?tab={{ history_tab }}" class="search-clear">[ CLEAR ]</a>{% endif %}
+      </form>
+
+      {% if history_tab == 'actions' %}
+      <div class="reports-list">
+        {% for action in actions %}
+        <div class="report-item">
+          <div class="report-meta">
+            <span>
+              <strong>{{ action.get_kind_display }}</strong> on
+              <a href="{% url 'user_profile' action.target.username %}">{{ action.target.username }}</a>
+              by <a href="{% url 'user_profile' action.moderator.username %}">{{ action.moderator.username }}</a>
+              &middot; {{ action.created_at|date:"m/d/Y g:i A" }}
+            </span>
+            <span class="report-history-status {% if action.is_active %}report-history-status-active-mod{% else %}report-history-status-dismissed{% endif %}">
+              {% if action.lifted_at %}Lifted by {{ action.lifted_by.username|default:"—" }} {{ action.lifted_at|date:"m/d/Y g:i A" }}
+              {% elif not action.is_active %}Expired
+              {% elif action.expires_at %}Active until {{ action.expires_at|date:"m/d/Y g:i A" }}
+              {% else %}Active (permanent){% endif %}
+            </span>
+          </div>
+          <div class="report-reason">{{ action.reason|safe }}</div>
+          {% if action.is_active %}
+          <div class="report-actions">
+            <button type="button" class="report-action-btn js-lift-action" data-action="{{ action.id }}">[ LIFT / UNBAN ]</button>
+          </div>
+          {% endif %}
+        </div>
+        {% empty %}
+        <div class="empty-feed">No moderation actions{% if history_query %} matching "{{ history_query }}"{% endif %} yet.</div>
+        {% endfor %}
+      </div>
+      <script>
+        (function () {
+          function getCookie(name) {
+            var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+            return match ? decodeURIComponent(match.pop()) : '';
+          }
+          document.addEventListener('click', function (e) {
+            var btn = e.target.closest('.js-lift-action');
+            if (!btn) return;
+            if (!confirm('Lift this action now?')) return;
+            var actionId = btn.getAttribute('data-action');
+            var urlTemplate = "{% url 'mail_moderation_lift' 0 %}";
+            fetch(urlTemplate.replace('/0/', '/' + actionId + '/'), {
+              method: 'POST',
+              headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            }).then(function (r) { if (r.ok) location.reload(); });
+          });
+        })();
+      </script>
+      {% else %}
+      <div class="reports-list">
+        {% for report in reports %}
+        <div class="report-item">
+          <div class="report-meta">
+            <span>Filed by <a href="{% url 'user_profile' report.reporter.username %}">{{ report.reporter.username }}</a> &middot; {{ report.created_at|date:"m/d/Y g:i A" }} &middot; <strong>{{ report.get_category_display }}</strong></span>
+            <span>
+              {% if report.reported_user and not report.reported_comment %}Target: <a href="{% url 'user_profile' report.reported_user.username %}">{{ report.reported_user.username }}</a>{% endif %}
+              {% if report.reported_message %}Message #{{ report.reported_message.id }} from <a href="{% url 'user_profile' report.reported_message.sender.username %}">{{ report.reported_message.sender.username }}</a>{% endif %}
+              {% if report.reported_comment %}Comment from <a href="{% url 'user_profile' report.reported_user.username %}">{{ report.reported_user.username }}</a>{% endif %}
+            </span>
+          </div>
+          <div class="report-reason">{{ report.reason|safe }}</div>
+          {% if report.reported_message %}
+          <div class="report-reason" style="color: var(--dim-white);">Reported content: {{ report.reported_message.body|safe|default:"(no text)" }}</div>
+          {% endif %}
+          {% if report.reported_comment %}
+          <div class="report-reason" style="color: var(--dim-white);">Reported content: {{ report.reported_comment.body|safe|default:"(no text)" }}</div>
+          {% endif %}
+          {% if report.media %}
+          <div class="report-reason"><a href="{{ report.media.url }}" target="_blank" rel="noopener noreferrer">[ VIEW ATTACHMENT ]</a></div>
+          {% endif %}
+          <div class="report-history-status report-history-status-{{ report.status }}">
+            {{ report.get_status_display }}{% if report.resolved_by %} by {{ report.resolved_by.username }}{% endif %}{% if report.resolved_at %} &middot; {{ report.resolved_at|date:"m/d/Y g:i A" }}{% endif %}
+          </div>
+        </div>
+        {% empty %}
+        <div class="empty-feed">No resolved or dismissed reports{% if history_query %} matching "{{ history_query }}"{% endif %} yet.</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% else %}
+      {% if active_category == 'inbox' %}
+      <div class="categories-search">
+        <button type="button" class="donate-btn categories-toggle" style="font-size: 0.85rem;">[ CATEGORIES ]</button>
+        <form method="get" class="categories-panel">
+          <input type="text" name="q_user" value="{{ search_values.q_user }}" placeholder="Conversed with (username)...">
+          <input type="text" name="q_keyword" value="{{ search_values.q_keyword }}" placeholder="Words in the mail...">
+          <input type="date" name="q_date" value="{{ search_values.q_date }}">
+          <input type="text" name="q_mentioned" value="{{ search_values.q_mentioned }}" placeholder="Mentioned username...">
+          <button type="submit">[ SEARCH ]</button>
+          {% if search_values.q_user or search_values.q_keyword or search_values.q_date or search_values.q_mentioned %}<a href="{% url 'mail_inbox' %}" class="search-clear">[ CLEAR ]</a>{% endif %}
+        </form>
+      </div>
+      {% endif %}
+      {% if fan_letter_total_count %}
+      <div class="thread-list-item fan-letters-row js-fan-letters-open">
+        <div class="thread-list-link">
+          <div class="thread-list-main">
+            <span class="thread-sender">Fan Letters ({{ fan_letter_total_count }})</span>
+            <span class="thread-snippet">Click to view</span>
+          </div>
+        </div>
+      </div>
+      <div class="fan-letters-panel" style="display:none;"></div>
+      {% endif %}
+      {% for message in messages_list %}
+        {% include "mail/_message_item.html" %}
+      {% empty %}
+      <div class="empty-feed">Nothing here yet.</div>
+      {% endfor %}
+      {% if next_offset %}
+      <button type="button" class="js-mail-list-more" data-offset="{{ next_offset }}" data-category="{{ active_category }}">[ LOAD MORE ]</button>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  {% if open_conversation.is_group %}
+  <div class="member-list">
+    <div class="dossier-bio-label" style="font-size: 0.9rem;">// Members</div>
+    {% for m in members %}
+    <div class="member-item">
+      <a href="{% url 'user_profile' m.user.username %}" title="View {{ m.user.username }}'s profile">
+        {% if m.user.profile_picture %}
+          <img src="{{ m.user.profile_picture.url }}" class="member-avatar" alt="">
+        {% else %}
+          <span class="member-avatar" style="display:flex;align-items:center;justify-content:center;color:var(--red-dim);">?</span>
+        {% endif %}
+      </a>
+      <span>{{ m.user.username }}</span>
+      {% if m.user_id == open_conversation.created_by_id %}<span class="role-badge">HOST</span>{% endif %}
+    </div>
+    {% endfor %}
+    <div class="member-cap-indicator">{{ members|length }}/{{ member_cap }}</div>
+  </div>
+  {% endif %}
+</div>
+<script>
+  (function () {
+    function getCookie(name) {
+      var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+
+    // Categories search panel (Inbox only) - plain collapse/expand, same
+    // toggle-open-close idea as the emoji panel in mail/_compose_
+    // scripts.html, just scoped to this one page-level panel.
+    document.addEventListener('click', function (e) {
+      var toggle = e.target.closest('.categories-toggle');
+      if (!toggle) return;
+      var panel = toggle.parentElement.querySelector('.categories-panel');
+      if (panel) panel.classList.toggle('open');
+    });
+
+    // Forward - lazy-loads the recipient-picker fragment into this
+    // dots-menu's own dropdown-panel, same pattern as forum/index.html's
+    // js-share-open.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-forward-open');
+      if (!btn) return;
+      var panel = btn.closest('.dropdown-panel');
+      var trigger = panel && panel.previousElementSibling;
+      if (!panel) return;
+      if (panel.querySelector('.recipient-picker')) {
+        panel.classList.add('open');
+        if (trigger) trigger.classList.add('open');
+        return;
+      }
+      var messageId = btn.getAttribute('data-message-id');
+      var urlTemplate = "{% url 'mail_message_forward' 0 %}";
+      fetch(urlTemplate.replace('/0/', '/' + messageId + '/'))
+        .then(function (r) { return r.text(); })
+        .then(function (html) {
+          btn.remove();
+          panel.insertAdjacentHTML('beforeend', html);
+          panel.classList.add('open');
+          if (trigger) trigger.classList.add('open');
+        });
+    });
+
+    // Save/Unsave - plain boolean toggle.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-save-toggle');
+      if (!btn) return;
+      var messageId = btn.getAttribute('data-message-id');
+      var urlTemplate = "{% url 'mail_message_save' 0 %}";
+      fetch(urlTemplate.replace('/0/', '/' + messageId + '/'), {
+        method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      }).then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) {
+          if (!data) return;
+          btn.textContent = data.saved ? 'Unsave' : 'Save';
+        });
+    });
+
+    // Delete message - soft delete (see mail.views.mail_message_delete),
+    // just removes it from the DOM here; it survives for the
+    // Director-only Chat Logs panel.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-message-delete');
+      if (!btn) return;
+      if (!confirm('Delete this message?')) return;
+      var messageId = btn.getAttribute('data-message-id');
+      var urlTemplate = "{% url 'mail_message_delete' 0 %}";
+      fetch(urlTemplate.replace('/0/', '/' + messageId + '/'), {
+        method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      }).then(function (r) {
+        if (!r.ok) return;
+        var bubble = btn.closest('.message-bubble') || btn.closest('.thread-list-item');
+        if (bubble) bubble.remove();
+      });
+    });
+
+    // Mark as Read - one-shot, no further state to reflect beyond
+    // disabling the button (the unread badge itself updates on next
+    // page load, same as opening a thread already does).
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-mark-read');
+      if (!btn) return;
+      var messageId = btn.getAttribute('data-message-id');
+      var urlTemplate = "{% url 'mail_message_mark_read' 0 %}";
+      fetch(urlTemplate.replace('/0/', '/' + messageId + '/'), {
+        method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      }).then(function (r) {
+        if (!r.ok) return;
+        btn.textContent = 'Read';
+        btn.disabled = true;
+      });
+    });
+
+    // Fan Letters compression row - loads FAN_LETTER_PAGE_SIZE at a time,
+    // "load more" appended on scroll-to-bottom of the panel itself.
+    document.addEventListener('click', function (e) {
+      var row = e.target.closest('.js-fan-letters-open');
+      if (!row) return;
+      var panel = row.nextElementSibling;
+      if (!panel || !panel.classList.contains('fan-letters-panel')) return;
+      var isOpen = panel.style.display !== 'none';
+      if (isOpen) { panel.style.display = 'none'; return; }
+      panel.style.display = 'block';
+      if (panel.getAttribute('data-loaded')) return;
+      panel.setAttribute('data-loaded', '1');
+      loadFanLetters(panel, 0);
+    });
+
+    function loadFanLetters(panel, offset) {
+      fetch("{% url 'mail_fan_letters_page' %}?offset=" + offset)
+        .then(function (r) { return r.text(); })
+        .then(function (html) {
+          panel.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    document.addEventListener('click', function (e) {
+      var more = e.target.closest('.js-fan-letters-more');
+      if (!more) return;
+      var panel = more.closest('.fan-letters-panel');
+      var offset = parseInt(more.getAttribute('data-next-offset'), 10);
+      more.remove();
+      loadFanLetters(panel, offset);
+    });
+
+    // Flat mail list (Sent, ...) "load more" - see mail.views.
+    // mail_list_page/_LIST_QUERYSET_BUILDERS. Appends into .mail-main,
+    // the message loop's own direct parent, same append-at-the-end idea
+    // as the Fan Letters panel above.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-mail-list-more');
+      if (!btn) return;
+      var container = document.querySelector('.mail-main');
+      var params = new URLSearchParams(window.location.search);
+      params.set('category', btn.getAttribute('data-category'));
+      params.set('offset', btn.getAttribute('data-offset'));
+      btn.remove();
+      fetch("{% url 'mail_list_page' %}?" + params.toString())
+        .then(function (r) { return r.text(); })
+        .then(function (html) { container.insertAdjacentHTML('beforeend', html); });
+    });
+  })();
+</script>
+{% endblock %}

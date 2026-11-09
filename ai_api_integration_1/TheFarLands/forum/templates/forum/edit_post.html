@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Transmission // The Far Lands{% endblock %}
+
+{% block extra_head %}
+{% include "forum/_composer_style.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="section-label">// FORUM</div>
+<div class="section-divider"></div>
+
+<div class="card composer">
+  <div class="composer-label">// Edit Transmission (Director/Developer Only)</div>
+  <form method="post" enctype="multipart/form-data" novalidate id="post-form">
+    {% csrf_token %}
+    {% include "forum/_composer_fields.html" %}
+
+    <div style="margin-top: 1.2rem; display: flex; gap: 0.8rem; align-items: center;">
+      <button type="submit" class="donate-btn" style="font-size: 1rem;">[ SAVE CHANGES ]</button>
+      <a href="{% url 'forum' %}#post-{{ post.id }}" class="inline-link">Cancel</a>
+    </div>
+  </form>
+</div>
+
+{% include "forum/_composer_scripts.html" %}
+{% endblock %}

@@ -1,0 +1,776 @@
+{% extends "base.html" %}
+{% load forum_extras static %}
+
+{% block title %}FORUM // The Far Lands{% endblock %}
+
+{% block extra_head %}
+{% include "forum/_composer_style.html" %}
+<style>
+  .section-label-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+  }
+  .forum-search {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+  }
+  .forum-search input[type="text"] {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    min-width: 160px;
+  }
+  .forum-search .search-date-group {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--dim-white);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .forum-search input[type="date"], .forum-search select {
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--white);
+    padding: 0.35rem 0.5rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.8rem;
+  }
+  .forum-search input[type="date"]:focus, .forum-search select:focus { outline: none; border-color: var(--red-bright); }
+  .forum-search button, .forum-search a.search-clear {
+    font-family: 'Share Tech Mono', monospace;
+    background: var(--red-dim);
+    border: 1px solid var(--red-bright);
+    color: var(--white);
+    padding: 0.4rem 0.8rem;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .forum-search button:hover, .forum-search a.search-clear:hover { background: var(--red); }
+  mark.search-hit {
+    background: var(--red-bright);
+    color: var(--black);
+    padding: 0 2px;
+    font-weight: bold;
+  }
+
+  .post-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.8rem;
+    border-bottom: 1px dashed var(--red-dim);
+    padding-bottom: 0.5rem;
+  }
+  .post-author {
+    font-family: 'VT323', monospace;
+    color: var(--red-bright);
+    letter-spacing: 2px;
+    font-size: 1.2rem;
+    text-shadow: 0 0 6px var(--red);
+  }
+  .post-date { color: var(--dim-white); font-size: 0.72rem; letter-spacing: 1px; display: flex; align-items: center; gap: 0.6rem; }
+
+  /* Forum/Exclusive VIP switch - a real toggle for an active VIP
+     account, a locked/chained decoration for everyone else (see
+     forum.views.forum_index_view's `view` query param). */
+  .vip-switch-wrap { display: flex; align-items: center; gap: 0.5rem; }
+  .vip-switch-label {
+    font-size: 0.68rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--dim-white);
+  }
+  .vip-switch-label.active { color: var(--red-bright); text-shadow: 0 0 4px var(--red); }
+  .vip-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 22px;
+    border: 1px solid var(--red-dim);
+    background: var(--black);
+    text-decoration: none;
+    flex-shrink: 0;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .vip-switch-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    background: var(--silver);
+    transition: left 0.2s, background 0.2s;
+  }
+  .vip-switch.on { background: rgba(204,0,0,0.25); border-color: var(--red-bright); }
+  .vip-switch.on .vip-switch-knob { left: 24px; background: var(--red-bright); box-shadow: 0 0 6px var(--red-bright); }
+  .vip-switch.locked { opacity: 0.65; cursor: not-allowed; border-color: #444; background: var(--black); }
+  .vip-switch.locked .vip-switch-knob { background: #555; }
+  .vip-switch-chain-icon {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1rem;
+    color: #888;
+    pointer-events: none;
+  }
+
+  .post-exclusive-tag {
+    display: inline-block;
+    font-family: 'VT323', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    color: #fff;
+    background: linear-gradient(135deg, var(--red), var(--red-bright));
+    border: 1px solid #ff6666;
+    padding: 0.1em 0.5em;
+    margin-left: 0.5em;
+    vertical-align: middle;
+    box-shadow: 0 0 6px rgba(255,26,26,0.5);
+  }
+  .edited-marker { color: var(--red-dim); cursor: help; }
+  .delete-form { display: inline-block; }
+  .delete-btn, .edit-btn {
+    font-family: 'Share Tech Mono', monospace;
+    background: none;
+    border: none;
+    color: var(--dim-white);
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: none;
+  }
+  .delete-btn:hover, .edit-btn:hover { color: var(--red-bright); text-shadow: 0 0 6px var(--red); }
+  .post-card { margin-bottom: 1.5rem; }
+  /* Forum's own 3-dot menu (Share only) - see accounts/templates/
+     _dots_menu.html for the shared component/JS this reuses. */
+  .post-meta-actions { display: flex; align-items: center; gap: 0.6rem; }
+  .share-picker-panel { min-width: 240px; padding: 0.7rem; }
+  .post-body { line-height: 1.7; color: var(--silver); overflow-wrap: anywhere; }
+  .post-body .redacted-text, .comment-body .redacted-text {
+    background: var(--red-bright);
+    color: var(--red-bright);
+    padding: 0 4px;
+    cursor: help;
+    transition: color 0.15s;
+  }
+  .post-body .redacted-text:hover, .post-body .redacted-text:focus,
+  .comment-body .redacted-text:hover, .comment-body .redacted-text:focus { color: var(--white); }
+  .post-body .highlight-text, .comment-body .highlight-text { background: rgba(255,26,26,0.35); color: var(--white); padding: 0 3px; }
+  .post-media { margin-top: 1rem; }
+  .post-media img, .post-media video {
+    max-width: 100%;
+    border: 1px solid var(--red-dim);
+    display: block;
+    /* Discourage casual saving - not foolproof, but keeps drag-out-to-
+       desktop and the obvious right-click "Save as" off the menu. */
+    -webkit-user-drag: none;
+    user-select: none;
+  }
+  .post-media video { max-height: 480px; background: var(--deep-black); }
+  .post-link {
+    display: inline-block;
+    margin-top: 0.6rem;
+    color: var(--red-bright);
+    border: 1px solid var(--red-dim);
+    padding: 0.4rem 0.9rem;
+    text-decoration: none;
+    letter-spacing: 1px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+  }
+  .post-link:hover { border-color: var(--red-bright); background: rgba(204,0,0,0.1); }
+
+  .post-reactions {
+    display: flex;
+    gap: 0.6rem;
+    margin-top: 1rem;
+    padding-top: 0.7rem;
+    border-top: 1px dashed var(--red-dim);
+  }
+  .reaction-form { display: inline-block; }
+  .reaction-btn {
+    font-family: 'Share Tech Mono', monospace;
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--dim-white);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.82rem;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .reaction-btn:hover { border-color: var(--red-bright); color: var(--red-bright); background: rgba(204,0,0,0.1); }
+  /* Plain text glyphs (not color emoji) so they can actually be recolored -
+     a red "digital readout" face instead of the default thumbs emoji. */
+  .reaction-icon {
+    color: var(--red-bright);
+    text-shadow: 0 0 4px var(--red);
+    font-size: 1rem;
+    line-height: 1;
+  }
+  .reaction-btn.active {
+    border-color: var(--red-bright);
+    color: var(--red-bright);
+    background: rgba(204,0,0,0.15);
+    text-shadow: 0 0 6px var(--red);
+  }
+
+  /* Comment section - collapsed by default, opened with the [+] toggle
+     below the like/dislike row (see forum.views.forum_comments_view for
+     the incremental "Load 5 more" fetches). */
+  .comment-toggle-row { margin-top: 0.5rem; }
+  .comment-toggle-btn {
+    font-family: 'Share Tech Mono', monospace;
+    background: none;
+    border: none;
+    color: var(--dim-white);
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .comment-toggle-btn:hover { color: var(--red-bright); }
+  .comment-toggle-icon { color: var(--red-bright); font-weight: bold; }
+  .comment-section {
+    margin-top: 0.8rem;
+    padding-top: 0.8rem;
+    border-top: 1px dashed var(--red-dim);
+  }
+  .comment-form { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.9rem; }
+  .comment-input { min-height: 50px; font-size: 0.85rem; }
+  .comment-submit-btn {
+    align-self: flex-end;
+    font-family: 'Share Tech Mono', monospace;
+    background: var(--red-dim);
+    border: 1px solid var(--red-bright);
+    color: var(--white);
+    padding: 0.35rem 0.8rem;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .comment-submit-btn:hover { background: var(--red); }
+  .comment-list { display: flex; flex-direction: column; gap: 0.7rem; }
+  .comment-item { padding: 0.6rem 0.8rem; border-left: 2px solid var(--red-dim); background: rgba(204,0,0,0.05); }
+  .comment-meta { display: flex; gap: 0.5rem; align-items: center; margin-bottom: 0.3rem; }
+  .comment-meta .dots-menu { margin-left: auto; }
+  .comment-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--red-dim);
+    flex-shrink: 0;
+  }
+  .comment-author { color: var(--red-bright); font-size: 0.85rem; letter-spacing: 1px; text-decoration: none; }
+  .comment-author:hover { text-decoration: underline; }
+  .comment-date { color: var(--dim-white); font-size: 0.68rem; letter-spacing: 1px; }
+  .comment-body { color: var(--silver); font-size: 0.85rem; line-height: 1.5; overflow-wrap: anywhere; }
+  .comment-empty { color: var(--dim-white); font-size: 0.8rem; letter-spacing: 1px; }
+  .comment-load-more {
+    align-self: flex-start;
+    font-family: 'Share Tech Mono', monospace;
+    background: none;
+    border: 1px solid var(--red-dim);
+    color: var(--dim-white);
+    padding: 0.3rem 0.7rem;
+    font-size: 0.72rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 0.2rem;
+  }
+  .comment-load-more:hover { border-color: var(--red-bright); color: var(--red-bright); }
+
+  .empty-feed { color: var(--dim-white); font-size: 0.85rem; letter-spacing: 1px; }
+
+  /*
+    Exclusive-content guard overlay - fires when a VIP viewing the
+    Exclusive feed (content_view == 'exclusive') tabs away or the
+    window loses focus, covering the whole viewport with the skull
+    image until they click back in. Not real screenshot/recording
+    protection (impossible on the web) - a visible deterrent only.
+    Fixed hex colors throughout, same reasoning as the cutscene files:
+    must stay legible/on-brand under every VIP Background Theme.
+  */
+  .exclusive-guard-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    background: #000;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    cursor: pointer;
+  }
+  .exclusive-guard-overlay.active { display: flex; }
+  .exclusive-guard-art {
+    position: relative;
+    width: min(620px, 80vw);
+    aspect-ratio: 1672 / 941;
+  }
+  .exclusive-guard-skull {
+    width: 100%;
+    height: 100%;
+    display: block;
+    /* exclusive_skull.png is pre-downscaled (LANCZOS, see repo note)
+       from the 1672px source to ~800px - close enough to this box's
+       display size that the browser only does minor smoothing here,
+       not the heavy blend that muddied the mosaic's red tiles into
+       their black gridline gaps when the full-res source was scaled
+       down live at runtime. */
+    filter: drop-shadow(0 0 24px rgba(255, 26, 26, 0.45));
+  }
+  .exclusive-guard-eye {
+    position: absolute;
+    width: 3%;
+    aspect-ratio: 1 / 1;
+    border-radius: 50%;
+    background: #ff1a1a;
+    box-shadow: 0 0 10px #ff1a1a, 0 0 20px #660000;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .exclusive-guard-eye-l { left: 41.37%; top: 55.56%; }
+  .exclusive-guard-eye-r { left: 58.20%; top: 55.56%; }
+  .exclusive-guard-title {
+    position: absolute;
+    top: -14%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    font-family: 'Share Tech Mono', monospace;
+    color: #ff1a1a;
+    text-shadow: 0 0 8px #ff1a1a, 0 0 20px #cc0000, 0 0 40px #660000;
+    font-size: clamp(1rem, 3.2vw, 1.8rem);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: center;
+    white-space: nowrap;
+    animation: exclusive-guard-title-pulse 2s ease-in-out infinite;
+  }
+  @keyframes exclusive-guard-title-pulse {
+    0%, 100% { text-shadow: 0 0 8px #ff1a1a, 0 0 20px #cc0000, 0 0 40px #660000; }
+    50% { text-shadow: 0 0 14px #ff1a1a, 0 0 32px #cc0000, 0 0 60px #660000; }
+  }
+  .exclusive-guard-msg {
+    margin-top: 2rem;
+    font-family: 'Share Tech Mono', monospace;
+    color: #ff1a1a;
+    text-shadow: 0 0 8px #cc0000;
+    font-size: 1.1rem;
+    letter-spacing: 0.05em;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+  .exclusive-guard-overlay.can-dismiss .exclusive-guard-msg { opacity: 1; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if is_vip and content_view == 'exclusive' %}
+<div id="exclusive-guard-overlay" class="exclusive-guard-overlay">
+  <div class="exclusive-guard-art">
+    <img src="{% static 'accounts/exclusive_skull.png' %}?v=2" alt="" class="exclusive-guard-skull">
+    <div class="exclusive-guard-eye exclusive-guard-eye-l"></div>
+    <div class="exclusive-guard-eye exclusive-guard-eye-r"></div>
+    <div class="exclusive-guard-title">F.R.E.D. Is watching YOU.</div>
+  </div>
+  <div class="exclusive-guard-msg">EXCLUSIVE CONTENT SECURED WHILE YOU WERE AWAY.<br>Click to continue.</div>
+</div>
+<script>
+(function() {
+  var overlay = document.getElementById('exclusive-guard-overlay');
+  if (!overlay) return;
+  var eyeL = overlay.querySelector('.exclusive-guard-eye-l');
+  var eyeR = overlay.querySelector('.exclusive-guard-eye-r');
+  var mouseX = window.innerWidth / 2;
+  var mouseY = window.innerHeight / 2;
+  var maxShift = 6;
+
+  function updatePupil(eyeEl) {
+    var rect = eyeEl.getBoundingClientRect();
+    var cx = rect.left + rect.width / 2;
+    var cy = rect.top + rect.height / 2;
+    var angle = Math.atan2(mouseY - cy, mouseX - cx);
+    var dx = Math.cos(angle) * maxShift;
+    var dy = Math.sin(angle) * maxShift;
+    eyeEl.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-50% + ' + dy + 'px))';
+  }
+
+  function trackLoop() {
+    if (!overlay.classList.contains('active')) return;
+    updatePupil(eyeL);
+    updatePupil(eyeR);
+    requestAnimationFrame(trackLoop);
+  }
+
+  document.addEventListener('mousemove', function(e) {
+    mouseX = e.clientX;
+    mouseY = e.clientY;
+  });
+
+  function showOverlay() {
+    if (overlay.classList.contains('active')) return;
+    overlay.classList.add('active');
+    overlay.classList.remove('can-dismiss');
+    requestAnimationFrame(trackLoop);
+    // minimum display time so a tab-switch-and-immediately-back can't
+    // dismiss itself via the same click/focus event that triggered it
+    setTimeout(function() { overlay.classList.add('can-dismiss'); }, 500);
+  }
+
+  function hideOverlay() {
+    overlay.classList.remove('active');
+    overlay.classList.remove('can-dismiss');
+  }
+
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) showOverlay();
+  });
+  window.addEventListener('blur', showOverlay);
+
+  overlay.addEventListener('click', function() {
+    if (overlay.classList.contains('can-dismiss')) hideOverlay();
+  });
+})();
+</script>
+{% endif %}
+<div class="section-label-row">
+  <div class="section-label">// FORUM</div>
+  <form method="get" class="forum-search">
+    <input type="text" name="q" value="{{ search_query }}" placeholder="Search keywords...">
+    <span class="search-date-group">
+      Posted
+      <input type="date" name="date_from" value="{{ date_from }}" title="From">
+      &ndash;
+      <input type="date" name="date_to" value="{{ date_to }}" title="To">
+    </span>
+    <select name="sort">
+      <option value="new" {% if sort == 'old' %}{% else %}selected{% endif %}>Newest first</option>
+      <option value="old" {% if sort == 'old' %}selected{% endif %}>Oldest first</option>
+    </select>
+    <button type="submit">[ SEARCH ]</button>
+    {% if search_query or date_from or date_to %}<a href="{% url 'forum' %}" class="search-clear">[ CLEAR ]</a>{% endif %}
+  </form>
+  <div class="vip-switch-wrap" title="{% if is_vip %}Toggle VIP Exclusive content{% else %}VIP members only{% endif %}">
+    <span class="vip-switch-label {% if content_view == 'all' %}active{% endif %}">Forum</span>
+    {% if is_vip %}
+    <a href="{% url 'forum' %}?view={% if content_view == 'exclusive' %}all{% else %}exclusive{% endif %}{% if sort == 'old' %}&sort=old{% endif %}"
+       class="vip-switch {% if content_view == 'exclusive' %}on{% endif %}" aria-label="Toggle Exclusive content">
+      <span class="vip-switch-knob"></span>
+    </a>
+    {% else %}
+    <span class="vip-switch locked" aria-disabled="true">
+      <span class="vip-switch-knob"></span>
+      <span class="vip-switch-chain-icon">&#9939;</span>
+    </span>
+    {% endif %}
+    <span class="vip-switch-label {% if content_view == 'exclusive' %}active{% endif %}">Exclusive</span>
+  </div>
+</div>
+<div class="section-divider"></div>
+
+{% if can_post %}
+<div class="card composer">
+  <div class="composer-label">// New Transmission (Director/Developer Only)</div>
+  <form method="post" enctype="multipart/form-data" novalidate id="post-form">
+    {% csrf_token %}
+    {% include "forum/_composer_fields.html" %}
+
+    <div style="margin-top: 1.2rem;">
+      <button type="submit" class="donate-btn" style="font-size: 1rem;">[ TRANSMIT ]</button>
+    </div>
+  </form>
+</div>
+
+{% include "forum/_composer_scripts.html" %}
+{% endif %}
+
+{% if posts %}
+  {% for post in posts %}
+  <div class="card post-card" id="post-{{ post.id }}">
+    <div class="post-meta">
+      <span class="post-author">// {% include "_vip_name.html" with vip_user=post.author %}{% include "_vip_badge.html" with vip_user=post.author %}{% if post.is_vip_exclusive %}<span class="post-exclusive-tag">EXCLUSIVE</span>{% endif %}</span>
+      <div class="post-meta-actions">
+        <span class="post-date">
+          {{ post.created_at|date:"m/d/Y g:i A" }}
+          {% if can_post %}
+            {% if post.edited_at %}
+              <span class="edited-marker" title="Edited {{ post.edited_at|date:'m/d/Y g:i A' }} - only visible to Directors">[EDITED]</span>
+            {% endif %}
+            <a href="{% url 'forum_edit_post' post.id %}" class="edit-btn" title="Edit post">[ EDIT ]</a>
+            <form class="delete-form" method="post" action="{% url 'forum_delete_post' post.id %}" onsubmit="return confirm('Delete this transmission? This can\'t be undone.');">
+              {% csrf_token %}
+              <button type="submit" class="delete-btn" title="Delete post">[ DELETE ]</button>
+            </form>
+          {% endif %}
+        </span>
+        {% if user.is_authenticated and not user.is_guest %}
+        {% include "_dots_menu.html" with show_share=True target_id=post.id %}
+        {% endif %}
+      </div>
+    </div>
+
+    {% if post.body %}<div class="post-body">{{ post.body|redact_for_viewer:can_post|linkify_mentions|highlight:search_query|safe }}</div>{% endif %}
+
+    {% if post.media or post.link_url %}
+    <div class="post-media">
+      {% if post.media %}
+        {% if post.media_is_video %}
+          <video src="{{ post.media.url }}" controls controlslist="nodownload noremoteplayback" disablepictureinpicture oncontextmenu="return false"></video>
+        {% else %}
+          <img src="{{ post.media.url }}" alt="" oncontextmenu="return false" draggable="false">
+        {% endif %}
+      {% endif %}
+
+      {% if post.link_url %}
+        <a class="post-link" href="{{ post.link_url }}" target="_blank" rel="noopener noreferrer nofollow">[ {{ post.link_label|default:post.link_url }} ]</a>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <div class="post-reactions">
+      {% if user.is_authenticated %}
+        <form class="reaction-form" method="post" action="{% url 'forum_react' post.id %}">
+          {% csrf_token %}
+          <input type="hidden" name="value" value="like">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}#post-{{ post.id }}">
+          <button type="submit" class="reaction-btn{% if my_reactions|dict_get:post.id == 'like' %} active{% endif %}"><span class="reaction-icon">☺</span> {{ post.like_total }}</button>
+        </form>
+        <form class="reaction-form" method="post" action="{% url 'forum_react' post.id %}">
+          {% csrf_token %}
+          <input type="hidden" name="value" value="dislike">
+          <input type="hidden" name="next" value="{{ request.get_full_path }}#post-{{ post.id }}">
+          <button type="submit" class="reaction-btn{% if my_reactions|dict_get:post.id == 'dislike' %} active{% endif %}"><span class="reaction-icon">☹</span> {{ post.dislike_total }}</button>
+        </form>
+      {% else %}
+        <span class="reaction-btn" style="cursor:default;"><span class="reaction-icon">☺</span> {{ post.like_total }}</span>
+        <span class="reaction-btn" style="cursor:default;"><span class="reaction-icon">☹</span> {{ post.dislike_total }}</span>
+      {% endif %}
+    </div>
+
+    {% if can_comment %}
+    <div class="comment-toggle-row">
+      <button type="button" class="comment-toggle-btn" data-post="{{ post.id }}">
+        Comment section
+        <span class="comment-count" id="comment-count-{{ post.id }}">{% if post.comment_total %}({{ post.comment_total }}){% endif %}</span>
+        <span class="comment-toggle-icon">[+]</span>
+      </button>
+    </div>
+    <div class="comment-section" id="comments-{{ post.id }}" hidden>
+      <form method="post" action="{% url 'forum_add_comment' post.id %}" class="comment-form">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}#post-{{ post.id }}">
+        <textarea name="body" class="composer-body comment-input mention-aware" rows="2" maxlength="2000" placeholder="Write a comment..." required></textarea>
+        <button type="submit" class="comment-submit-btn">[ POST COMMENT ]</button>
+      </form>
+      <div class="comment-list" id="comment-list-{{ post.id }}"></div>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="card"><span class="empty-feed">No transmissions yet, Agent.</span></div>
+{% endif %}
+
+<script>
+  (function () {
+    var toggles = document.querySelectorAll('.comment-toggle-btn');
+    if (!toggles.length) return;
+
+    // '/forum/0/comments/' and '/forum/comments/delete/0/' - the '0'
+    // stands in for whatever id we actually need, swapped in below. Keeps
+    // the JS from hardcoding the URL layout (see forum/urls.py).
+    var urlTemplate = "{% url 'forum_comments' 0 %}";
+    var deleteUrlTemplate = "{% url 'forum_delete_comment' 0 %}";
+
+    function commentsUrl(postId, offset) {
+      return urlTemplate.replace('/0/', '/' + postId + '/') + '?offset=' + offset;
+    }
+
+    function deleteCommentUrl(commentId) {
+      return deleteUrlTemplate.replace('/0/', '/' + commentId + '/');
+    }
+
+    function getCookie(name) {
+      var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+      return match ? decodeURIComponent(match.pop()) : '';
+    }
+
+    function loadComments(postId, offset, list) {
+      if (!list) return;
+      fetch(commentsUrl(postId, offset))
+        .then(function (r) { return r.ok ? r.text() : ''; })
+        .then(function (html) {
+          if (!html.trim() && Number(offset) === 0) {
+            list.innerHTML = '<div class="comment-empty">No comments yet.</div>';
+            return;
+          }
+          list.insertAdjacentHTML('beforeend', html);
+        });
+    }
+
+    toggles.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var postId = btn.getAttribute('data-post');
+        var section = document.getElementById('comments-' + postId);
+        var icon = btn.querySelector('.comment-toggle-icon');
+        if (!section) return;
+
+        var opening = section.hidden;
+        section.hidden = !opening;
+        if (icon) icon.textContent = opening ? '[-]' : '[+]';
+
+        if (opening && !section.dataset.loaded) {
+          section.dataset.loaded = '1';
+          loadComments(postId, 0, document.getElementById('comment-list-' + postId));
+        }
+      });
+    });
+
+    // Delegated - "Load 5 more" buttons are inserted dynamically as pages
+    // of comments get fetched in, so they can't be wired up up front.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.comment-load-more');
+      if (!btn) return;
+      var postId = btn.getAttribute('data-post');
+      var offset = btn.getAttribute('data-offset');
+      var list = document.getElementById('comment-list-' + postId);
+      btn.remove();
+      loadComments(postId, offset, list);
+    });
+
+    // Delete on a comment's own dots-menu (see _dots_menu.html's
+    // show_delete_comment - the comment's own author, or the Director's
+    // existing moderate-anything power) - delegated, same reason as
+    // above. Removes the comment in place and decrements the visible
+    // count, no page reload.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-comment-delete');
+      if (!btn) return;
+      if (!confirm('Delete this comment? This can\'t be undone.')) return;
+
+      var commentId = btn.getAttribute('data-comment');
+      var postId = btn.getAttribute('data-post');
+      fetch(deleteCommentUrl(commentId), {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken') },
+      }).then(function (r) {
+        if (!r.ok) return;
+        var item = document.getElementById('comment-' + commentId);
+        if (item) item.remove();
+
+        var countEl = document.getElementById('comment-count-' + postId);
+        if (countEl) {
+          var current = parseInt((countEl.textContent.match(/\d+/) || [0])[0], 10) || 0;
+          var next = Math.max(0, current - 1);
+          countEl.textContent = next > 0 ? '(' + next + ')' : '';
+        }
+      });
+    });
+
+    // Copy a comment's own text to the clipboard - reads straight from
+    // the live .comment-body DOM (innerText turns its <br>s into real
+    // newlines) rather than baking the text into a data attribute.
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-comment-copy');
+      if (!btn) return;
+      var commentId = btn.getAttribute('data-comment-id');
+      var body = document.querySelector('#comment-' + commentId + ' .comment-body');
+      if (!body || !navigator.clipboard) return;
+      navigator.clipboard.writeText(body.innerText).then(function () {
+        var original = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(function () { btn.textContent = original; }, 1200);
+      });
+    });
+  })();
+</script>
+
+{% include "mail/_recipient_picker_scripts.html" %}
+<script>
+  // Comment Share - identical lazy-load pattern to Forum Share below,
+  // just against mail_comment_share/data-comment-id instead of
+  // mail_forum_share/data-post-id.
+  (function () {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-comment-share-open');
+      if (!btn) return;
+      var panel = btn.closest('.dropdown-panel');
+      var trigger = panel && panel.previousElementSibling;
+      if (!panel) return;
+      if (panel.querySelector('.recipient-picker')) {
+        panel.classList.add('open');
+        if (trigger) trigger.classList.add('open');
+        return;
+      }
+      var commentId = btn.getAttribute('data-comment-id');
+      var urlTemplate = "{% url 'mail_comment_share' 0 %}";
+      fetch(urlTemplate.replace('/0/', '/' + commentId + '/'))
+        .then(function (r) { return r.text(); })
+        .then(function (html) {
+          btn.remove();
+          panel.insertAdjacentHTML('beforeend', html);
+          panel.classList.add('share-picker-panel', 'open');
+          if (trigger) trigger.classList.add('open');
+        });
+    });
+  })();
+</script>
+<script>
+  // Forum's Share action (see the .dots-menu in .post-meta above) -
+  // lazy-loads the recipient picker fragment from mail.views.
+  // mail_forum_share the first time Share is clicked on a given post,
+  // then leaves it in the DOM (mail/_recipient_picker_scripts.html's
+  // delegated listeners handle everything from there). Re-opens the
+  // panel after injecting since base.html's document-level "close every
+  // open panel" click listener (registered before this one) already
+  // closed it as part of handling this same click.
+  (function () {
+    document.addEventListener('click', function (e) {
+      var btn = e.target.closest('.js-share-open');
+      if (!btn) return;
+      var panel = btn.closest('.dropdown-panel');
+      var trigger = panel && panel.previousElementSibling;
+      if (!panel) return;
+      if (panel.querySelector('.recipient-picker')) {
+        panel.classList.add('open');
+        if (trigger) trigger.classList.add('open');
+        return;
+      }
+      var postId = btn.getAttribute('data-post-id');
+      var urlTemplate = "{% url 'mail_forum_share' 0 %}";
+      fetch(urlTemplate.replace('/0/', '/' + postId + '/'))
+        .then(function (r) { return r.text(); })
+        .then(function (html) {
+          btn.remove();
+          panel.insertAdjacentHTML('beforeend', html);
+          panel.classList.add('share-picker-panel', 'open');
+          if (trigger) trigger.classList.add('open');
+        });
+    });
+  })();
+</script>
+{% endblock %}
