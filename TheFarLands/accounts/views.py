@@ -24,6 +24,7 @@ from mail.models import FriendRequest, Message, ModerationAction, Report, RoleCh
 from mail.views import _get_or_create_dm
 
 from .assistant_content import match_question
+from .assistant_ai import ai_reply
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
 from .models import BannerLoadout, CustomUser, GuestArchive, PurchaseLog, TokenGrantLog, TokenTransaction
 
