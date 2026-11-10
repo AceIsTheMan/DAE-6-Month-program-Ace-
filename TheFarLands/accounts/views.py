@@ -790,7 +790,7 @@ def assistant_reply(request):
 
     entry = match_question(message)
     if not entry:
-        return JsonResponse({'reply': None})
+        return JsonResponse({'reply': ai_reply(persona, message)})
 
     variants = entry.get(persona) or []
     if not variants:
