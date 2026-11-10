@@ -15,23 +15,6 @@ AI_PROVIDER = 'none'
 
 MAX_MESSAGE_LENGTH = 500
 
-
-def ai_reply(persona, message):
-    if AI_PROVIDER == 'none':
-        return None
-    if persona not in ('fred', 'david'):
-        return None
-    message = (message or '').strip()
-    if not message or len(message) > MAX_MESSAGE_LENGTH:
-        return None
-    # Provider call goes here (Step 4).
-    return None
-
-# 'none' = AI off the site behaves exactly like the scripted-only version
-# Other values: 'ollama', 'free_api'.
-AI_PROVIDER = 'none'
-
-MAX_MESSAGE_LENGTH = 500
 REQUEST_TIMEOUT_SECONDS = 8
 
 # Step 3: one system prompt per persona (voice+ what the site is + rules).
@@ -41,7 +24,7 @@ PERSONA_PROMPT = {
 }
 
 def _ask_ollama(system_prompt, message):
-    """Step 4a: call the local 0llama server; return the reply text."""
+    """Step 4a: call the local Ollama server; return the reply text."""
     # TODO
     raise NotImplementedError
 
@@ -67,7 +50,7 @@ def ai_reply(persona, message):
     if ask is None:
         return None
     try: 
-        reply = ask(PERSONA_PROMPTS[persona], message)
+        reply = ask(PERSONA_PROMPT[persona], message)
     except Exception:
         # Any failure (timeout, network, bad response) -> widget fallback lines.
         return None
