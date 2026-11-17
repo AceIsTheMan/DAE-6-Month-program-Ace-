@@ -10,12 +10,24 @@ now) no provider wired up yet. The widget treats {'reply': None} as
 "use the generic placeholder lines", so returning None is always safe.
 """
 
+import os
+
+import requests
+
+def _ask_free_api(system_prompt, message):
+    """Step 4b: call a free-tier hosted API; return the reply text"""
+    api_key = os.environ.get('OPENROUTER_API_KEY')
+    if not api_key:
+        return None
+
 # 'none' = AI off, the site behaves exactly like the scripted-only version.
 AI_PROVIDER = 'none'
 
 MAX_MESSAGE_LENGTH = 500
 
 REQUEST_TIMEOUT_SECONDS = 8
+
+OPENROUTER_MODEL = 'google/gemma-4-26b-a4b-it:free'
 
 # Step 3: one system prompt per persona (voice+ what the site is + rules).
 PERSONA_PROMPT = {
