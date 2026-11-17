@@ -14,12 +14,6 @@ import os
 
 import requests
 
-def _ask_free_api(system_prompt, message):
-    """Step 4b: call a free-tier hosted API; return the reply text"""
-    api_key = os.environ.get('OPENROUTER_API_KEY')
-    if not api_key:
-        return None
-
 # 'none' = AI off, the site behaves exactly like the scripted-only version.
 AI_PROVIDER = 'none'
 
@@ -61,7 +55,24 @@ def _ask_ollama(system_prompt, message):
 
 def _ask_free_api(system_prompt, message):
     """Step 4b: call a free-tier hosted API; return the reply text."""
-    raise NotImplementedError
+    api_key = os.environ.get('OPENROUTER_API_KEY')
+    if not api_key:
+        return None
+    response = requests.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        headers={'Authorization' : f'Bearer {api_key}'},
+                 json={
+                     'model' : OPENROUTER_MODEL,
+                     'messages' : [
+                         {'role' : 'system', 'content' : system_prompt},
+                         {'role' : 'user', 'content' : message},
+                     ],
+                 },
+                 timeout=REQUEST_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
+    data = response.json()
+    return data['choices'][0]['message']['content']
 
 PROVIDERS = {
     'ollama': _ask_ollama,
