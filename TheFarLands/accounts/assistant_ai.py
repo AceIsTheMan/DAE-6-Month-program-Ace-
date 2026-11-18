@@ -11,7 +11,7 @@ now) no provider wired up yet. The widget treats {'reply': None} as
 """
 
 import os
-
+import random
 import requests
 
 # 'none' = AI off, the site behaves exactly like the scripted-only version.
@@ -20,6 +20,11 @@ AI_PROVIDER = 'free_api'
 MAX_MESSAGE_LENGTH = 500
 
 REQUEST_TIMEOUT_SECONDS = 8
+
+# David's AI replies with dog noises at random. (Scripted replies already bark).
+BARK_SOUNDS = ['Bark!'], 'Arf!', 'Woof!']
+BARK_EVERY_WORDS = 15
+BARK_CHANCE = 0.5
 
 OPENROUTER_MODEL = 'nvidia/nemotron-3.5-lightning:free'
 
