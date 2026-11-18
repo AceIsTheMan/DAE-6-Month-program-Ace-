@@ -547,18 +547,20 @@
     function playFredReply(userText) {
       clearFredTimers();
       var requestId = ++fredRequestSeq;
+      var startedAt = Date.now();
       // start the "replying" sequence right away - don't wait on the
-      // fetch, which should resolve near-instantly anyway (local
-      // scripted matching, not a real network-bound AI call)
+      // fetch, which is instant for scripted matches but can take
+      // several seconds when it falls through to the AI
       fredChatAnimator.play(FRED_REPLY_SEQUENCE, false);
       setAvatarState('replying');
       fetchAssistantReply('fred', userText).then(function (matched) {
         if (requestId !== fredRequestSeq) return; // superseded or reset
         var reply = matched || FRED_PLACEHOLDER_REPLIES[Math.floor(Math.random() * FRED_PLACEHOLDER_REPLIES.length)];
-        // simulated "typing" duration, scaled to reply length, well
-        // under the reply sequence's 13s total so it always cuts the
-        // sequence short rather than running past the end of it
-        var typingMs = Math.min(7000, Math.max(1500, reply.length * 60));
+        // simulated "typing" duration, scaled to reply length, minus
+        // however long the fetch already took (an AI reply's wait
+        // counts as typing) - well under the reply sequence's 13s total
+        // so it always cuts the sequence short rather than running past it
+        var typingMs = Math.max(0, Math.min(7000, Math.max(1500, reply.length * 60)) - (Date.now() - startedAt));
         fredReplyTimer = setTimeout(function () {
           if (requestId !== fredRequestSeq) return;
           appendMessage('assistant', reply);
@@ -571,6 +573,7 @@
     function playDavidReply(userText) {
       clearDavidTimers();
       var requestId = ++davidRequestSeq;
+      var startedAt = Date.now();
       // "talking" starts right away, same reasoning as F.R.E.D.'s
       // frame2 - don't wait on the fetch to start the animation
       var talkFrames = [DAVID_FRAME1_SRC, DAVID_FRAME4_SRC];
@@ -587,8 +590,9 @@
         var reply = matched || DAVID_PLACEHOLDER_REPLIES[Math.floor(Math.random() * DAVID_PLACEHOLDER_REPLIES.length)];
         // simulated "typing" duration, scaled to reply length, so the
         // frame1/4 -> frame3 handoff is actually visible rather than
-        // instant every time
-        var typingMs = Math.min(9000, Math.max(1500, reply.length * 60));
+        // instant every time - minus however long the fetch already took,
+        // same as F.R.E.D.'s
+        var typingMs = Math.max(0, Math.min(9000, Math.max(1500, reply.length * 60)) - (Date.now() - startedAt));
         if (typingMs > 5000) {
           davidFrame3Timer = setTimeout(function () {
             if (requestId !== davidRequestSeq) return;
