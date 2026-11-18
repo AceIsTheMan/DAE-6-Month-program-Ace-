@@ -22,7 +22,7 @@ MAX_MESSAGE_LENGTH = 500
 REQUEST_TIMEOUT_SECONDS = 8
 
 # David's AI replies with dog noises at random. (Scripted replies already bark).
-BARK_SOUNDS = ['Bark!'], 'Arf!', 'Woof!']
+BARK_SOUNDS = ['Bark!', 'Arf!', 'Woof!']
 BARK_EVERY_WORDS = 15
 BARK_CHANCE = 0.5
 
@@ -83,7 +83,16 @@ def _ask_free_api(system_prompt, message):
     response.raise_for_status()
     data = response.json()
     return data['choices'][0]['message']['content']
-
+def add_barks(text):
+    """Every BARK_WORDS words, maybe slip in a dog noise for David."""
+    words = text.split()
+    result = []
+    for count, word in enumerate(words, start=1):
+        result.append(word)
+        if count % BARK_EVERY_WORDS == 0 and random.random() < BARK_CHANCE:
+            result.append(random.choice(BARK_SOUNDS))
+    return ' '.join(result)
+        
 PROVIDERS = {
     'ollama': _ask_ollama,
     'free_api': _ask_free_api,
@@ -106,4 +115,9 @@ def ai_reply(persona, message):
     except Exception:
         # Any failure (timeout, network, bad response) -> widget fallback lines.
         return None
-    return (reply or '').strip() or None
+    reply = (reply or '').strip()
+    if not reply:
+        return None
+    if persona == 'david' :
+        reply = add_barks(reply)
+    return reply
