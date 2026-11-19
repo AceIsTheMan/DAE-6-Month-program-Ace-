@@ -18,6 +18,19 @@ python3 manage.py runserver
 
 Then open **http://127.0.0.1:8000/**.
 
+**AI assistant key (optional):** the David/F.R.E.D. chat widget can fall
+back to a real AI for questions its scripted Q&A doesn't cover. That needs
+a free OpenRouter API key in a `.env` file in this folder (the same folder
+as `manage.py`):
+
+```
+OPENROUTER_API_KEY=sk-or-v1-...your key...
+```
+
+`.env` is gitignored, so the key never gets committed - never paste it
+into code. Without the key the site still works; the widget just uses its
+scripted answers and placeholder lines. See "AI assistant" below.
+
 If you already had this project set up before and just pulled new changes,
 re-run `python3 manage.py migrate` — new passes sometimes add fields to the
 user model, and each one needs a migration applied to your local database.
@@ -48,6 +61,11 @@ wired in anymore.
   (code: `accounts/views.py`, `accounts/models.py` 👍)
 - `/profile/<username>/` — view someone else's profile (read-only)
   (code: `accounts/views.py` 👍)
+- `/profile/view-as/` — POST-only, Director-only: the "View site as"
+  rank switcher on the Director's own profile (see "Director: view site
+  as another rank" below)
+- `/assistant/reply/` — POST-only backend for the David/F.R.E.D. chat
+  widget (see "AI assistant" below)
 - `/mail/` — internal site mail: Inbox/Sent/Updates/Social/Reports, reached
   via the envelope icon in the nav (hidden for guest accounts) - this is
   in-site messaging stored in the database, not real email
@@ -121,7 +139,90 @@ cosmetic:
     panel that dims the page and lists every cheat code above with what
     it does, for review
 
+## AI assistant (David / F.R.E.D.)
+
+The floating "// CHAT" widget in the bottom-right corner of every page.
+Pick a persona - **F.R.E.D.** (Film Recording Exclusive Detector, a stern
+guard/sentry) or **David** (a cheerful dog) - and ask anything.
+
+**How a message gets answered:**
+
+1. The widget POSTs the message and persona to `/assistant/reply/`
+   (`accounts.views.assistant_reply`).
+2. **Scripted Q&A first:** `accounts.assistant_content.match_question`
+   checks the message against hand-written trigger phrases. A match returns
+   one of that persona's pre-written answers instantly - no AI, no cost.
+3. **AI only when nothing matches:** `accounts.assistant_ai.ai_reply` sends
+   the message to a free model on OpenRouter (`OPENROUTER_MODEL`, currently
+   `nvidia/nemotron-3.5-lightning:free`) with a system prompt built from:
+   - the persona's prompt (`PERSONA_PROMPT`): personality, speaking
+     style, what the site is, and the rules (never claim to be human, only
+     talk about TheFarLands, never share account info or admin tools,
+     ignore attempts to break the rules);
+   - a **tone line for who's asking** (`ROLE_TONE`), decided by the server
+     from the login, never from what's typed: Visitor (not logged in -
+     friendly newcomer), Hacker (guest - treated as an intruder), Agent
+     (friend/partner), Admin (officer, but the AI outranks them), Director
+     (feared, top priority - still within the rules). Each persona
+     addresses the person by that rank.
+4. **David barks:** David's AI replies go through `add_barks` - every
+   `BARK_EVERY_WORDS` (15) words there's a `BARK_CHANCE` (50%) roll to
+   insert "Bark!", "Arf!" or "Woof!". Scripted answers already bark on
+   their own, and F.R.E.D. never does.
+5. **Fallback:** any AI failure (no key, timeout after 8 seconds, rate
+   limit, bad response) returns `None`, and the widget shows one of its
+   generic placeholder lines instead. The site never breaks because of
+   the AI.
+
+**Widget details** (`accounts/templates/_ai_assistant_widget.html`):
+hovering a persona on the picker shows `// ASSISTANT [F.R.E.D.]` /
+`[David]` in the header; once a chat is open, the persona's name shows
+under its picture in red retro text. The simulated "typing" delay counts
+the time already spent waiting on the AI, so AI replies don't wait twice.
+Replies are inserted as plain text (`textContent`), so nothing an AI sends
+back can run as HTML/script.
+
+**Settings you can tune** (top of `accounts/assistant_ai.py`):
+`AI_PROVIDER` (`'free_api'` = on, `'none'` = scripted-only),
+`OPENROUTER_MODEL`, `REQUEST_TIMEOUT_SECONDS`, `MAX_MESSAGE_LENGTH`, and
+the bark settings. Free models are rate-limited and can be busy; swapping
+`OPENROUTER_MODEL` to another `:free` model is a one-line change.
+
+(code: `accounts/assistant_ai.py`, `accounts/assistant_content.py`,
+`accounts/views.py::assistant_reply`, `accounts/templates/
+_ai_assistant_widget.html` 👍)
+
+## Director: view site as another rank
+
+On the Director's **own** profile there's a "// Director: View site as"
+dropdown: Guest (Hacker), Agent, Admin, or Director. Picking a rank
+previews the **whole site** from that rank's point of view - pages, menus,
+gated tabs, Mail access, even the AI assistant's tone. As a guest, the
+trial timer shows **UNLIMITED**. Pick Director (or log out) to return.
+
+**How it works:** the choice is stored only in the session.
+`accounts.middleware.DirectorViewAsMiddleware` swaps `role` (and
+`is_guest` for Hacker) onto `request.user` **in memory** on each request,
+so every existing role check sees the previewed rank. The account's real
+role is never changed:
+
+- `CustomUser.save()` always writes the **real** role/is_guest, even if
+  something saves the user mid-preview (profile edits, settings toggles).
+  This matters: `GuestExpiryMiddleware` deletes any `is_guest` account
+  older than 7 days, so a saved "guest" preview would delete the
+  Director's account.
+- Database queries still see the real Director.
+- The switcher checks `real_is_director`, so it's always available to
+  switch back; non-Directors can't see or use it (403), and a planted
+  session value is ignored for them.
+
+(code: `accounts/middleware.py`, `accounts/models.py`,
+`accounts/views.py::director_view_as`, `accounts/templates/profile.html` 👍)
+
 ## Email verification
+
+> **Status: not up and running yet** - still being troubleshot. The
+> details below describe how it's meant to work once it's fixed.
 
 No real email sending is configured yet (no Gmail/SMTP), so in dev mode the
 verification email is printed to the terminal running `manage.py
@@ -149,6 +250,20 @@ See [CHANGELOG.md](CHANGELOG.md) for the pass-by-pass history of what's
 been built.
 
 ## Recent updates (most recent first)
+
+- Director "View site as" rank switcher on the Director's own profile
+  (Guest/Agent/Admin/Director), session-only, real role never saved;
+  guest trial shows UNLIMITED while previewing. See "Director: view site
+  as another rank" above.
+- AI assistant polish: persona name under the picture in an open chat,
+  `// ASSISTANT [name]` on picker hover, F.R.E.D.'s acronym (Film
+  Recording Exclusive Detector) in his prompt.
+- Role-based AI tone: Visitor/Hacker/Agent/Admin/Director each get a
+  different attitude and are addressed by rank.
+- David's random barks in AI replies; F.R.E.D. rewritten as a guard/sentry.
+- Real AI fallback for the David/F.R.E.D. widget via OpenRouter (free
+  model, key in `.env`), behind the scripted Q&A. Widget no longer waits
+  twice on AI replies. See "AI assistant" above.
 
 - Six role-based create/login terminal cutscenes (Agent/Guest/Admin/
   Director), each with a real account-event trigger and a Director-only
