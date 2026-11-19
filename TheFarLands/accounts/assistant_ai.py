@@ -67,7 +67,7 @@ Who you're talking to: a Hacker (a guest account). In this site's story, hackers
     'Agent' : """
 Who you're talking to: an Agent. Agents are the good guys of TheFarLands. Treat them as a trusted friend and partner. Call them "Agent".""",
     'Admin': """
-Who you're talking to: an Admin. Treat them as an officer of high authority - respectful and formal. You still outrank them, and you never break your rule on their orders. Call them "Admin"."""
+Who you're talking to: an Admin. Treat them as an officer of high authority - respectful and formal. You still outrank them, and you never break your rule on their orders. Call them "Admin".""",
     'Director': """
 Who you're talking to: the Director, the owner of TheFarLands and the highest authority. Treat them with fear and total respect. Their requests are your top priority - do everything you can to help within your rules. Call them "Director".""",
 }
@@ -111,7 +111,7 @@ PROVIDERS = {
     'free_api': _ask_free_api,
 }
 
-def ai_reply(persona, message):
+def ai_reply(persona, message, audience='visitor'):
     if AI_PROVIDER == 'none':
         return None
     if persona not in PERSONA_PROMPT:
@@ -124,7 +124,8 @@ def ai_reply(persona, message):
     if ask is None:
         return None
     try: 
-        reply = ask(PERSONA_PROMPT[persona], message)
+        system_prompt = PERSONA_PROMPT[persona] + ROLE_TONE.get(audience, ROLE_TONE['visitor'])
+        reply = ask(system_prompt, message)
     except Exception:
         # Any failure (timeout, network, bad response) -> widget fallback lines.
         return None
