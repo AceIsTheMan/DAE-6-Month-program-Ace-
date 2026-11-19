@@ -21,7 +21,7 @@
   </button>
   <div id="ai-assistant-panel" class="ai-assistant-panel" role="dialog" aria-label="Assistant chat" aria-hidden="true">
     <div class="ai-assistant-header">
-      <span class="ai-assistant-title">// ASSISTANT</span>
+      <span id="ai-assistant-title" class="ai-assistant-title">// ASSISTANT</span>
       <button type="button" id="ai-assistant-close" class="ai-assistant-close" aria-label="Close chat">&times;</button>
     </div>
     <div class="ai-assistant-body">
@@ -374,6 +374,14 @@
     var chatInput = document.getElementById('ai-chat-input');
     var backBtn = document.getElementById('ai-assistant-back');
     var chatName = document.getElementById('ai-assistant-chat-name');
+    var panelTitle = document.getElementById('ai-assistant-title');
+
+    // Picker hover preview: "// ASSISTANT [F.R.E.D.]" / "[David]" while the
+    // mouse (or keyboard focus) is on a persona, plain "// ASSISTANT"
+    // otherwise. Name comes from each persona button's aria-label.
+    function setTitlePersona(name) {
+      if (panelTitle) panelTitle.textContent = '// ASSISTANT' + (name ? ' [' + name + ']' : '');
+    }
     if (!widget || !toggle || !panel) return;
 
     var userPfpUrl = chatForm ? chatForm.getAttribute('data-user-pfp') : '';
@@ -660,7 +668,15 @@
     }
 
     document.querySelectorAll('.ai-persona-option').forEach(function (btn) {
+      var showName = function () { setTitlePersona(btn.getAttribute('aria-label')); };
+      var clearName = function () { setTitlePersona(''); };
+      btn.addEventListener('mouseenter', showName);
+      btn.addEventListener('focus', showName);
+      btn.addEventListener('mouseleave', clearName);
+      btn.addEventListener('blur', clearName);
       btn.addEventListener('click', function () {
+        // the picker hides on click, so mouseleave may never fire for it
+        clearName();
         resetChat();
         activePersona = btn.getAttribute('data-persona');
         if (chatName) chatName.textContent = btn.getAttribute('aria-label');
