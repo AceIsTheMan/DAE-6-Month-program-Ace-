@@ -789,13 +789,14 @@ def assistant_reply(request):
         return JsonResponse({'reply': None})
 
     entry = match_question(message)
-    if not request.user.is_authenticated:
-        audience = 'visitor'
-    elif request.user.is_guest:
-        audience = 'Hacker'
-    else:
-        audience = request.user.role
-    return JsonResponse({'reply': ai_reply(persona, message, audience)})
+    if not entry:
+        if not request.user.is_authenticated:
+            audience = 'visitor'
+        elif request.user.is_guest:
+            audience = 'Hacker'
+        else:
+            audience = request.user.role
+        return JsonResponse({'reply': ai_reply(persona, message, audience)})
 
     variants = entry.get(persona) or []
     if not variants:
