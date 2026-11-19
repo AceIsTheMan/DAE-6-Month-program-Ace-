@@ -41,6 +41,7 @@
           <div id="ai-assistant-chat-avatar-wrap" class="ai-assistant-chat-avatar-wrap">
             <img id="ai-assistant-chat-avatar" class="ai-assistant-chat-avatar" src="" alt="">
           </div>
+          <div id="ai-assistant-chat-name" class="ai-assistant-chat-name"></div>
         </div>
         <div id="ai-chat-thread" class="ai-chat-thread"></div>
         <form id="ai-chat-form" class="ai-chat-form" data-user-pfp="{% if user.is_authenticated and user.profile_picture %}{{ user.profile_picture.url }}{% endif %}">
@@ -208,10 +209,26 @@
   .ai-assistant-back:hover { color: var(--red-bright); }
   .ai-assistant-chat-avatar-row {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
     flex-shrink: 0;
     margin-bottom: 0.5rem;
   }
+  /* The open chat's persona name, under the avatar frame - retro red
+     terminal glow, same VT323 face as the site's other headings. Set
+     from the picked persona button's aria-label (see the persona click
+     handler below), so it only ever shows once a chat is open. */
+  .ai-assistant-chat-name {
+    margin-top: 0.4rem;
+    font-family: 'VT323', monospace;
+    font-size: 1.5rem;
+    line-height: 1;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--red-bright);
+    text-shadow: 0 0 6px var(--red), 0 0 14px rgba(255, 26, 26, 0.5);
+  }
+  .ai-assistant-chat-name:empty { display: none; }
   /* The frame is a visual status indicator, not just decoration: a slow
      pulse while idle, a steadier brighter glow while actually replying
      - so you can tell at a glance which state the assistant is in
@@ -356,6 +373,7 @@
     var chatForm = document.getElementById('ai-chat-form');
     var chatInput = document.getElementById('ai-chat-input');
     var backBtn = document.getElementById('ai-assistant-back');
+    var chatName = document.getElementById('ai-assistant-chat-name');
     if (!widget || !toggle || !panel) return;
 
     var userPfpUrl = chatForm ? chatForm.getAttribute('data-user-pfp') : '';
@@ -507,6 +525,7 @@
       activePersona = null;
       if (chatThread) chatThread.innerHTML = '';
       if (chatInput) chatInput.value = '';
+      if (chatName) chatName.textContent = '';
       if (chatAvatarWrap) chatAvatarWrap.classList.remove('is-idle', 'is-replying', 'persona-fred', 'persona-david');
     }
 
@@ -644,6 +663,7 @@
       btn.addEventListener('click', function () {
         resetChat();
         activePersona = btn.getAttribute('data-persona');
+        if (chatName) chatName.textContent = btn.getAttribute('aria-label');
         if (chatAvatarWrap) {
           chatAvatarWrap.classList.toggle('persona-fred', activePersona === 'fred');
           chatAvatarWrap.classList.toggle('persona-david', activePersona === 'david');
