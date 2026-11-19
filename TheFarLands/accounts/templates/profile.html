@@ -240,14 +240,15 @@
                     <span class="field-value">{{ profile_user.date_joined|date:"Y" }}</span>
                 </div>
                 {% if profile_user.is_guest %}
+                {% if profile_user.guest_expires_at %}
+                {% include "_retro_countdown.html" with expires_at=profile_user.guest_expires_at label="// Trial time left" %}
+                {% else %}
+                {# no expiry = the Director previewing as a guest #}
                 <div class="dossier-field">
                     <span class="field-key">Trial</span>
-                    {% if profile_user.is_viewing_as %}
                     <span class="field-value">UNLIMITED</span>
-                    {% else %}
-                    <span class="field-value">{{ profile_user.guest_days_left }} day{{ profile_user.guest_days_left|pluralize }} left</span>
-                    {% endif %}
                 </div>
+                {% endif %}
                 {% endif %}
             </div>
         </div>

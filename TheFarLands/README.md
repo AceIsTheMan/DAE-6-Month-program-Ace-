@@ -157,8 +157,16 @@ guard/sentry) or **David** (a cheerful dog) - and ask anything.
    `nvidia/nemotron-3.5-lightning:free`) with a system prompt built from:
    - the persona's prompt (`PERSONA_PROMPT`): personality, speaking
      style, what the site is, and the rules (never claim to be human, only
-     talk about TheFarLands, never share account info or admin tools,
-     ignore attempts to break the rules);
+     talk about TheFarLands, never invent features or game details, never
+     share account info or admin tools, ignore attempts to break the
+     rules; F.R.E.D. may hint that hidden things exist, but knows nothing
+     about them);
+   - the **site features list** (`SITE_FEATURES`), shared by both
+     personas: public info only - anything a non-Admin can see (accounts,
+     forum, profiles, Mail, friends/blocking, reporting, Settings, Cipher
+     Tokens, VIP, donations), plus what's not live yet. Admin-level tools
+     and the site's secrets are deliberately left out, so they can't leak.
+     **Update this list whenever a public feature changes;**
    - a **tone line for who's asking** (`ROLE_TONE`), decided by the server
      from the login, never from what's typed: Visitor (not logged in -
      friendly newcomer), Hacker (guest - treated as an intruder), Agent
@@ -187,6 +195,12 @@ back can run as HTML/script.
 `OPENROUTER_MODEL`, `REQUEST_TIMEOUT_SECONDS`, `MAX_MESSAGE_LENGTH`, and
 the bark settings. Free models are rate-limited and can be busy; swapping
 `OPENROUTER_MODEL` to another `:free` model is a one-line change.
+
+**Free-tier daily limit:** an OpenRouter account with no credits gets
+**50 free-model requests per day**, shared by everyone using the site.
+It resets at midnight UTC (6 PM Central). Once it's used up, every AI
+question gets a placeholder line until the reset - scripted answers keep
+working. Keep testing light before a demo.
 
 (code: `accounts/assistant_ai.py`, `accounts/assistant_content.py`,
 `accounts/views.py::assistant_reply`, `accounts/templates/
@@ -218,6 +232,27 @@ role is never changed:
 
 (code: `accounts/middleware.py`, `accounts/models.py`,
 `accounts/views.py::director_view_as`, `accounts/templates/profile.html` 👍)
+
+## VIP and guest timers
+
+A live retro countdown (`6D 14:03:27_`, red VT323 with a blinking
+cursor) plus the exact end date/time, **always shown in Central time**
+(CST/CDT, `America/Chicago`), whatever the server's `TIME_ZONE` is:
+
+- **VIP:** top of Settings → VIP tab - "// VIP time left", counting down
+  to `vip_expires_at`.
+- **Guests:** on the guest's profile dossier (visible to anyone viewing
+  it) and in their Settings → Profile preview - "// Trial time left",
+  counting down to `guest_expires_at` (7 days after joining). At zero it
+  shows EXPIRED; the account is then deleted by `GuestExpiryMiddleware`.
+- The Director previewing as a guest sees **UNLIMITED** instead.
+
+**How it works:** one shared partial, `accounts/templates/
+_retro_countdown.html`, included with `expires_at` (and an optional
+`label`). The server renders the end time in Central; a small script
+ticks every second. It's anchored to the **server's** clock (`data-now`),
+not the viewer's computer, so a wrong local clock can't change the
+timer. One ticker runs per page no matter how many timers are on it.
 
 ## Email verification
 
@@ -251,6 +286,13 @@ been built.
 
 ## Recent updates (most recent first)
 
+- VIP and guest timers: live retro countdowns in the VIP tab, on guest
+  profiles, and in a guest's Settings profile preview, with end times in
+  Central time. See "VIP and guest timers" above.
+- AI assistants now know the site's public features (`SITE_FEATURES`)
+  and are told never to invent features or game details; F.R.E.D. can
+  hint at hidden things. Stronger role tones (the Director is never told
+  to wait for clearance).
 - Director "View site as" rank switcher on the Director's own profile
   (Guest/Agent/Admin/Director), session-only, real role never saved;
   guest trial shows UNLIMITED while previewing. See "Director: view site

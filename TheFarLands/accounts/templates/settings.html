@@ -760,6 +760,9 @@
   </form>
 </div>
 {% elif active_sub_tab == 'vip' %}
+<div class="card" style="margin-bottom: 1rem;">
+  {% include "_retro_countdown.html" with expires_at=user.vip_expires_at label="// VIP time left" %}
+</div>
 <div class="card">
   <p class="field-help" style="margin-bottom: 1rem;">
     Custom Theme - re-skins the site's colors for your own view only. Nobody else sees it when they visit your
@@ -836,6 +839,13 @@
     <div>
       <div class="settings-profile-name">{{ user.username }}</div>
       <div class="settings-profile-meta">{{ user.rank }} &middot; {{ user.role|upper }}</div>
+      {% if user.is_guest %}
+      {% if user.guest_expires_at %}
+      {% include "_retro_countdown.html" with expires_at=user.guest_expires_at label="// Trial time left" %}
+      {% else %}
+      <div class="settings-profile-meta">Trial: UNLIMITED</div>
+      {% endif %}
+      {% endif %}
     </div>
   </div>
   {% include "_profile_edit_panel.html" %}

@@ -1,0 +1,89 @@
+{% load tz %}
+{% comment %}
+  Live retro countdown to `expires_at` (an aware datetime) - used for the
+  VIP tab's time left (settings.html) and a guest's trial time left
+  (profile.html, settings.html's profile preview). Optional `label` shows
+  above the clock. The end date/time is always shown in Central time
+  (America/Chicago), whatever the server's TIME_ZONE is.
+
+  The ticking is client-side, but anchored to the server's clock
+  (data-now) rather than the viewer's, so a wrong computer clock can't
+  make the timer lie. Shows EXPIRED once it runs out (a guest account is
+  then deleted on the next request by GuestExpiryMiddleware).
+{% endcomment %}
+<div class="retro-countdown" data-expires="{{ expires_at|date:'U' }}" data-now="{% now 'U' %}">
+  {% if label %}<div class="retro-countdown-label">{{ label }}</div>{% endif %}
+  <div class="retro-countdown-clock">--D --:--:--</div>
+  <div class="retro-countdown-ends">Ends {% timezone "America/Chicago" %}{{ expires_at|date:"M j, Y · g:i A T" }}{% endtimezone %}</div>
+</div>
+<style>
+  .retro-countdown { margin-top: 0.9rem; }
+  .card > .retro-countdown:first-child { margin-top: 0; }
+  .retro-countdown-label {
+    font-family: 'VT323', monospace;
+    color: var(--red-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: 1.05rem;
+  }
+  .retro-countdown-clock {
+    font-family: 'VT323', monospace;
+    color: var(--red-bright);
+    font-size: 2.1rem;
+    line-height: 1.1;
+    letter-spacing: 3px;
+    text-shadow: 0 0 6px var(--red), 0 0 14px rgba(255, 26, 26, 0.45);
+  }
+  /* blinking terminal cursor after the digits */
+  .retro-countdown-clock::after {
+    content: '_';
+    margin-left: 2px;
+    animation: retro-countdown-blink 1s steps(1) infinite;
+  }
+  @keyframes retro-countdown-blink { 50% { opacity: 0; } }
+  .retro-countdown.is-expired .retro-countdown-clock { color: var(--dim-white); text-shadow: none; }
+  .retro-countdown.is-expired .retro-countdown-clock::after { content: none; }
+  .retro-countdown-ends {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 1px;
+    color: var(--dim-white);
+    text-transform: uppercase;
+  }
+</style>
+<script>
+  // One shared ticker for every .retro-countdown on the page, however
+  // many times this partial gets included.
+  (function () {
+    if (window.retroCountdownStarted) return;
+    window.retroCountdownStarted = true;
+
+    function pad(n) { return n < 10 ? '0' + n : String(n); }
+
+    function tick() {
+      document.querySelectorAll('.retro-countdown').forEach(function (el) {
+        var clock = el.querySelector('.retro-countdown-clock');
+        if (!clock) return;
+        // server clock minus this browser's clock, measured once
+        if (el.serverOffset === undefined) el.serverOffset = Number(el.dataset.now) * 1000 - Date.now();
+        var left = Math.floor((Number(el.dataset.expires) * 1000 - (Date.now() + el.serverOffset)) / 1000);
+        if (left <= 0) {
+          clock.textContent = 'EXPIRED';
+          el.classList.add('is-expired');
+          return;
+        }
+        var days = Math.floor(left / 86400);
+        var hours = Math.floor((left % 86400) / 3600);
+        var minutes = Math.floor((left % 3600) / 60);
+        clock.textContent = days + 'D ' + pad(hours) + ':' + pad(minutes) + ':' + pad(left % 60);
+      });
+    }
+
+    function start() {
+      tick();
+      setInterval(tick, 1000);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+    else start();
+  })();
+</script>
