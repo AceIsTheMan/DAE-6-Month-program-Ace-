@@ -157,6 +157,33 @@
     font-size: 0.95rem;
   }
   select#id_status:focus { outline: none; border-color: var(--red-bright); }
+
+  /* Director-only "view as" switcher (see accounts.views.director_view_as). */
+  .view-as-panel {
+    margin-top: 1.5rem;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--red-dim);
+  }
+  .view-as-label {
+    display: block;
+    font-family: 'VT323', monospace;
+    color: var(--red-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-size: 1.1rem;
+    margin-bottom: 0.5rem;
+  }
+  .view-as-row { display: flex; gap: 0.7rem; align-items: center; flex-wrap: wrap; }
+  .view-as-row select {
+    background: var(--black);
+    border: 1px solid var(--red-dim);
+    color: var(--white);
+    padding: 0.5rem 0.8rem;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.9rem;
+  }
+  .view-as-row select:focus { outline: none; border-color: var(--red-bright); }
+  .view-as-note { margin-top: 0.6rem; font-size: 0.75rem; color: var(--dim-white); letter-spacing: 1px; }
 </style>
 {% endblock %}
 {% block content %}
@@ -215,11 +242,35 @@
                 {% if profile_user.is_guest %}
                 <div class="dossier-field">
                     <span class="field-key">Trial</span>
+                    {% if profile_user.is_viewing_as %}
+                    <span class="field-value">UNLIMITED</span>
+                    {% else %}
                     <span class="field-value">{{ profile_user.guest_days_left }} day{{ profile_user.guest_days_left|pluralize }} left</span>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
         </div>
+
+        {% if user == profile_user and user.real_is_director %}
+        {# Director-only "view as" switcher - see accounts.views.director_view_as #}
+        <form method="post" action="{% url 'director_view_as' %}" class="view-as-panel">
+            {% csrf_token %}
+            <label for="view-as-select" class="view-as-label">// Director: View site as</label>
+            <div class="view-as-row">
+                <select name="view_as" id="view-as-select">
+                    <option value="Hacker"{% if user.role == 'Hacker' %} selected{% endif %}>Guest (Hacker)</option>
+                    <option value="Agent"{% if user.role == 'Agent' %} selected{% endif %}>Agent</option>
+                    <option value="Admin"{% if user.role == 'Admin' %} selected{% endif %}>Admin</option>
+                    <option value="Director"{% if user.role == 'Director' %} selected{% endif %}>Director</option>
+                </select>
+                <button type="submit" class="donate-btn">[ SWITCH ]</button>
+            </div>
+            {% if user.is_viewing_as %}
+            <div class="view-as-note">Previewing as {{ user.role|upper }} - your real rank is still Director. Pick Director to return.</div>
+            {% endif %}
+        </form>
+        {% endif %}
 
         {% if user != profile_user %}
         <div class="profile-actions">

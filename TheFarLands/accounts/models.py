@@ -203,8 +203,9 @@ class CustomUser(AbstractUser):
     @property
     def guest_expires_at(self):
         """When this guest account will be auto-deleted, or None for a
-        regular (non-guest) account."""
-        if not self.is_guest or not self.date_joined:
+        regular (non-guest) account - or for the Director previewing the
+        site as a guest (see is_viewing_as), whose trial is unlimited."""
+        if not self.is_guest or not self.date_joined or self.is_viewing_as:
             return None
         return self.date_joined + timezone.timedelta(days=self.GUEST_TRIAL_DAYS)
 
@@ -232,6 +233,38 @@ class CustomUser(AbstractUser):
         still checks is_director alone; this is the first feature in the
         project that actually uses the Admin role for something."""
         return self.role in (self.ROLE_ADMIN, self.ROLE_DIRECTOR)
+
+    # Director-only "view as" preview (see accounts.middleware.
+    # DirectorViewAsMiddleware): role/is_guest get swapped in memory for
+    # the request, with the real pair stashed in _view_as_real. Nothing
+    # about it is ever stored on the account itself.
+    @property
+    def is_viewing_as(self):
+        """True while the Director is previewing the site as a lower rank."""
+        return getattr(self, '_view_as_real', None) is not None
+
+    @property
+    def real_is_director(self):
+        """is_director, but ignoring any "view as" preview - what gates the
+        preview switcher itself, so the Director can always switch back."""
+        real = getattr(self, '_view_as_real', None)
+        return (real[0] if real else self.role) == self.ROLE_DIRECTOR
+
+    def save(self, *args, **kwargs):
+        # Never let a "view as" preview leak into the database - a saved
+        # is_guest=True would get the Director's own account deleted by
+        # GuestExpiryMiddleware on the very next request. Any save made
+        # mid-preview (profile edit, settings toggle...) writes the real
+        # role/is_guest, then the preview values are put back.
+        real = getattr(self, '_view_as_real', None)
+        if real is None:
+            return super().save(*args, **kwargs)
+        previewed = (self.role, self.is_guest)
+        self.role, self.is_guest = real
+        try:
+            return super().save(*args, **kwargs)
+        finally:
+            self.role, self.is_guest = previewed
 
     def __str__(self):
         return self.username

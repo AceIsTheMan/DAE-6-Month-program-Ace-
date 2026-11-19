@@ -46,3 +46,35 @@ class GuestExpiryMiddleware:
             CustomUser.objects.filter(pk__in=[guest.pk for guest in expired]).delete()
 
         return self.get_response(request)
+
+
+class DirectorViewAsMiddleware:
+    """
+    Lets the Director preview the whole site as a Hacker (guest), Agent or
+    Admin - picked from their own profile page (see accounts.views.
+    director_view_as). The chosen rank lives only in the session; on each
+    request it's swapped onto request.user in memory (role, plus is_guest
+    for Hacker), so every role check across the site - views, templates,
+    the AI assistant's tone - sees that rank. The account's real role is
+    never changed: CustomUser.save() refuses to write the previewed values,
+    and DB queries (GuestExpiryMiddleware's included) still see the real
+    Director. Logging out clears the session, and with it the preview.
+    """
+    SESSION_KEY = 'director_view_as'
+    PREVIEW_ROLES = (CustomUser.ROLE_HACKER, CustomUser.ROLE_AGENT, CustomUser.ROLE_ADMIN)
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        view_as = request.session.get(self.SESSION_KEY)
+        if view_as:
+            user = request.user
+            if user.is_authenticated and user.role == CustomUser.ROLE_DIRECTOR and view_as in self.PREVIEW_ROLES:
+                user._view_as_real = (user.role, user.is_guest)
+                user.role = view_as
+                user.is_guest = view_as == CustomUser.ROLE_HACKER
+            else:
+                # Not (or no longer) the Director - drop the stale preview.
+                request.session.pop(self.SESSION_KEY, None)
+        return self.get_response(request)

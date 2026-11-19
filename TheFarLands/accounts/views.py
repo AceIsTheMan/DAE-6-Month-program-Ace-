@@ -26,6 +26,7 @@ from mail.views import _get_or_create_dm
 from .assistant_content import match_question
 from .assistant_ai import ai_reply
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
+from .middleware import DirectorViewAsMiddleware
 from .models import BannerLoadout, CustomUser, GuestArchive, PurchaseLog, TokenGrantLog, TokenTransaction
 
 # Store catalog - the one source of truth for what each Store button
@@ -252,7 +253,10 @@ def home_view(request):
     role_cutscene = request.session.pop('role_cutscene', '')
 
     guest_trial_remaining = ''
-    if request.user.is_authenticated and request.user.is_guest:
+    if request.user.is_authenticated and request.user.is_guest and request.user.is_viewing_as:
+        # The Director previewing as a guest - no real trial to count down.
+        guest_trial_remaining = 'UNLIMITED'
+    elif request.user.is_authenticated and request.user.is_guest:
         remaining_seconds = max(0, (request.user.guest_expires_at - timezone.now()).total_seconds())
         total_minutes = int(remaining_seconds // 60)
         days, rem_minutes = divmod(total_minutes, 24 * 60)
@@ -512,6 +516,29 @@ def toggle_status(request):
     user.status = CustomUser.STATUS_ONLINE if user.status == CustomUser.STATUS_OFFLINE else CustomUser.STATUS_OFFLINE
     user.save(update_fields=['status'])
     return JsonResponse({'status': user.status, 'status_display': user.get_status_display()})
+
+
+@login_required
+def director_view_as(request):
+    """
+    Director-only "view as" switcher on their own profile (see
+    profile.html): previews the whole site as a Hacker (guest), Agent or
+    Admin, or picks Director to go back to normal. Only stores the choice
+    in the session - accounts.middleware.DirectorViewAsMiddleware applies
+    it per request, and the account's real role is never touched. Checks
+    real_is_director (not is_director) so the switcher still works while a
+    lower rank is being previewed.
+    """
+    if request.method != 'POST':
+        return HttpResponseNotAllowed(['POST'])
+    if not request.user.real_is_director:
+        raise PermissionDenied
+    view_as = request.POST.get('view_as', '')
+    if view_as in DirectorViewAsMiddleware.PREVIEW_ROLES:
+        request.session[DirectorViewAsMiddleware.SESSION_KEY] = view_as
+    else:
+        request.session.pop(DirectorViewAsMiddleware.SESSION_KEY, None)
+    return redirect('profile')
 
 
 @login_required
