@@ -212,8 +212,12 @@ visitors who aren't logged in. After that they get the persona's
 `RATE_LIMITED_REPLY` (David needs a nap, F.R.E.D. powers down) until the
 hour is up, and no AI request is spent. Scripted answers are never
 counted or limited. Every reply carries a `cooldown` flag; while it's on,
-F.R.E.D.'s avatar stops his idle loop and holds `fred_frame1.png` with no
-glow ("powered down"), until a reply comes back with cooldown off. The counters live in Django's cache and erase
+the avatars stop their idle loops and the frame glow turns off:
+F.R.E.D. holds `fred_frame1.png` ("powered down"), and David naps -
+`david_shutdown_frame1/2/3.png` (Z, ZZ, ZZZ), 2 seconds each, looping -
+until a reply comes back with cooldown off. (The shutdown frames were
+cropped to David's 585x331 transparent frame format from the original
+art.) The counters live in Django's cache and erase
 themselves after an hour (`accounts.views.assistant_reply`).
 
 **Free-tier daily limit:** an OpenRouter account with no credits gets
@@ -306,8 +310,9 @@ been built.
 
 ## Recent updates (most recent first)
 
-- F.R.E.D. "powers down" on AI cooldown: his avatar holds frame1 (no idle
-  animation, no glow) while the asker is over the hourly AI limit.
+- AI cooldown animations: while the asker is over the hourly AI limit,
+  F.R.E.D. "powers down" (holds frame1, no glow) and David naps (Z -> ZZ
+  -> ZZZ, 2s each, looping).
 - David's personality upgraded: a Style line and example lines (upbeat,
   playful, looks up to F.R.E.D. as his big-brother partner), and he now
   knows F.R.E.D.'s acronym too. Cleaned up F.R.E.D.'s prompt.

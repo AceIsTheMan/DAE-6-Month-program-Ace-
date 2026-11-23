@@ -417,12 +417,18 @@
     ];
     // Powered down: while the asker is on AI cooldown (over the hourly
     // limit, see accounts.views.assistant_reply) F.R.E.D. holds frame1
-    // instead of his idle loop. fredOnCooldown is updated from every
-    // reply (either persona - they share one limit).
+    // and David naps (Z -> ZZ -> ZZZ, 2s each, looping) instead of their
+    // idle loops. aiOnCooldown is updated from every reply (either
+    // persona - they share one limit).
     var FRED_COOLDOWN_SEQUENCE = [
       { src: FRED_FRAME1_SRC, duration: 60000 },
     ];
-    var fredOnCooldown = false;
+    var DAVID_COOLDOWN_SEQUENCE = [
+      { src: "{% static 'accounts/david_shutdown_frame1.png' %}", duration: 2000 },
+      { src: "{% static 'accounts/david_shutdown_frame2.png' %}", duration: 2000 },
+      { src: "{% static 'accounts/david_shutdown_frame3.png' %}", duration: 2000 },
+    ];
+    var aiOnCooldown = false;
 
     // Drives one <img> through a sequence of {src, duration} steps.
     // loop=true restarts from the first step after the last; loop=false
@@ -459,6 +465,8 @@
     }
 
     var fredChatAnimator = makeFredAnimator(chatAvatar);
+    // same sequencer, used only for David's cooldown nap
+    var davidChatAnimator = makeFredAnimator(chatAvatar);
 
     function getCookie(name) {
       var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
@@ -481,7 +489,7 @@
       })
         .then(function (r) { return r.ok ? r.json() : { reply: null }; })
         .then(function (data) {
-          if (data && typeof data.cooldown === 'boolean') fredOnCooldown = data.cooldown;
+          if (data && typeof data.cooldown === 'boolean') aiOnCooldown = data.cooldown;
           return data && data.reply ? data.reply : null;
         })
         .catch(function () { return null; });
@@ -490,11 +498,24 @@
     // F.R.E.D.'s resting state: the powered-down frame while on cooldown,
     // otherwise his normal idle loop.
     function playFredRest() {
-      if (fredOnCooldown) {
+      if (aiOnCooldown) {
         fredChatAnimator.play(FRED_COOLDOWN_SEQUENCE, true);
         setAvatarState('cooldown');
       } else {
         fredChatAnimator.play(FRED_IDLE_SEQUENCE, true);
+        setAvatarState('idle');
+      }
+    }
+
+    // David's resting state: his nap loop while on cooldown, otherwise his
+    // idle GIF (re-assigning .src restarts the GIF from its first frame).
+    function playDavidRest() {
+      if (aiOnCooldown) {
+        davidChatAnimator.play(DAVID_COOLDOWN_SEQUENCE, true);
+        setAvatarState('cooldown');
+      } else {
+        davidChatAnimator.stop();
+        if (chatAvatar) chatAvatar.src = DAVID_IDLE_SRC;
         setAvatarState('idle');
       }
     }
@@ -540,6 +561,7 @@
     }
 
     function clearDavidTimers() {
+      davidChatAnimator.stop();
       clearTimeout(davidReplyTimer);
       clearTimeout(davidFrame3Timer);
       clearInterval(davidTalkInterval);
@@ -655,8 +677,7 @@
           clearInterval(davidTalkInterval);
           davidTalkInterval = null;
           appendMessage('assistant', reply);
-          if (chatAvatar) chatAvatar.src = DAVID_IDLE_SRC;
-          setAvatarState('idle');
+          playDavidRest();
         }, typingMs);
       });
     }
@@ -709,12 +730,9 @@
         if (activePersona === 'fred') {
           playFredRest();
         } else {
-          var avatarSrc = btn.getAttribute('data-avatar-src');
-          // re-assigning .src (even to the same URL) restarts a GIF's
-          // animation from its first frame - desirable here, so David
-          // always starts his idle loop fresh when you switch to him
-          if (chatAvatar && avatarSrc) chatAvatar.src = avatarSrc;
-          setAvatarState('idle');
+          // idle GIF restarts fresh on every switch to him, or his nap
+          // loop if on cooldown
+          playDavidRest();
         }
         if (picker) picker.hidden = true;
         if (chatView) chatView.hidden = false;
