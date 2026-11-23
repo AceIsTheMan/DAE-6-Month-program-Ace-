@@ -211,7 +211,9 @@ AI questions per hour - counted per account, or per IP address for
 visitors who aren't logged in. After that they get the persona's
 `RATE_LIMITED_REPLY` (David needs a nap, F.R.E.D. powers down) until the
 hour is up, and no AI request is spent. Scripted answers are never
-counted or limited. The counters live in Django's cache and erase
+counted or limited. Every reply carries a `cooldown` flag; while it's on,
+F.R.E.D.'s avatar stops his idle loop and holds `fred_frame1.png` with no
+glow ("powered down"), until a reply comes back with cooldown off. The counters live in Django's cache and erase
 themselves after an hour (`accounts.views.assistant_reply`).
 
 **Free-tier daily limit:** an OpenRouter account with no credits gets
@@ -304,6 +306,11 @@ been built.
 
 ## Recent updates (most recent first)
 
+- F.R.E.D. "powers down" on AI cooldown: his avatar holds frame1 (no idle
+  animation, no glow) while the asker is over the hourly AI limit.
+- David's personality upgraded: a Style line and example lines (upbeat,
+  playful, looks up to F.R.E.D. as his big-brother partner), and he now
+  knows F.R.E.D.'s acronym too. Cleaned up F.R.E.D.'s prompt.
 - AI public user lookup: ask David/F.R.E.D. "who is <username>?" and they
   share only that user's public profile info - nothing if either of you
   has blocked the other.

@@ -415,6 +415,14 @@
       { src: FRED_FRAME5_SRC, duration: 2000 },
       { src: FRED_FRAME3_SRC, duration: 2000 },
     ];
+    // Powered down: while the asker is on AI cooldown (over the hourly
+    // limit, see accounts.views.assistant_reply) F.R.E.D. holds frame1
+    // instead of his idle loop. fredOnCooldown is updated from every
+    // reply (either persona - they share one limit).
+    var FRED_COOLDOWN_SEQUENCE = [
+      { src: FRED_FRAME1_SRC, duration: 60000 },
+    ];
+    var fredOnCooldown = false;
 
     // Drives one <img> through a sequence of {src, duration} steps.
     // loop=true restarts from the first step after the last; loop=false
@@ -472,8 +480,23 @@
         body: new URLSearchParams({ persona: persona, message: message }),
       })
         .then(function (r) { return r.ok ? r.json() : { reply: null }; })
-        .then(function (data) { return data && data.reply ? data.reply : null; })
+        .then(function (data) {
+          if (data && typeof data.cooldown === 'boolean') fredOnCooldown = data.cooldown;
+          return data && data.reply ? data.reply : null;
+        })
         .catch(function () { return null; });
+    }
+
+    // F.R.E.D.'s resting state: the powered-down frame while on cooldown,
+    // otherwise his normal idle loop.
+    function playFredRest() {
+      if (fredOnCooldown) {
+        fredChatAnimator.play(FRED_COOLDOWN_SEQUENCE, true);
+        setAvatarState('cooldown');
+      } else {
+        fredChatAnimator.play(FRED_IDLE_SEQUENCE, true);
+        setAvatarState('idle');
+      }
     }
 
     // Fallback lines only - used when assistant_reply finds no scripted
@@ -591,8 +614,7 @@
         fredReplyTimer = setTimeout(function () {
           if (requestId !== fredRequestSeq) return;
           appendMessage('assistant', reply);
-          fredChatAnimator.play(FRED_IDLE_SEQUENCE, true);
-          setAvatarState('idle');
+          playFredRest();
         }, typingMs);
       });
     }
@@ -685,15 +707,15 @@
           chatAvatarWrap.classList.toggle('persona-david', activePersona === 'david');
         }
         if (activePersona === 'fred') {
-          fredChatAnimator.play(FRED_IDLE_SEQUENCE, true);
+          playFredRest();
         } else {
           var avatarSrc = btn.getAttribute('data-avatar-src');
           // re-assigning .src (even to the same URL) restarts a GIF's
           // animation from its first frame - desirable here, so David
           // always starts his idle loop fresh when you switch to him
           if (chatAvatar && avatarSrc) chatAvatar.src = avatarSrc;
+          setAvatarState('idle');
         }
-        setAvatarState('idle');
         if (picker) picker.hidden = true;
         if (chatView) chatView.hidden = false;
         if (chatInput) chatInput.focus();

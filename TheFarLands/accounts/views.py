@@ -861,6 +861,12 @@ def assistant_reply(request):
     if persona not in ('fred', 'david'):
         return JsonResponse({'reply': None})
 
+    # Rate limit: this person's AI questions are counted for one hour.
+    # 'cooldown' in the response tells the widget they're over the limit
+    # (F.R.E.D. shows his powered-down frame while it lasts).
+    who = request.user.pk if request.user.is_authenticated else request.META.get('REMOTE_ADDR', '')
+    rate_key = f'ai_rate:{who}'
+
     entry = match_question(message)
     if not entry:
         if not request.user.is_authenticated:
@@ -869,14 +875,11 @@ def assistant_reply(request):
             audience = 'Hacker'
         else:
             audience = request.user.role
-        # Rate limit: count this person's AI questions for one hour.
-        who = request.user.pk if request.user.is_authenticated else request.META.get('REMOTE_ADDR', '')
-        rate_key = f'ai_rate:{who}'
         cache.add(rate_key, 0, timeout=60 * 60)
         if cache.incr(rate_key) > AI_REQUESTS_PER_HOUR:
-            return JsonResponse({'reply': RATE_LIMITED_REPLY[persona]})
+            return JsonResponse({'reply': RATE_LIMITED_REPLY[persona], 'cooldown': True})
         public_profiles = _public_profiles_for_ai(request.user, message)
-        return JsonResponse({'reply': ai_reply(persona, message, audience, public_profiles)})
+        return JsonResponse({'reply': ai_reply(persona, message, audience, public_profiles), 'cooldown': False})
 
     variants = entry.get(persona) or []
     if not variants:
@@ -888,7 +891,8 @@ def assistant_reply(request):
         tail = entry.get('guest_tail', {}).get(persona)
         if tail:
             reply = reply + ' ' + tail
-    return JsonResponse({'reply': reply})
+    on_cooldown = (cache.get(rate_key) or 0) > AI_REQUESTS_PER_HOUR
+    return JsonResponse({'reply': reply, 'cooldown': on_cooldown})
 
 
 @login_required
