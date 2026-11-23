@@ -25,7 +25,7 @@ from mail.models import FriendRequest, Message, ModerationAction, Report, RoleCh
 from mail.views import _get_or_create_dm
 
 from .assistant_content import match_question
-from .assistant_ai import AI_REQUESTS_PER_HOUR, RATE_LIMITED_REPLY, ai_reply
+from .assistant_ai import AI_REQUESTS_PER_HOUR, RATE_LIMITED_REPLY, ai_reply, parse_history
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
 from .middleware import DirectorViewAsMiddleware
 from .models import BannerLoadout, CustomUser, GuestArchive, PurchaseLog, TokenGrantLog, TokenTransaction
@@ -879,7 +879,9 @@ def assistant_reply(request):
         if cache.incr(rate_key) > AI_REQUESTS_PER_HOUR:
             return JsonResponse({'reply': RATE_LIMITED_REPLY[persona], 'cooldown': True})
         public_profiles = _public_profiles_for_ai(request.user, message)
-        return JsonResponse({'reply': ai_reply(persona, message, audience, public_profiles), 'cooldown': False})
+        history = parse_history(request.POST.get('history'))
+        reply = ai_reply(persona, message, audience, public_profiles, history)
+        return JsonResponse({'reply': reply, 'cooldown': False})
 
     variants = entry.get(persona) or []
     if not variants:

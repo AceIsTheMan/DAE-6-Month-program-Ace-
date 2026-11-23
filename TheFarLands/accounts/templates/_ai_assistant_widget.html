@@ -44,7 +44,7 @@
           <div id="ai-assistant-chat-name" class="ai-assistant-chat-name"></div>
         </div>
         <div id="ai-chat-thread" class="ai-chat-thread"></div>
-        <form id="ai-chat-form" class="ai-chat-form" data-user-pfp="{% if user.is_authenticated and user.profile_picture %}{{ user.profile_picture.url }}{% endif %}">
+        <form id="ai-chat-form" class="ai-chat-form" data-user-pfp="{% if user.is_authenticated and user.profile_picture %}{{ user.profile_picture.url }}{% endif %}" data-user-key="{% if user.is_authenticated %}u{{ user.pk }}{% else %}anon{% endif %}">
           {% csrf_token %}
           <input type="text" id="ai-chat-input" class="ai-chat-input" placeholder="Type a message..." autocomplete="off" maxlength="500">
           <button type="submit" class="ai-chat-send" aria-label="Send">&gt;</button>
@@ -478,14 +478,20 @@
     // reply string, or null if nothing matched / the request failed -
     // callers fall back to their own FRED_/DAVID_PLACEHOLDER_REPLIES in
     // that case, same as if this endpoint didn't exist.
-    function fetchAssistantReply(persona, message) {
+    // history: the last few messages of this persona's chat (chat memory,
+    // below) - the server re-checks it (accounts.assistant_ai.parse_history).
+    function fetchAssistantReply(persona, message, history) {
       return fetch("{% url 'assistant_reply' %}", {
         method: 'POST',
         headers: {
           'X-CSRFToken': getCookie('csrftoken'),
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({ persona: persona, message: message }),
+        body: new URLSearchParams({
+          persona: persona,
+          message: message,
+          history: JSON.stringify(history || []),
+        }),
       })
         .then(function (r) { return r.ok ? r.json() : { reply: null }; })
         .then(function (data) {
@@ -493,6 +499,56 @@
           return data && data.reply ? data.reply : null;
         })
         .catch(function () { return null; });
+    }
+
+    // Chat memory: each persona's conversation is kept until logout -
+    // across page changes, closing the widget, and (for logged-in
+    // accounts) closing the tab. Stored only in this browser, never on the
+    // server, tagged with the account it belongs to (data-user-key). A page
+    // load as anyone else - logged out, or a different account - wipes the
+    // previous owner's chat, so logging out is what ends it. Visitors who
+    // aren't logged in use sessionStorage, so theirs ends with the tab.
+    var CHAT_MEMORY_KEY = 'tflAssistantChat';
+    var CHAT_MEMORY_MAX = 50;   // messages kept per persona
+    var HISTORY_SENT = 10;      // of those, how many go to the AI each time
+    var chatOwner = (chatForm && chatForm.getAttribute('data-user-key')) || 'anon';
+
+    function storageOrNull(name) {
+      try { return window[name] || null; } catch (e) { return null; }
+    }
+    ['localStorage', 'sessionStorage'].forEach(function (name) {
+      var store = storageOrNull(name);
+      if (!store) return;
+      try {
+        var saved = JSON.parse(store.getItem(CHAT_MEMORY_KEY) || 'null');
+        if (saved && saved.owner !== chatOwner) store.removeItem(CHAT_MEMORY_KEY);
+      } catch (e) {}
+    });
+    var chatStore = storageOrNull(chatOwner === 'anon' ? 'sessionStorage' : 'localStorage');
+    var chatMemory = { owner: chatOwner, threads: { fred: [], david: [] } };
+    try {
+      var savedChat = chatStore && JSON.parse(chatStore.getItem(CHAT_MEMORY_KEY) || 'null');
+      if (savedChat && savedChat.owner === chatOwner && savedChat.threads) chatMemory = savedChat;
+    } catch (e) {}
+
+    function threadFor(persona) {
+      if (!chatMemory.threads[persona]) chatMemory.threads[persona] = [];
+      return chatMemory.threads[persona];
+    }
+    function rememberMessage(persona, role, text) {
+      var thread = threadFor(persona);
+      thread.push({ role: role, content: text });
+      if (thread.length > CHAT_MEMORY_MAX) thread.splice(0, thread.length - CHAT_MEMORY_MAX);
+      if (!chatStore) return;
+      try { chatStore.setItem(CHAT_MEMORY_KEY, JSON.stringify(chatMemory)); } catch (e) {}
+    }
+    function recentHistory(persona) {
+      return threadFor(persona).slice(-HISTORY_SENT);
+    }
+    function showSavedThread(persona) {
+      threadFor(persona).forEach(function (m) {
+        appendMessage(m.role === 'user' ? 'user' : 'assistant', m.content);
+      });
     }
 
     // F.R.E.D.'s resting state: the powered-down frame while on cooldown,
@@ -616,7 +672,7 @@
       chatThread.scrollTop = chatThread.scrollHeight;
     }
 
-    function playFredReply(userText) {
+    function playFredReply(userText, history) {
       clearFredTimers();
       var requestId = ++fredRequestSeq;
       var startedAt = Date.now();
@@ -625,9 +681,12 @@
       // several seconds when it falls through to the AI
       fredChatAnimator.play(FRED_REPLY_SEQUENCE, false);
       setAvatarState('replying');
-      fetchAssistantReply('fred', userText).then(function (matched) {
-        if (requestId !== fredRequestSeq) return; // superseded or reset
+      fetchAssistantReply('fred', userText, history).then(function (matched) {
         var reply = matched || FRED_PLACEHOLDER_REPLIES[Math.floor(Math.random() * FRED_PLACEHOLDER_REPLIES.length)];
+        // remembered even if the chat was closed meanwhile - it'll be
+        // there next time F.R.E.D. is opened
+        rememberMessage('fred', 'assistant', reply);
+        if (requestId !== fredRequestSeq) return; // superseded or reset
         // simulated "typing" duration, scaled to reply length, minus
         // however long the fetch already took (an AI reply's wait
         // counts as typing) - well under the reply sequence's 13s total
@@ -641,7 +700,7 @@
       });
     }
 
-    function playDavidReply(userText) {
+    function playDavidReply(userText, history) {
       clearDavidTimers();
       var requestId = ++davidRequestSeq;
       var startedAt = Date.now();
@@ -656,9 +715,10 @@
       }, 350);
       setAvatarState('replying');
 
-      fetchAssistantReply('david', userText).then(function (matched) {
-        if (requestId !== davidRequestSeq) return; // superseded or reset
+      fetchAssistantReply('david', userText, history).then(function (matched) {
         var reply = matched || DAVID_PLACEHOLDER_REPLIES[Math.floor(Math.random() * DAVID_PLACEHOLDER_REPLIES.length)];
+        rememberMessage('david', 'assistant', reply); // same as F.R.E.D.'s
+        if (requestId !== davidRequestSeq) return; // superseded or reset
         // simulated "typing" duration, scaled to reply length, so the
         // frame1/4 -> frame3 handoff is actually visible rather than
         // instant every time - minus however long the fetch already took,
@@ -684,11 +744,14 @@
 
     function sendMessage(text) {
       text = text.trim();
-      if (!text) return;
+      if (!text || !activePersona) return;
+      // history = the conversation BEFORE this message
+      var history = recentHistory(activePersona);
       appendMessage('user', text);
+      rememberMessage(activePersona, 'user', text);
       if (chatInput) chatInput.value = '';
-      if (activePersona === 'fred') playFredReply(text);
-      else if (activePersona === 'david') playDavidReply(text);
+      if (activePersona === 'fred') playFredReply(text, history);
+      else if (activePersona === 'david') playDavidReply(text, history);
     }
 
     if (chatForm) {
@@ -723,6 +786,7 @@
         resetChat();
         activePersona = btn.getAttribute('data-persona');
         if (chatName) chatName.textContent = btn.getAttribute('aria-label');
+        showSavedThread(activePersona);
         if (chatAvatarWrap) {
           chatAvatarWrap.classList.toggle('persona-fred', activePersona === 'fred');
           chatAvatarWrap.classList.toggle('persona-david', activePersona === 'david');

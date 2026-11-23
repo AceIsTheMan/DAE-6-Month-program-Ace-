@@ -192,6 +192,21 @@ guard/sentry) or **David** (a cheerful dog) - and ask anything.
    generic placeholder lines instead. The site never breaks because of
    the AI.
 
+**Chat memory (kept until logout):** each persona's conversation is
+remembered across page changes, closing the widget and (for logged-in
+accounts) closing the tab - reopening F.R.E.D. or David shows the chat so
+far, and the last `MAX_HISTORY_MESSAGES` (10) messages are sent with each
+new question so the AI remembers context (e.g. "call me Commander" - a
+nickname never changes how someone is treated; that still comes from their
+real rank). It's stored only in the browser (`localStorage`, tagged with
+the account), never on the server. Any page load as someone else -
+logged out, or a different account - wipes it, so **logging out ends the
+chat**. Visitors who aren't logged in use `sessionStorage`, so theirs ends
+with the tab. The server re-checks the history it's sent
+(`accounts.assistant_ai.parse_history`): only user/assistant messages, each
+length-capped, last 10 only, David's barks stripped - a browser can't sneak
+in fake "system" instructions.
+
 **Widget details** (`accounts/templates/_ai_assistant_widget.html`):
 hovering a persona on the picker shows `// ASSISTANT [F.R.E.D.]` /
 `[David]` in the header; once a chat is open, the persona's name shows
@@ -310,6 +325,9 @@ been built.
 
 ## Recent updates (most recent first)
 
+- AI chat memory: conversations with David/F.R.E.D. are kept until you
+  log out, and the AI remembers the last 10 messages (including a name you
+  ask to be called).
 - AI cooldown animations: while the asker is over the hourly AI limit,
   F.R.E.D. "powers down" (holds frame1, no glow) and David naps (Z -> ZZ
   -> ZZZ, 2s each, looping).
