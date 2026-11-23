@@ -21,6 +21,18 @@ MAX_MESSAGE_LENGTH = 500
 
 REQUEST_TIMEOUT_SECONDS = 8
 
+# How many AI questions one person can ask per hour
+# (Scripted answers wont count.)
+#Protects the free tier's 50 requests per day.
+AI_REQUESTS_PER_HOUR = 10
+
+# What each persona says once someone hits that limit.
+RATE_LIMITED_REPLY = {
+    'david' : "Oof! I'm pretty worn out, Let's talk again later, I need a nap. Woof!",
+    'fred' : "That's as much time as i can give you, I need to go power down for awhile, come back later.",
+    
+}
+
 # David's AI replies with dog noises at random. (Scripted replies already bark).
 BARK_SOUNDS = ['Bark!', 'Arf!', 'Woof!']
 BARK_EVERY_WORDS = 15
