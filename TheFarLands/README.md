@@ -196,6 +196,14 @@ back can run as HTML/script.
 the bark settings. Free models are rate-limited and can be busy; swapping
 `OPENROUTER_MODEL` to another `:free` model is a one-line change.
 
+**Per-person rate limit:** each person gets `AI_REQUESTS_PER_HOUR` (10)
+AI questions per hour - counted per account, or per IP address for
+visitors who aren't logged in. After that they get the persona's
+`RATE_LIMITED_REPLY` (David needs a nap, F.R.E.D. powers down) until the
+hour is up, and no AI request is spent. Scripted answers are never
+counted or limited. The counters live in Django's cache and erase
+themselves after an hour (`accounts.views.assistant_reply`).
+
 **Free-tier daily limit:** an OpenRouter account with no credits gets
 **50 free-model requests per day**, shared by everyone using the site.
 It resets at midnight UTC (6 PM Central). Once it's used up, every AI
@@ -286,6 +294,10 @@ been built.
 
 ## Recent updates (most recent first)
 
+- AI rate limit: 10 AI questions per person per hour (scripted answers
+  unlimited), with in-character "come back later" replies - protects the
+  free tier's 50 requests/day. Site-features knowledge confirmed working
+  in live tests.
 - VIP and guest timers: live retro countdowns in the VIP tab, on guest
   profiles, and in a guest's Settings profile preview, with end times in
   Central time. See "VIP and guest timers" above.

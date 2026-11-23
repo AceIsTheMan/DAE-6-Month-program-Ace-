@@ -30,8 +30,9 @@ AI_REQUESTS_PER_HOUR = 10
 RATE_LIMITED_REPLY = {
     'david' : "Oof! I'm pretty worn out, Let's talk again later, I need a nap. Woof!",
     'fred' : "That's as much time as i can give you, I need to go power down for awhile, come back later.",
-    
+
 }
+
 
 # David's AI replies with dog noises at random. (Scripted replies already bark).
 BARK_SOUNDS = ['Bark!', 'Arf!', 'Woof!']

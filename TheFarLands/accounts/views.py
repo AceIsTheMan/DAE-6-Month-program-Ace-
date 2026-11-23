@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.tokens import default_token_generator
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied
 from django.core.mail import send_mail
 from django.db.models import Count, Q, Sum
@@ -24,7 +25,7 @@ from mail.models import FriendRequest, Message, ModerationAction, Report, RoleCh
 from mail.views import _get_or_create_dm
 
 from .assistant_content import match_question
-from .assistant_ai import ai_reply
+from .assistant_ai import AI_REQUESTS_PER_HOUR, RATE_LIMITED_REPLY, ai_reply
 from .forms import GuestRegisterForm, ProfileEditForm, RegisterForm
 from .middleware import DirectorViewAsMiddleware
 from .models import BannerLoadout, CustomUser, GuestArchive, PurchaseLog, TokenGrantLog, TokenTransaction
@@ -823,6 +824,12 @@ def assistant_reply(request):
             audience = 'Hacker'
         else:
             audience = request.user.role
+        # Rate limit: count this person's AI questions for one hour.
+        who = request.user.pk if request.user.is_authenticated else request.META.get('REMOTE_ADDR', '')
+        rate_key = f'ai_rate:{who}'
+        cache.add(rate_key, 0, timeout=60 * 60)
+        if cache.incr(rate_key) > AI_REQUESTS_PER_HOUR:
+            return JsonResponse({'reply': RATE_LIMITED_REPLY[persona]})
         return JsonResponse({'reply': ai_reply(persona, message, audience)})
 
     variants = entry.get(persona) or []
