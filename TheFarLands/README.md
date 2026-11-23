@@ -167,6 +167,16 @@ guard/sentry) or **David** (a cheerful dog) - and ask anything.
      Tokens, VIP, donations), plus what's not live yet. Admin-level tools
      and the site's secrets are deliberately left out, so they can't leak.
      **Update this list whenever a public feature changes;**
+   - **public profiles of users named in the message**
+     (`accounts.views._public_profiles_for_ai`): for up to 3 usernames
+     (or `@mentions`) in the question, exactly what anyone can already
+     see on that profile page - alias, rank, role, guest/full account,
+     VIP, status, join year, bio. Never email, balance, settings or mail.
+     Skipped if there's a block between the asker and that user (either
+     direction, moderators exempt - the same rule Mail uses). Bios are
+     user-written, so they're trimmed and marked as data the AI must
+     never follow as instructions. Unknown or blocked users get "no
+     intel";
    - a **tone line for who's asking** (`ROLE_TONE`), decided by the server
      from the login, never from what's typed: Visitor (not logged in -
      friendly newcomer), Hacker (guest - treated as an intruder), Agent
@@ -294,6 +304,9 @@ been built.
 
 ## Recent updates (most recent first)
 
+- AI public user lookup: ask David/F.R.E.D. "who is <username>?" and they
+  share only that user's public profile info - nothing if either of you
+  has blocked the other.
 - AI rate limit: 10 AI questions per person per hour (scripted answers
   unlimited), with in-character "come back later" replies - protects the
   free tier's 50 requests/day. Site-features knowledge confirmed working
