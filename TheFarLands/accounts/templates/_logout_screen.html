@@ -1,9 +1,9 @@
 <!-- Logout loading screen - plays when a signed-in user hits LOGOUT (after
      the "Are you sure?" confirm), then actually submits the logout form:
        1. "Loading." / ".." / "..." for ~5s over a filling loading bar
-       2. types "(We are always watching.)", holds 3s, glitches out
+       2. types "We are always watching.", holds 3s, glitches out
        3. types "{Logout executed}", "{See you soon <rank>}",
-          "<Connection terminated>"
+          "<Connection terminated>" one at a time, each gone 3s after typing
        4. the real POST to /logout/ -> Home
      Not skippable. Rank is user.role, so a Director previewing another
      rank (DirectorViewAsMiddleware) sees the preview rank. Uses the shared
@@ -108,7 +108,7 @@
 
     // Step 2: the warning line, held 3s, then glitched away.
     function playWarning(done) {
-      var text = '(We are always watching.)';
+      var text = 'We are always watching.';
       var line = addLine();
       typeLine(line, text, TYPE_MS, function () {
         setTimeout(function () {
@@ -120,17 +120,23 @@
       });
     }
 
-    // Step 3: the sign-off lines, one after another.
+    // Step 3: the sign-off lines, one at a time - each disappears 3s
+    // after it's fully typed, then the next one types.
     function playSignOff(done) {
       var lines = ['{Logout executed}', '{See you soon ' + rank + '}', '<Connection terminated>'];
       var i = 0;
       (function next() {
         if (i >= lines.length) {
-          setTimeout(done, 1500);
+          setTimeout(done, 300);
           return;
         }
         var text = lines[i++];
-        typeLine(addLine(), text, TYPE_MS, function () { setTimeout(next, 350); });
+        typeLine(addLine(), text, TYPE_MS, function () {
+          setTimeout(function () {
+            box.textContent = '';
+            next();
+          }, 3000);
+        });
       })();
     }
 

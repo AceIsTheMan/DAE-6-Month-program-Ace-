@@ -137,6 +137,8 @@ cosmetic:
   - `!cmd_CAdminLogin` — an Admin's login, including a simulated Director
     chat interruption with the real Director's profile picture
   - `!cmd_CDirector` — the Director's own login
+  - `!cmd_LoggingOut` — the logout loading screen, preview only (plays
+    the whole sequence, then closes without logging you out)
   - (code: `accounts/templates/_role_cutscenes.html`, `accounts.signals.
     queue_role_cutscene_on_login`, `accounts.views.home_view` 👍)
   - `!cmd_?` — not a cutscene: a Director-only, 10-second, display-only
@@ -144,9 +146,10 @@ cosmetic:
     it does, for review
 - **Logout loading screen**: after the "Are you sure?" confirm, LOGOUT
   plays a black-screen sequence in red retro typing: "Loading." / ".." /
-  "..." for ~5s over a filling loading bar, then "(We are always
-  watching.)" held 3s before it glitches out, then "{Logout executed}",
-  "{See you soon <rank>}", "<Connection terminated>". After that the real
+  "..." for ~5s over a filling loading bar, then "We are always
+  watching." held 3s before it glitches out, then "{Logout executed}",
+  "{See you soon <rank>}", "<Connection terminated>" one at a time, each
+  disappearing 3s after it's typed. After that the real
   logout runs and you land on Home. It can't be skipped. The rank is the
   account's role, or the preview rank if the Director is using "view as".
   Any logout form joins in with `class="tfl-logout-form"`. The Director
@@ -342,7 +345,7 @@ been built.
 ## Recent updates (most recent first)
 
 - Logout loading screen: LOGOUT now plays a red retro terminal sequence
-  (loading bar, "(We are always watching.)" glitch, "{See you soon
+  (loading bar, "We are always watching." glitch, "{See you soon
   <rank>}", "<Connection terminated>") before logging you out.
 - Email as a backup login: the login form accepts your email instead of
   your codename (only when one account uses that email).
