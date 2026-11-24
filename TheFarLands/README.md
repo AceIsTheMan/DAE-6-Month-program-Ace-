@@ -149,7 +149,9 @@ cosmetic:
   "{See you soon <rank>}", "<Connection terminated>". After that the real
   logout runs and you land on Home. It can't be skipped. The rank is the
   account's role, or the preview rank if the Director is using "view as".
-  Any logout form joins in with `class="tfl-logout-form"`
+  Any logout form joins in with `class="tfl-logout-form"`. The Director
+  can preview it with the cheat code `!cmd_LoggingOut` (plays the whole
+  screen, then just closes - no logout)
   (code: `accounts/templates/_logout_screen.html`, included at the end of
   `base.html` and `home.html` 👍)
 

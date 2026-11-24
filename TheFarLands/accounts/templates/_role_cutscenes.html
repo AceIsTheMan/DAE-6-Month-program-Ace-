@@ -210,6 +210,10 @@
       <span class="rc-help-desc">Director login cutscene</span>
     </div>
     <div class="rc-help-row">
+      <span class="rc-help-code">!cmd_LoggingOut</span>
+      <span class="rc-help-desc">Logout loading screen - preview only, doesn't log you out</span>
+    </div>
+    <div class="rc-help-row">
       <span class="rc-help-code">!cmd_?</span>
       <span class="rc-help-desc">This reference panel - shows for 10 seconds, display only</span>
     </div>
@@ -579,6 +583,8 @@
       '!cmd_CGuestLogin': function () { activeGuestTrialRemaining = '6:23:45'; playGuestLogin(); },
       '!cmd_CAdminLogin': function () { activeDirectorPfpUrl = directorOwnPfpUrl; playAdminLogin(directorUsername); },
       '!cmd_CDirector': function () { playDirectorLogin(); },
+      // Lives in _logout_screen.html (included later, so looked up at call time).
+      '!cmd_LoggingOut': function () { if (window.TFL_LogoutScreen) window.TFL_LogoutScreen.preview(); },
       '!cmd_?': function () { showCheatCodeHelp(); },
     };
 

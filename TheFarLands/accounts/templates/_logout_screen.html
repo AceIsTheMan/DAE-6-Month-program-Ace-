@@ -34,15 +34,12 @@
     letter-spacing: 1px;
     text-align: center;
   }
-  .lo-box div { margin-bottom: 0.4rem; min-height: 1.2em; }
+  .lo-line { margin-bottom: 0.4rem; min-height: 1.2em; }
   .lo-loading { text-align: left; display: inline-block; min-width: 7.5em; }
   .lo-bar {
     width: 100%;
     max-width: 420px;
     height: 18px;
-    /* The bar and its fill aren't text lines - opt out of .lo-box div's
-       line spacing/min-height, or the fill grows past the frame. */
-    min-height: 0;
     box-sizing: border-box;
     margin: 0.8rem auto 0;
     border: 1px solid #ff1a1a;
@@ -52,8 +49,6 @@
   .lo-bar-fill {
     width: 0;
     height: 100%;
-    min-height: 0;
-    margin: 0;
     /* Segmented blocks for the retro look, not a smooth gradient. */
     background: repeating-linear-gradient(90deg, #ff1a1a 0 10px, transparent 10px 13px);
     transition: width 5s linear;
@@ -77,6 +72,7 @@
 
     function addLine() {
       var el = document.createElement('div');
+      el.className = 'lo-line';
       box.appendChild(el);
       return el;
     }
@@ -84,7 +80,7 @@
     // Step 1: "Loading." -> ".." -> "..." on a loop while the bar fills.
     function playLoading(done) {
       var label = addLine();
-      label.className = 'lo-loading';
+      label.classList.add('lo-loading');
       var bar = document.createElement('div');
       bar.className = 'lo-bar';
       var fill = document.createElement('div');
@@ -138,23 +134,35 @@
       })();
     }
 
-    function play(form) {
+    function play(done) {
+      if (playing) return;
       playing = true;
       box.textContent = '';
       overlay.classList.add('lo-active');
       playLoading(function () {
         playWarning(function () {
-          // form.submit() skips the submit event, so this doesn't loop.
-          playSignOff(function () { form.submit(); });
+          playSignOff(done);
         });
       });
     }
+
+    // "!cmd_LoggingOut" (Director only, _role_cutscenes.html): the full
+    // screen with NO logout - the overlay just closes at the end.
+    function preview() {
+      play(function () {
+        overlay.classList.remove('lo-active');
+        box.textContent = '';
+        playing = false;
+      });
+    }
+    window.TFL_LogoutScreen = { preview: preview };
 
     document.querySelectorAll('form.tfl-logout-form').forEach(function (form) {
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         if (playing || !confirm('Are you sure you WANT to logout?')) return;
-        play(form);
+        // form.submit() skips the submit event, so this doesn't loop.
+        play(function () { form.submit(); });
       });
     });
   })();
