@@ -152,7 +152,7 @@
       });
     }
 
-    // "!cmd_LoggingOut" (Director only, _role_cutscenes.html): the full
+    // Director-only preview (cheat code in _role_cutscenes.html): the full
     // screen with NO logout - the overlay just closes at the end.
     function preview() {
       play(function () {
@@ -162,6 +162,16 @@
       });
     }
     window.TFL_LogoutScreen = { preview: preview };
+
+    // Pressing Back after logging out can restore this page from the
+    // browser's back/forward cache with the overlay still up and nothing
+    // left running - reset it so the page isn't stuck on a black screen.
+    window.addEventListener('pageshow', function (e) {
+      if (!e.persisted) return;
+      overlay.classList.remove('lo-active');
+      box.textContent = '';
+      playing = false;
+    });
 
     document.querySelectorAll('form.tfl-logout-form').forEach(function (form) {
       form.addEventListener('submit', function (e) {
