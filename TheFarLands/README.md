@@ -54,8 +54,12 @@ wired in anymore.
 - `/guest/` — create a temporary "Hacker" guest account (username + password
   only, no email, no verification step, expires after 7 days)
   (code: `accounts/views.py` 👍)
-- `/login/` — log in (same form for both account types)
-  (code: `accounts/views.py` 👍)
+- `/login/` — log in (same form for both account types). The codename box
+  also takes your **email** as a backup username, for people who forgot
+  their codename. Email only works if exactly one account uses it (emails
+  aren't unique); the password is checked the normal way either way
+  (code: `accounts/views.py`, `accounts/backends.py`
+  `EmailOrUsernameBackend`, `AUTHENTICATION_BACKENDS` in settings 👍)
 - `/profile/` — your profile: photo, rank, alias, bio, with an inline
   "// EDIT PROFILE" section
   (code: `accounts/views.py`, `accounts/models.py` 👍)
@@ -138,6 +142,16 @@ cosmetic:
   - `!cmd_?` — not a cutscene: a Director-only, 10-second, display-only
     panel that dims the page and lists every cheat code above with what
     it does, for review
+- **Logout loading screen**: after the "Are you sure?" confirm, LOGOUT
+  plays a black-screen sequence in red retro typing: "Loading." / ".." /
+  "..." for ~5s over a filling loading bar, then "(We are always
+  watching.)" held 3s before it glitches out, then "{Logout executed}",
+  "{See you soon <rank>}", "<Connection terminated>". After that the real
+  logout runs and you land on Home. It can't be skipped. The rank is the
+  account's role, or the preview rank if the Director is using "view as".
+  Any logout form joins in with `class="tfl-logout-form"`
+  (code: `accounts/templates/_logout_screen.html`, included at the end of
+  `base.html` and `home.html` 👍)
 
 ## AI assistant (David / F.R.E.D.)
 
@@ -325,6 +339,11 @@ been built.
 
 ## Recent updates (most recent first)
 
+- Logout loading screen: LOGOUT now plays a red retro terminal sequence
+  (loading bar, "(We are always watching.)" glitch, "{See you soon
+  <rank>}", "<Connection terminated>") before logging you out.
+- Email as a backup login: the login form accepts your email instead of
+  your codename (only when one account uses that email).
 - AI chat memory: conversations with David/F.R.E.D. are kept until you
   log out, and the AI remembers the last 10 messages (including a name you
   ask to be called).

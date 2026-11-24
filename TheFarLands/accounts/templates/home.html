@@ -1659,7 +1659,7 @@
     <li class="nav-auth-link"><a href="{% url 'profile' %}">PROFILE</a></li>
     {% include "_nav_mail_icons.html" %}
     <li class="nav-auth-link">
-      <form action="{% url 'logout' %}" method="post" style="display:inline;" onsubmit="return confirm('Are you sure you WANT to logout?');">
+      <form action="{% url 'logout' %}" method="post" style="display:inline;" class="tfl-logout-form">
         {% csrf_token %}
         <button type="submit" class="nav-logout-btn">LOGOUT</button>
       </form>
@@ -2434,5 +2434,6 @@
   })();
 </script>
 {% include "_ai_assistant_widget.html" %}
+{% include "_logout_screen.html" %}
 </body>
 </html>

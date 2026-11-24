@@ -89,6 +89,9 @@ DATABASES = {
 # of Django's default User. This MUST be set before the first `migrate`.
 AUTH_USER_MODEL = 'accounts.CustomUser'
 
+# Login accepts a username, or an email as a backup (accounts/backends.py).
+AUTHENTICATION_BACKENDS = ['accounts.backends.EmailOrUsernameBackend']
+
 
 # Password validation
 # https://docs.djangoproject.com/en/stable/ref/settings/#auth-password-validators

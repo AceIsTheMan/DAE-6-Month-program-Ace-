@@ -1,0 +1,162 @@
+<!-- Logout loading screen - plays when a signed-in user hits LOGOUT (after
+     the "Are you sure?" confirm), then actually submits the logout form:
+       1. "Loading." / ".." / "..." for ~5s over a filling loading bar
+       2. types "(We are always watching.)", holds 3s, glitches out
+       3. types "{Logout executed}", "{See you soon <rank>}",
+          "<Connection terminated>"
+       4. the real POST to /logout/ -> Home
+     Not skippable. Rank is user.role, so a Director previewing another
+     rank (DirectorViewAsMiddleware) sees the preview rank. Uses the shared
+     typing/glitch helpers in _cutscene_engine.html (include that first).
+     Any LOGOUT form opts in with class="tfl-logout-form". -->
+{% if user.is_authenticated %}
+<style>
+  .lo-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10090;
+    /* Fixed black/red like the other terminal cutscenes - never re-skinned
+       by a VIP Background Theme (see _role_cutscenes.html). */
+    background: #000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  .lo-overlay.lo-active { display: flex; }
+  .lo-box {
+    font-family: 'Share Tech Mono', monospace;
+    color: #ff1a1a;
+    text-shadow: 0 0 8px #cc0000, 0 0 16px #660000;
+    max-width: 640px;
+    width: 100%;
+    font-size: 1.5rem;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+  .lo-box div { margin-bottom: 0.4rem; min-height: 1.2em; }
+  .lo-loading { text-align: left; display: inline-block; min-width: 7.5em; }
+  .lo-bar {
+    width: 100%;
+    max-width: 420px;
+    height: 18px;
+    /* The bar and its fill aren't text lines - opt out of .lo-box div's
+       line spacing/min-height, or the fill grows past the frame. */
+    min-height: 0;
+    box-sizing: border-box;
+    margin: 0.8rem auto 0;
+    border: 1px solid #ff1a1a;
+    box-shadow: 0 0 8px #660000;
+    padding: 2px;
+  }
+  .lo-bar-fill {
+    width: 0;
+    height: 100%;
+    min-height: 0;
+    margin: 0;
+    /* Segmented blocks for the retro look, not a smooth gradient. */
+    background: repeating-linear-gradient(90deg, #ff1a1a 0 10px, transparent 10px 13px);
+    transition: width 5s linear;
+  }
+</style>
+
+<div class="lo-overlay" id="lo-overlay" data-rank="{{ user.role }}" aria-live="polite">
+  <div class="lo-box" id="lo-box"></div>
+</div>
+
+<script>
+  (function () {
+    var overlay = document.getElementById('lo-overlay');
+    var box = document.getElementById('lo-box');
+    var rank = overlay.dataset.rank;
+    var typeLine = window.TFL_Cutscene.typeLine;
+    var glitchOut = window.TFL_Cutscene.glitchOut;
+    var TYPE_MS = 45;
+    var LOADING_MS = 5000;
+    var playing = false;
+
+    function addLine() {
+      var el = document.createElement('div');
+      box.appendChild(el);
+      return el;
+    }
+
+    // Step 1: "Loading." -> ".." -> "..." on a loop while the bar fills.
+    function playLoading(done) {
+      var label = addLine();
+      label.className = 'lo-loading';
+      var bar = document.createElement('div');
+      bar.className = 'lo-bar';
+      var fill = document.createElement('div');
+      fill.className = 'lo-bar-fill';
+      bar.appendChild(fill);
+      box.appendChild(bar);
+
+      var frames = ['Loading.', 'Loading..', 'Loading...'];
+      var frame = 0;
+      label.textContent = frames[0];
+      var tick = setInterval(function () {
+        frame++;
+        label.textContent = frames[frame % 3];
+      }, 400);
+      // Next frame, so the 0 -> 100% width change actually transitions.
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { fill.style.width = '100%'; });
+      });
+      setTimeout(function () {
+        clearInterval(tick);
+        box.textContent = '';
+        done();
+      }, LOADING_MS);
+    }
+
+    // Step 2: the warning line, held 3s, then glitched away.
+    function playWarning(done) {
+      var text = '(We are always watching.)';
+      var line = addLine();
+      typeLine(line, text, TYPE_MS, function () {
+        setTimeout(function () {
+          glitchOut(line, text, 700, function () {
+            box.textContent = '';
+            done();
+          });
+        }, 3000);
+      });
+    }
+
+    // Step 3: the sign-off lines, one after another.
+    function playSignOff(done) {
+      var lines = ['{Logout executed}', '{See you soon ' + rank + '}', '<Connection terminated>'];
+      var i = 0;
+      (function next() {
+        if (i >= lines.length) {
+          setTimeout(done, 1500);
+          return;
+        }
+        var text = lines[i++];
+        typeLine(addLine(), text, TYPE_MS, function () { setTimeout(next, 350); });
+      })();
+    }
+
+    function play(form) {
+      playing = true;
+      box.textContent = '';
+      overlay.classList.add('lo-active');
+      playLoading(function () {
+        playWarning(function () {
+          // form.submit() skips the submit event, so this doesn't loop.
+          playSignOff(function () { form.submit(); });
+        });
+      });
+    }
+
+    document.querySelectorAll('form.tfl-logout-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (playing || !confirm('Are you sure you WANT to logout?')) return;
+        play(form);
+      });
+    });
+  })();
+</script>
+{% endif %}
